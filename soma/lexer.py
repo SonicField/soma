@@ -1,5 +1,5 @@
 """
-SOMA Lexer (initial cut)
+SOMA Lexer
 
 This module currently knows how to:
 
@@ -15,33 +15,51 @@ This module currently knows how to:
     - 23,   -> error
     - 23,5  -> error
     - 23>   -> error
-  Rule: once we've committed to "this is a number", any non-digit
-  immediately after the digit sequence that is not whitespace or EOF
-  is a lexical error.
+  Rule (informal): if a token starts as a number (digit or +/-
+  followed by digit), and then we hit a non-whitespace character that
+  is not part of the number, it is an illegal numeric literal.
 
 - Handle execute `>` vs plain `>` name:
     - >print       -> EXEC(">"), PATH("print")
     - > print      -> PATH(">"), PATH("print")
     - 23 >print    -> INT("23"), EXEC(">"), PATH("print")
     - 23 > print   -> INT("23"), PATH(">"), PATH("print")
-    - a,b >print   -> PATH("a,b"), EXEC(">"), PATH("print")
+    - a>b          -> PATH("a"), EXEC(">"), PATH("b")
     - 23>print     -> error (illegal numeric literal "23>...")
 
-- Whitespace:
-    - Space, tab, newline, and carriage return are treated as separators.
-    - They terminate tokens but are not emitted as tokens.
+- Handle store `!` vs plain `!` name:
+    - !stdout      -> STORE("!"), PATH("stdout")
+    - ! stdout     -> PATH("!"), PATH("stdout")
+    - a!b          -> PATH("a"), STORE("!"), PATH("b")
+    - !+34         -> error (cannot store to numeric-like target)
+    - !!a          -> error (cannot attach to target starting with '!')
+    - !>stdout     -> error (cannot attach to target starting with '>')
+    - !>           -> STORE("!"), PATH(">")
 
-- PATH tokens:
-    - Any token that is not recognised as a number and does not start
-      with the special EXEC form is a PATH.
-    - PATHs may contain any printable, non-whitespace characters
-      except the punctuation characters used as token delimiters.
-    - In this initial version, the only punctuation delimiter is '>'.
+General modifier rules:
 
-Future extensions (not implemented yet):
-- '!' store operator
-- '{' and '}' for blocks
-- comments, Void/Nil literals, etc.
+- '!' and '>' are the only prefix modifiers.
+- At token start:
+
+    * If followed by whitespace or EOF:
+        - '!' -> PATH("!")
+        - '>' -> PATH(">")
+
+    * If followed by non-whitespace:
+        - modifier form, which emits:
+            - '!' -> STORE("!")
+            - '>' -> EXEC(">")
+
+        - The attached target must be a valid PATH start:
+            - It must NOT be numeric-like:
+                - not [0-9]
+                - not [+-][0-9]
+            - It must NOT start with '!' or '>', unless the target
+              is exactly a single "!" or ">" at the end of the token
+              (e.g. >! and !> are allowed, but >>foo, !!a, !>stdout
+              etc. are illegal).
+
+The lexer returns a list of Token objects, ending with an EOF token.
 """
 
 from enum import Enum
@@ -51,6 +69,9 @@ class TokenKind(Enum):
     INT = "INT"
     PATH = "PATH"
     EXEC = "EXEC"
+    STORE = "STORE"
+    LBRACE = "LBRACE"
+    RBRACE = "RBRACE"
     EOF = "EOF"
 
 
@@ -58,7 +79,7 @@ class Token(object):
     """
     A single lexical token.
 
-    kind  - a TokenKind (INT, PATH, EXEC, EOF)
+    kind  - a TokenKind (INT, PATH, EXEC, STORE, EOF)
     value - the raw string for this token, as it appears in source
     line  - 1-based line number where the token starts
     col   - 1-based column number where the token starts
@@ -103,10 +124,13 @@ class LexError(Exception):
 _WHITESPACE_CHARS = (" ", "\t", "\n", "\r")
 
 # Punctuation characters that, by default, form their own tokens.
-# In this initial version, only '>' is active; others will be added later.
+# In this version, '>' and '!' are the active punctuation; others
+# (like '{', '}', etc.) will be added later.
 _PUNCTUATION_KINDS = {
-    # char: TokenKind or None (None = reserved for future)
     ">": TokenKind.EXEC,
+    "!": TokenKind.STORE,
+    "{": TokenKind.LBRACE,
+    "}": TokenKind.RBRACE,
 }
 
 
@@ -120,30 +144,6 @@ def lex(source):
 
     On success: returns a list of Token instances, ending with an EOF token.
     On error: raises LexError with a descriptive message and position.
-
-    Current rules (summary):
-
-    - Whitespace separates tokens and is not emitted.
-    - Numbers:
-        * A token is a candidate number if:
-            - it starts with a digit, OR
-            - it starts with '+' or '-' AND the next char is a digit.
-        * For a candidate number:
-            - consume optional sign (+/-) if present,
-            - consume digits,
-            - if the next character is whitespace or EOF: emit INT,
-            - otherwise: LexError (illegal numeric literal).
-    - PATHs:
-        * Any token that is not recognised as a number is a PATH.
-        * PATHs may contain any printable, non-whitespace chars,
-          except punctuation delimiters in _PUNCTUATION_KINDS.
-    - EXEC vs PATH('>'):
-        * At token start, if we see '>' and it is immediately followed
-          by a non-whitespace character, we emit EXEC(">")
-          (the execute sigil), and the following name will be lexed
-          as a separate PATH token.
-        * If '>' is followed by whitespace or EOF, it is treated as
-          a PATH token with value ">".
     """
     tokens = []
     line = 1
@@ -170,21 +170,78 @@ def lex(source):
         start_line = line
         start_col = col
 
-        # --- Special handling for '>' (EXEC vs PATH) at token start ---
-        if ch == ">":
-            # Look ahead to decide if this is EXEC or PATH(">")
-            if i + 1 < n and not _is_whitespace(source[i + 1]):
-                # EXEC sigil: '>print' etc.
+        # --- Braces are always structural ---
+        if ch == "{":
+            emit(TokenKind.LBRACE, "{", start_line, start_col)
+            i += 1
+            col += 1
+            continue
+
+        if ch == "}":
+            emit(TokenKind.RBRACE, "}", start_line, start_col)
+            i += 1
+            col += 1
+            continue
+
+        # --- Modifier or plain punctuation at token start ('>' or '!') ---
+        if ch in (">", "!"):
+            # Look ahead one character
+            if i + 1 >= n or _is_whitespace(source[i + 1]):
+                # Standalone form: treat as plain PATH("!") or PATH(">")
+                emit(TokenKind.PATH, ch, start_line, start_col)
+                i += 1
+                col += 1
+                continue
+
+            # Attached modifier form: '!'foo or '>'foo
+            next_ch = source[i + 1]
+            second_ch = source[i + 2] if (i + 2) < n else None
+
+            # Special-case: '!{...}' is illegal: cannot store directly to a block.
+            if ch == "!" and next_ch == "{":
+                raise LexError(
+                    "Modifier '!' cannot target a block",
+                    start_line,
+                    start_col,
+                )
+
+            # 1) Forbid numeric-like targets:
+            #    If target starts with digit, or with +/- followed by digit,
+            #    we consider that "numeric-like" and reject.
+            if next_ch.isdigit() or (
+                next_ch in "+-"
+                and second_ch is not None
+                and second_ch.isdigit()
+            ):
+                raise LexError(
+                    "Modifier '%s' cannot target numeric-like token" % ch,
+                    start_line,
+                    start_col,
+                )
+
+            # 2) Forbid modifier-prefixed targets, except for the
+            #    single-character '!' or '>' case (e.g. >! or !>).
+            if next_ch in ("!", ">"):
+                # Allowed only if this is the last char in the token,
+                # i.e. immediately followed by EOF or whitespace.
+                if (i + 2) < n and not _is_whitespace(source[i + 2]):
+                    raise LexError(
+                        "Modifier '%s' cannot target '%s'..." % (ch, next_ch),
+                        start_line,
+                        start_col,
+                    )
+
+            # If we reach here, we accept this as a modifier token.
+            # We only emit the modifier now; the target will be lexed
+            # as a separate PATH (or other token) in the next iteration.
+            if ch == ">":
                 emit(TokenKind.EXEC, ">", start_line, start_col)
-                i += 1
-                col += 1
-                continue
             else:
-                # Plain PATH name ">"
-                emit(TokenKind.PATH, ">", start_line, start_col)
-                i += 1
-                col += 1
-                continue
+                emit(TokenKind.STORE, "!", start_line, start_col)
+
+            i += 1
+            col += 1
+            continue
 
         # --- Candidate number? ---
         # Rule: candidate if starts with digit,
@@ -233,7 +290,8 @@ def lex(source):
             )
 
         # --- PATH token ---
-        # Not a candidate number, not EXEC. This token is a PATH.
+        # Not a candidate number, not EXEC/STORE punctuation at start.
+        # This token is a PATH, which ends at whitespace or punctuation.
         j = i
         while j < n:
             chj = source[j]
@@ -241,7 +299,7 @@ def lex(source):
             if _is_whitespace(chj):
                 break
             if chj in _PUNCTUATION_KINDS:
-                # Punctuation marks a new token *after* this PATH,
+                # Punctuation marks a new token AFTER this PATH,
                 # so we stop before it.
                 break
             j += 1
