@@ -72,6 +72,7 @@ class TokenKind(Enum):
     STORE = "STORE"
     LBRACE = "LBRACE"
     RBRACE = "RBRACE"
+    STRING = "STRING"
     EOF = "EOF"
 
 
@@ -170,6 +171,12 @@ def lex(source):
         start_line = line
         start_col = col
 
+        # --- String literal: ( ... ) with \HEX\ escapes ---
+        if ch == "(":
+            value, i, line, col = _lex_string(source, i, line, col)
+            emit(TokenKind.STRING, value, start_line, start_col)
+            continue
+
         # --- Braces are always structural ---
         if ch == "{":
             emit(TokenKind.LBRACE, "{", start_line, start_col)
@@ -186,7 +193,11 @@ def lex(source):
         # --- Modifier or plain punctuation at token start ('>' or '!') ---
         if ch in (">", "!"):
             # Look ahead one character
-            if i + 1 >= n or _is_whitespace(source[i + 1]):
+            if (
+                i + 1 >= n
+                or _is_whitespace(source[i + 1])
+                or source[i + 1] == "}"
+            ):
                 # Standalone form: treat as plain PATH("!") or PATH(">")
                 emit(TokenKind.PATH, ch, start_line, start_col)
                 i += 1
@@ -196,6 +207,14 @@ def lex(source):
             # Attached modifier form: '!'foo or '>'foo
             next_ch = source[i + 1]
             second_ch = source[i + 2] if (i + 2) < n else None
+
+            # Forbid attaching modifiers to strings
+            if next_ch == "(":
+                raise LexError(
+                "Modifier '%s' cannot target a string literal" % ch,
+                start_line,
+                start_col,
+            )
 
             # Special-case: '!{...}' is illegal: cannot store directly to a block.
             if ch == "!" and next_ch == "{":
@@ -223,8 +242,13 @@ def lex(source):
             #    single-character '!' or '>' case (e.g. >! or !>).
             if next_ch in ("!", ">"):
                 # Allowed only if this is the last char in the token,
-                # i.e. immediately followed by EOF or whitespace.
-                if (i + 2) < n and not _is_whitespace(source[i + 2]):
+                # i.e. immediately followed by EOF, whitespace,
+                # or structural punctuation like '}' or '{'.
+                if (
+                    (i + 2) < n
+                    and not _is_whitespace(source[i + 2])
+                    and source[i + 2] not in ("{", "}")
+                ):
                     raise LexError(
                         "Modifier '%s' cannot target '%s'..." % (ch, next_ch),
                         start_line,
@@ -291,16 +315,16 @@ def lex(source):
 
         # --- PATH token ---
         # Not a candidate number, not EXEC/STORE punctuation at start.
-        # This token is a PATH, which ends at whitespace or punctuation.
+        # This token is a PATH, which ends at whitespace or structural punctuation
+        # like '{' or '}' (strings '(' will also be added later).
         j = i
         while j < n:
             chj = source[j]
-            # Token ends if we hit whitespace or punctuation that is a delimiter.
+            # Token ends if we hit whitespace
             if _is_whitespace(chj):
                 break
-            if chj in _PUNCTUATION_KINDS:
-                # Punctuation marks a new token AFTER this PATH,
-                # so we stop before it.
+            # Or a structural delimiter (braces)
+            if chj in ("{", "}"):
                 break
             j += 1
 
@@ -312,3 +336,117 @@ def lex(source):
     # Append EOF token
     emit(TokenKind.EOF, "", line, col)
     return tokens
+
+
+def _lex_string(source, i, line, col):
+    """
+    Lex a SOMA string literal starting at position i where source[i] == '('.
+
+    Returns:
+        (value, new_i, new_line, new_col)
+
+    value   - the decoded string content
+    new_i   - index just after the closing ')'
+    new_line, new_col - updated line/col at that position
+
+    Raises:
+        LexError on unterminated string or invalid \HEX\ escape.
+    """
+    start_line = line
+    start_col = col
+    n = len(source)
+
+    # Skip the opening '('
+    i += 1
+    col += 1
+
+    chars = []
+
+    while i < n:
+        ch = source[i]
+
+        if ch == ")":
+            # End of string
+            i += 1
+            col += 1
+            return "".join(chars), i, line, col
+
+        if ch == "\\":
+            # Start of a \HEX\ escape
+            esc_start_line = line
+            esc_start_col = col
+
+            i += 1
+            col += 1
+            if i >= n:
+                raise LexError(
+                    "Unterminated unicode escape in string",
+                    esc_start_line,
+                    esc_start_col,
+                )
+
+            esc_start = i
+
+            # Scan until the closing backslash
+            while i < n and source[i] != "\\":
+                ch2 = source[i]
+                if ch2 == "\n":
+                    line += 1
+                    col = 1
+                else:
+                    col += 1
+                i += 1
+
+            if i >= n:
+                raise LexError(
+                    "Unterminated unicode escape in string",
+                    esc_start_line,
+                    esc_start_col,
+                )
+
+            esc_text = source[esc_start:i]
+            if not esc_text:
+                raise LexError(
+                    "Empty unicode escape in string",
+                    esc_start_line,
+                    esc_start_col,
+                )
+
+            if not all(c in "0123456789abcdefABCDEF" for c in esc_text):
+                raise LexError(
+                    "Non-hex digit in unicode escape in string",
+                    esc_start_line,
+                    esc_start_col,
+                )
+
+            try:
+                codepoint = int(esc_text, 16)
+                chars.append(chr(codepoint))
+            except ValueError:
+                raise LexError(
+                    "Invalid unicode codepoint in string",
+                    esc_start_line,
+                    esc_start_col,
+                )
+
+            # Consume the closing backslash
+            i += 1
+            col += 1
+            continue
+
+        # Ordinary character inside string
+        chars.append(ch)
+        if ch == "\n":
+            line += 1
+            col = 1
+        else:
+            col += 1
+        i += 1
+
+    # We hit EOF without closing ')'
+    raise LexError(
+        "Unterminated string literal",
+        start_line,
+        start_col,
+    )
+

@@ -280,27 +280,21 @@ class TestModifierInsideNames(unittest.TestCase):
     """
     Tests where '!' or '>' appear inside a larger sequence.
 
-    For now we treat '!' and '>' as punctuation that always split tokens,
-    not as ordinary path characters, so:
-        a!b -> PATH("a"), STORE("!"), PATH("b")
-        a>b -> PATH("a"), EXEC(">"), PATH("b")
+    In SOMA, '!' and '>' are only special as prefix modifiers at
+    token start. Inside a PATH they are just characters, so:
+        a!b -> PATH("a!b")
+        a>b -> PATH("a>b")
     """
 
-    def test_store_splits_path_when_inside_name(self):
+    def test_store_does_not_split_inside_name(self):
         tokens = lex("a!b")
-        self.assertEqual(
-            kinds(tokens),
-            [TokenKind.PATH, TokenKind.STORE, TokenKind.PATH],
-        )
-        self.assertEqual(values(tokens), ["a", "!", "b"])
+        self.assertEqual(kinds(tokens), [TokenKind.PATH])
+        self.assertEqual(values(tokens), ["a!b"])
 
-    def test_exec_splits_path_when_inside_name(self):
+    def test_exec_does_not_split_inside_name(self):
         tokens = lex("a>b")
-        self.assertEqual(
-            kinds(tokens),
-            [TokenKind.PATH, TokenKind.EXEC, TokenKind.PATH],
-        )
-        self.assertEqual(values(tokens), ["a", ">", "b"])
+        self.assertEqual(kinds(tokens), [TokenKind.PATH])
+        self.assertEqual(values(tokens), ["a>b"])
 
 
 class TestBlocks(unittest.TestCase):
@@ -408,6 +402,318 @@ class TestBlocks(unittest.TestCase):
             ],
         )
         self.assertEqual(values(tokens), ["{", "{", ">", "print", "}", "}"])
+
+
+class TestCompoundSyntax(unittest.TestCase):
+    """
+    Tests interactions of syntactic behaviours not necessarily checked elsewhere.
+    """
+    def test_double_exec_then_path(self):
+        tokens = lex(">>")
+        self.assertEqual(kinds(tokens), [TokenKind.EXEC, TokenKind.PATH])
+        self.assertEqual(values(tokens), [">", ">"])
+
+    def test_double_exec_then_path_in_block(self):
+        tokens = lex(">{>>}")
+        self.assertEqual(
+            kinds(tokens), [
+                TokenKind.EXEC,
+                TokenKind.LBRACE,
+                TokenKind.EXEC,
+                TokenKind.PATH,
+                TokenKind.RBRACE,
+            ],
+        )
+        self.assertEqual(values(tokens), [">", "{", ">", ">", "}"])
+
+    def test_double_store_then_path(self):
+        tokens = lex("!!")
+        self.assertEqual(kinds(tokens), [TokenKind.STORE, TokenKind.PATH])
+        self.assertEqual(values(tokens), ["!", "!"])
+
+    def test_operator_like_executables(self):
+        # ">>" is already done.
+        # ">>=" & ">!=" will fail so we reverse this in SOMA.
+
+        def test_ops(a, b):
+            with self.assertRaises(LexError):
+                lex(a+">>="+b)
+            with self.assertRaises(LexError):
+                lex(a+">!="+b)
+            tokens = lex(a+">=>"+b)
+            self.assertEqual(kinds(tokens), [TokenKind.EXEC, TokenKind.PATH])
+            self.assertEqual(values(tokens), [">", "=>"])
+            tokens = lex(a+">=!"+b)
+            self.assertEqual(kinds(tokens), [TokenKind.EXEC, TokenKind.PATH])
+            self.assertEqual(values(tokens), [">", "=!"])
+            tokens = lex(a+">=="+b)
+            self.assertEqual(kinds(tokens), [TokenKind.EXEC, TokenKind.PATH])
+            tokens = lex(a+"><"+b)
+            self.assertEqual(values(tokens), [">", "<"])
+            self.assertEqual(kinds(tokens), [TokenKind.EXEC, TokenKind.PATH])
+            tokens = lex(a+">=<"+b)
+            self.assertEqual(values(tokens), [">", "=<"])
+            self.assertEqual(kinds(tokens), [TokenKind.EXEC, TokenKind.PATH])
+            tokens = lex(a+">-"+b)
+            self.assertEqual(kinds(tokens), [TokenKind.EXEC, TokenKind.PATH])
+            self.assertEqual(values(tokens), [">", "-"])
+            tokens = lex(a+">+"+b)
+            self.assertEqual(kinds(tokens), [TokenKind.EXEC, TokenKind.PATH])
+            self.assertEqual(values(tokens), [">", "+"])
+
+        test_ops("", "")
+        test_ops(" ", "")
+        test_ops("", " ")
+        test_ops(" ", " ")
+        test_ops("", "")
+
+        with self.assertRaises(LexError):
+            lex("{>>=}")
+        with self.assertRaises(LexError):
+            lex("{>!=}")
+        tokens = lex("{>=>}")
+        self.assertEqual(
+            kinds(tokens),
+            [
+                TokenKind.LBRACE,
+                TokenKind.EXEC,
+                TokenKind.PATH,
+                TokenKind.RBRACE,
+            ],
+        )
+        self.assertEqual(values(tokens), ["{", ">", "=>", "}"])
+
+    def test_adjacent_braces(self):
+        tokens = lex("{>}{!}")
+        self.assertEqual(
+            kinds(tokens),
+            [
+                TokenKind.LBRACE,
+                TokenKind.PATH,
+                TokenKind.RBRACE,
+                TokenKind.LBRACE,
+                TokenKind.PATH,
+                TokenKind.RBRACE,
+            ],
+        )
+        self.assertEqual(values(tokens), ["{", ">", "}", "{", "!", "}"])
+
+
+class TestStrings(unittest.TestCase):
+    """
+    Tests for SOMA string literals.
+
+    Rules encoded here:
+
+    - Strings are enclosed in parentheses: ( ... ).
+    - Inside a string, characters are either:
+        * literal characters, OR
+        * unicode escapes of the form \HEX\ where HEX is 1+ hex digits.
+    - The lexer decodes \HEX\ by interpreting HEX as a hex integer and
+      appending the corresponding chr() to the STRING value.
+    - ')' terminates the string (no escape for ')' yet).
+    - A bare '\' or a '\...<no closing backslash>' or non-hex content
+      in an escape is a LexError.
+    - Inside a string, punctuation like >, !, {, } are just data.
+    - '!' can prefix PATHs only; '>' can prefix PATHs or blocks.
+      Both may *not* prefix strings:
+        !(foo) and >(foo) are lexical errors,
+        but '! (foo)' and '> (foo)' are fine.
+    """
+
+    def test_simple_string(self):
+        tokens = lex("(hello)")
+        self.assertEqual(kinds(tokens), [TokenKind.STRING])
+        self.assertEqual(values(tokens), ["hello"])
+
+    def test_empty_string(self):
+        tokens = lex("()")
+        self.assertEqual(kinds(tokens), [TokenKind.STRING])
+        self.assertEqual(values(tokens), [""])
+
+    def test_string_with_whitespace_and_punctuation(self):
+        tokens = lex("( hello\tworld >!{foo} )")
+        self.assertEqual(kinds(tokens), [TokenKind.STRING])
+        self.assertEqual(values(tokens), [" hello\tworld >!{foo} "])
+
+    def test_string_unicode_escape_backslash(self):
+        # (\5C\)  => a single backslash character
+        tokens = lex("(\\5C\\)")
+        self.assertEqual(kinds(tokens), [TokenKind.STRING])
+        self.assertEqual(values(tokens), ["\\"])
+
+    def test_string_unicode_escape_lowercase(self):
+        # (\d\) => chr(0x0d), typically carriage return
+        tokens = lex("(\\d\\)")
+        self.assertEqual(kinds(tokens), [TokenKind.STRING])
+        self.assertEqual(values(tokens), [chr(0x0D)])
+
+    def test_string_unicode_escape_mixed_case(self):
+        # (\0d\) => chr(0x0d), same as above
+        tokens = lex("(\\0d\\)")
+        self.assertEqual(kinds(tokens), [TokenKind.STRING])
+        self.assertEqual(values(tokens), [chr(0x0D)])
+
+    def test_multiple_escapes(self):
+        # (\41\42\43\) => "ABC"
+        tokens = lex("(\\41\\\\42\\\\43\\)")
+        self.assertEqual(kinds(tokens), [TokenKind.STRING])
+        self.assertEqual(values(tokens), ["ABC"])
+
+    def test_text_and_escapes_mixed(self):
+        # (Hello world\d\) => "Hello world" + chr(0x0d)
+        tokens = lex("(Hello world\\d\\)")
+        self.assertEqual(kinds(tokens), [TokenKind.STRING])
+        self.assertEqual(values(tokens), ["Hello world" + chr(0x0D)])
+
+    def test_longer_hex_still_ok(self):
+        # (\0000007a\) => 'z'
+        tokens = lex("(\\0000007a\\)")
+        self.assertEqual(kinds(tokens), [TokenKind.STRING])
+        self.assertEqual(values(tokens), ["z"])
+
+    def test_two_strings_in_a_row(self):
+        tokens = lex("(a) (b)")
+        self.assertEqual(kinds(tokens), [TokenKind.STRING, TokenKind.STRING])
+        self.assertEqual(values(tokens), ["a", "b"])
+
+    def test_string_inside_block(self):
+        tokens = lex("{(foo)}")
+        self.assertEqual(
+            kinds(tokens),
+            [TokenKind.LBRACE, TokenKind.STRING, TokenKind.RBRACE],
+        )
+        self.assertEqual(values(tokens), ["{", "foo", "}"])
+
+    def test_string_with_punctuation_is_single_token(self):
+        tokens = lex("(>!{foo}bar)")
+        self.assertEqual(kinds(tokens), [TokenKind.STRING])
+        self.assertEqual(values(tokens), [">!{foo}bar"])
+
+    # --- Error cases ---
+
+    def test_unterminated_string(self):
+        with self.assertRaises(LexError):
+            lex("(hello")
+
+    def test_unterminated_escape_at_end(self):
+        with self.assertRaises(LexError):
+            lex("(hello\\5C")
+
+    def test_unterminated_escape_no_closing_backslash(self):
+        with self.assertRaises(LexError):
+            lex("(\\41")
+
+    def test_empty_escape_is_error(self):
+        # () is fine, but (\) with nothing between backslashes is illegal
+        with self.assertRaises(LexError):
+            lex("(\\\\)")  # SOMA: (\ \) -> Python: "(\\\\)"
+
+    def test_non_hex_escape_is_error(self):
+        with self.assertRaises(LexError):
+            lex("(\\g\\)")
+
+    # --- Interaction with prefix modifiers ---
+
+    def test_bang_word_followed_by_string_is_ok(self):
+        tokens = lex("! (foo)")
+        self.assertEqual(
+            kinds(tokens),
+            [TokenKind.PATH, TokenKind.STRING],
+        )
+        self.assertEqual(values(tokens), ["!", "foo"])
+
+    def test_exec_word_followed_by_string_is_ok(self):
+        tokens = lex("> (foo)")
+        self.assertEqual(
+            kinds(tokens),
+            [TokenKind.PATH, TokenKind.STRING],
+        )
+        self.assertEqual(values(tokens), [">", "foo"])
+
+    def test_store_cannot_attach_to_string(self):
+        with self.assertRaises(LexError):
+            lex("!(foo)")
+
+    def test_exec_cannot_attach_to_string(self):
+        with self.assertRaises(LexError):
+            lex(">(foo)")
+
+
+class TestStringIntegrationExamples(unittest.TestCase):
+    """
+    Slightly higher-level examples to ensure strings, blocks, and
+    modifiers interact the way we expect.
+    """
+
+    def test_simple_concat_like_pattern(self):
+        # The "sane" version: (a) (a) >concat >print
+        tokens = lex("(a) (a) >concat >print")
+        self.assertEqual(
+            kinds(tokens),
+            [
+                TokenKind.STRING,
+                TokenKind.STRING,
+                TokenKind.EXEC,
+                TokenKind.PATH,
+                TokenKind.EXEC,
+                TokenKind.PATH,
+            ],
+        )
+        self.assertEqual(
+            values(tokens),
+            ["a", "a", ">", "concat", ">", "print"],
+        )
+
+    def test_complex_block_string_example(self):
+        # (a)>{(a)>concat >{!a}}>{a}>print
+        tokens = lex("(a)>{(a)>concat >{!a}}>{a}>print")
+        self.assertEqual(
+            kinds(tokens),
+            [
+                TokenKind.STRING,   # (a)
+                TokenKind.EXEC,     # >
+                TokenKind.LBRACE,   # {
+                TokenKind.STRING,   # (a)
+                TokenKind.EXEC,     # >concat
+                TokenKind.PATH,
+                TokenKind.EXEC,     # >{!a}
+                TokenKind.LBRACE,
+                TokenKind.STORE,
+                TokenKind.PATH,
+                TokenKind.RBRACE,
+                TokenKind.RBRACE,
+                TokenKind.EXEC,     # >{a}
+                TokenKind.LBRACE,
+                TokenKind.PATH,
+                TokenKind.RBRACE,
+                TokenKind.EXEC,     # >print
+                TokenKind.PATH,
+            ],
+        )
+        self.assertEqual(
+            values(tokens),
+            [
+                "a",
+                ">",
+                "{",
+                "a",
+                ">",
+                "concat",
+                ">",
+                "{",
+                "!",
+                "a",
+                "}",
+                "}",
+                ">",
+                "{",
+                "a",
+                "}",
+                ">",
+                "print",
+            ],
+        )
 
 
 if __name__ == "__main__":
