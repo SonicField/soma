@@ -1,65 +1,7 @@
 """
 SOMA Lexer
 
-This module currently knows how to:
-
-- Distinguish INT vs PATH tokens, including signed integers:
-    - 23    -> INT("23")
-    - -23   -> INT("-23")
-    - +23   -> INT("+23")
-    - - 23  -> PATH("-"), INT("23")
-    - + 23  -> PATH("+"), INT("23")
-
-- Detect illegal numeric literals:
-    - 23-5  -> error (digits followed by non-whitespace)
-    - 23,   -> error
-    - 23,5  -> error
-    - 23>   -> error
-  Rule (informal): if a token starts as a number (digit or +/-
-  followed by digit), and then we hit a non-whitespace character that
-  is not part of the number, it is an illegal numeric literal.
-
-- Handle execute `>` vs plain `>` name:
-    - >print       -> EXEC(">"), PATH("print")
-    - > print      -> PATH(">"), PATH("print")
-    - 23 >print    -> INT("23"), EXEC(">"), PATH("print")
-    - 23 > print   -> INT("23"), PATH(">"), PATH("print")
-    - a>b          -> PATH("a"), EXEC(">"), PATH("b")
-    - 23>print     -> error (illegal numeric literal "23>...")
-
-- Handle store `!` vs plain `!` name:
-    - !stdout      -> STORE("!"), PATH("stdout")
-    - ! stdout     -> PATH("!"), PATH("stdout")
-    - a!b          -> PATH("a"), STORE("!"), PATH("b")
-    - !+34         -> error (cannot store to numeric-like target)
-    - !!a          -> error (cannot attach to target starting with '!')
-    - !>stdout     -> error (cannot attach to target starting with '>')
-    - !>           -> STORE("!"), PATH(">")
-
-General modifier rules:
-
-- '!' and '>' are the only prefix modifiers.
-- At token start:
-
-    * If followed by whitespace or EOF:
-        - '!' -> PATH("!")
-        - '>' -> PATH(">")
-
-    * If followed by non-whitespace:
-        - modifier form, which emits:
-            - '!' -> STORE("!")
-            - '>' -> EXEC(">")
-
-        - The attached target must be a valid PATH start:
-            - It must NOT be numeric-like:
-                - not [0-9]
-                - not [+-][0-9]
-            - It must NOT start with '!' or '>', unless the target
-              is exactly a single "!" or ">" at the end of the token
-              (e.g. >! and !> are allowed, but >>foo, !!a, !>stdout
-              etc. are illegal).
-
-The lexer returns a list of Token objects, ending with an EOF token.
+See the soma-lexer.md
 """
 
 from enum import Enum
