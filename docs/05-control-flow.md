@@ -81,11 +81,11 @@ Result: AL contains `[25]`. The block executes once, leaves `25` on the AL, and 
 
 **Example 2: Self-perpetuating block**
 ```soma
-{ "tick" >print _.self } >Chain
+{ "tick" >print >block } >Chain
 ```
 
 This prints `tick` forever. Why?
-- The block executes, prints `tick`, then pushes `_.self` (a reference to itself) onto the AL
+- The block executes, prints `tick`, then pushes `>block` (the currently executing block) onto the AL
 - `>Chain` sees a block on top and executes it again
 - This repeats infinitely
 
@@ -321,7 +321,7 @@ while (condition) {
   condition
   {
     body
-    _.self
+    >block
   }
   { }
   >Choose
@@ -341,7 +341,7 @@ Let's trace execution step by step:
 4. If `condition` is `True`:
    - The true branch executes
    - `body` runs
-   - `_.self` pushes the outer block back onto the AL
+   - `>block` pushes the outer block back onto the AL
    - Block ends
    - `>Chain` sees a block on top and repeats
 5. If `condition` is `False`:
@@ -352,14 +352,14 @@ Let's trace execution step by step:
 
 **Complete example: Count to 5**
 ```soma
-0 !_.counter
+0 !counter
 
 {
-  _.counter 5 ><
+  counter 5 ><
   {
-    _.counter >print
-    _.counter 1 >+ !_.counter
-    _.self
+    counter >print
+    counter 1 >+ !counter
+    >block
   }
   { }
   >Choose
@@ -374,6 +374,8 @@ Output:
 3
 4
 ```
+
+**Note:** This example uses `counter` (Store path) rather than `_.counter` (Register path) because the inner blocks cannot access the outer block's Register. The Store is globally accessible to all blocks.
 
 This is a **while loop** built from `>Choose` and `>Chain`. No special syntax. No hidden control structures. Just blocks and state.
 
@@ -393,7 +395,7 @@ do {
 {
   body
   condition
-  { _.self }
+  { >block }
   { }
   >Choose
 } >Chain
@@ -402,21 +404,23 @@ do {
 **How it works:**
 - The body executes **first**
 - Then the condition is checked
-- If true, `_.self` causes the loop to continue
+- If true, `>block` causes the loop to continue
 - If false, nothing is pushed and the loop terminates
 
 **Example: Read until sentinel**
 ```soma
 {
-  user_input >read !_.input
-  _.input "quit" >== >not
-  { _.self }
+  user_input >read !input
+  input "quit" >== >not
+  { >block }
   { }
   >Choose
 } >Chain
 ```
 
 This reads input until the user types "quit". The body (read operation) always executes at least once.
+
+**Note:** The `input` variable is stored in the Store (not `_.input`) so that nested block executions can access it.
 
 ---
 
@@ -431,11 +435,11 @@ while (true) {
 
 **SOMA pattern:**
 ```soma
-{ body _.self } >Chain
+{ body >block } >Chain
 ```
 
 **How it works:**
-- The block always pushes itself onto the AL via `_.self`
+- The block always pushes itself onto the AL via `>block`
 - `>Chain` always sees a block and continues forever
 
 **Example: Server loop**
@@ -444,11 +448,63 @@ while (true) {
   connection >accept
   request >handle
   response >send
-  _.self
+  >block
 } >Chain
 ```
 
 This is the simplest possible infinite loop in SOMA. One block. One continuation. No condition needed.
+
+---
+
+### 3.6 Internationalization: Aliasing `>block`
+
+One of the key advantages of `>block` over the deprecated `_.self` magic binding is that **`>block` can be aliased**. This enables fully international code where programmers can use their native language for all built-ins.
+
+**Example: German programmer**
+```soma
+) Alias built-ins to German
+Chain !Kette
+block !Block
+
+) Infinite loop in pure German
+{ "tick" >print >Block } >Kette
+```
+
+**Example: Swedish programmer**
+```soma
+) Alias built-ins to Swedish
+Chain !Kedja
+block !blockera
+
+) Infinite loop in pure Swedish
+{ "tick" >print >blockera } >Kedja
+```
+
+**Why this matters:**
+
+The old `_.self` approach was English-centric and couldn't be aliased:
+```soma
+) OLD WAY - forced to use English "self"
+Chain !Kette
+{ "tick" >print _.self } >Kette    ) Must use English word "self"
+```
+
+With `>block`, **every part of the control flow is aliasable**:
+```soma
+) NEW WAY - fully international
+Chain !Kette
+Choose !Wählen
+block !Block
+Equal !Gleich
+
+) Pure German control flow
+bedingung
+  { "wahr" >print >Block }
+  { "falsch" >print }
+>Wählen >Kette
+```
+
+This demonstrates that SOMA has **no English-centric special cases**. All built-ins, including block self-reference, can be renamed to match the programmer's language and coding style.
 
 ---
 
@@ -470,16 +526,18 @@ After defining this macro, `while` looks exactly like a built-in language featur
 SOMA achieves the same effect **without macros**:
 
 ```soma
-{ condition { body _.self } { } >Choose } !while
+{ condition { body >block } { } >Choose } !while
 ```
 
 Now you can use `while` like this:
 
 ```soma
-_.counter 10 >< while >Chain
+{ loop_counter 10 >< } { loop_body } while >Chain
 ```
 
 To the user, `while` behaves like a built-in control structure. But it's not. It's just a **stored block**.
+
+**Note:** The condition and body blocks would access shared state via the Store (e.g., `loop_counter`), not via Register paths, due to Register isolation between blocks.
 
 ### 4.2 Why This Matters
 
@@ -504,9 +562,11 @@ This is **emergent abstraction**. SOMA doesn't provide `if` or `while` because i
 | First-class | ✗ (macros are compile-time) | ✓ (blocks are values) |
 | Requires special syntax | ✓ (`defmacro`, backtick) | ✗ (just blocks) |
 | Can pass as values | ✗ | ✓ |
-| Hygiene issues | ✓ (gensym, etc.) | ✗ (lexical scope) |
+| Hygiene issues | ✓ (gensym, etc.) | ✗ (Register isolation) |
 
 SOMA's approach is **simpler** and **more uniform**. There is no distinction between "code" and "data" because blocks are both.
+
+**Note on hygiene:** SOMA avoids variable capture issues because each block execution has its own isolated Register. Nested blocks cannot accidentally access outer block Register paths, eliminating a whole class of hygiene problems.
 
 ---
 
@@ -601,21 +661,28 @@ Hello
 **How it works:**
 1. `{ (Hello) >print }` pushed onto AL
 2. `>twice` executes the `twice` block
-3. Block executes:
-   - `!_.f` stores the block in Register
+3. The `twice` block executes:
+   - `!_.f` stores the print block in `twice`'s Register
    - `>_.f` executes it (prints "Hello")
    - `>_.f` executes it again (prints "Hello")
+4. Each execution of the print block gets its own fresh Register
+
+**Note:** The print block `{ (Hello) >print }` executes twice, and each execution has its own isolated Register (though this simple block doesn't use Register paths).
 
 ### 6.2 Execute If Condition Is True
 
 ```soma
-{ !_.block !_.cond _.cond { >_.block } { } >Choose >Chain } !if_exec
+{ !if_exec_block !if_exec_cond
+  if_exec_cond { if_exec_block >^ } { } >Choose >Chain
+} !if_exec
 
 True { (Condition met) >print } >if_exec     ) Prints: Condition met
 False { (Won't print) >print } >if_exec      ) Prints nothing
 ```
 
 **This is conditional execution of AL-passed blocks** — a higher-order control structure.
+
+**Note on Register isolation:** The original attempt `{ !_.block !_.cond _.cond { >_.block } { } >Choose >Chain }` would fail because the inner block `{ >_.block }` cannot access the outer block's Register path `_.block`. The corrected version stores the block and condition in the Store (`if_exec_block`, `if_exec_cond`), then uses `>^` to execute the block from the AL.
 
 ### 6.3 Execute With Argument
 
@@ -629,23 +696,50 @@ False { (Won't print) >print } >if_exec      ) Prints nothing
 1. `42` pushed onto AL
 2. `{ !_.x _.x _.x >* }` (squaring block) pushed onto AL
 3. `>call_with` executes the `call_with` block:
-   - `!_.func` stores squaring block in Register
-   - `!_.arg` stores `42` in Register
+   - `!_.func` stores squaring block in `call_with`'s Register
+   - `!_.arg` stores `42` in `call_with`'s Register
    - `_.arg` pushes `42` onto AL
    - `>_.func` executes the squaring block with `42` on AL
-   - Result: `42 * 42 = 1764`
+4. The squaring block executes with its **own fresh Register**:
+   - `!_.x` stores `42` in the squaring block's Register (isolated from `call_with`'s Register)
+   - `_.x _.x >*` reads from its own Register and computes `42 * 42 = 1764`
+   - Leaves `1764` on AL
+5. Result: `42 * 42 = 1764`
+
+**Key point:** Each block execution (`call_with` and the squaring block) has its own isolated Register. They communicate via the AL, not via shared Register paths.
 
 ### 6.4 Map: Apply Block to Each Element
 
 ```soma
 {
-  !_.f !_.count             ) Store function and count
+  !_.f !_.count             ) Store function and count in outer block's Register
   {
-    _.count 0 >>            ) While count > 0
+    _.count 0 >>            ) ERROR: Inner block can't see outer's _.count!
     {
-      >_.f                  ) Execute function on AL top
-      _.count 1 >- !_.count ) Decrement
-      _.self
+      >_.f                  ) ERROR: Inner block can't see outer's _.f!
+      _.count 1 >- !_.count ) ERROR: Inner block can't access outer's _.count!
+      >block
+    }
+    { }
+    >Choose
+  } >Chain
+} !map
+```
+
+**CRITICAL: Register Isolation Issue**
+
+The above example **violates Register isolation** — the inner blocks try to access the outer block's Register paths `_.f` and `_.count`, which is **not allowed**.
+
+**Corrected version using Store:**
+```soma
+{
+  !map_f !map_count         ) Store in Store (global), not Register
+  {
+    map_count 0 >>          ) Read from Store
+    {
+      >map_f                ) Execute from Store
+      map_count 1 >- !map_count  ) Update Store counter
+      >block
     }
     { }
     >Choose
@@ -654,12 +748,22 @@ False { (Won't print) >print } >if_exec      ) Prints nothing
 
 ) Usage: Increment three numbers
 1 2 3                       ) Push three values
-{ 10 >+ } 3 >map           ) Add 10 to each
+{ 10 >+ } 3 >map            ) Add 10 to each
 ```
 
 **Result:** AL = `[11, 12, 13]`
 
-**This is higher-order programming** — passing blocks as values and executing them dynamically.
+**How it works with Register isolation:**
+1. The outer `map` block stores `{ 10 >+ }` at Store path `map_f` (not `_.f`)
+2. The outer block stores `3` at Store path `map_count` (not `_.count`)
+3. The outer block then executes the inner loop block
+4. **The inner loop block has its own fresh Register** (isolated from outer)
+5. The inner blocks read from **Store** (`map_f`, `map_count`), which is globally accessible
+6. Each iteration executes `>map_f` (pops value, adds 10, pushes result)
+7. Decrements the Store counter until it reaches 0
+8. The loop uses `>block` to reference itself for recursion
+
+**Key insight:** Nested blocks must share data via **Store** (global state) or **AL** (explicit passing), not via Register paths.
 
 ---
 
@@ -767,7 +871,7 @@ Execution trace:
   }
   {
     "Normal" >print
-    _.self
+    >block
   }
   >Choose
 } !alarm_on
@@ -781,7 +885,7 @@ Execution trace:
   }
   {
     "Normal" >print
-    _.self
+    >block
   }
   >Choose
 } !alarm_off
@@ -811,31 +915,59 @@ for i in 0..3 {
 
 **SOMA pattern:**
 ```soma
-0 !_.i
+0 !outer_i
 {
-  _.i 3 ><
+  outer_i 3 ><
   {
-    0 !_.j
+    0 !inner_j
     {
-      _.j 3 ><
+      inner_j 3 ><
       {
-        _.i _.j >print
-        _.j 1 >+ !_.j
-        _.self
+        outer_i inner_j >print
+        inner_j 1 >+ !inner_j
+        >block
       }
       { }
       >Choose
     } >Chain
 
-    _.i 1 >+ !_.i
-    _.self
+    outer_i 1 >+ !outer_i
+    >block
   }
   { }
   >Choose
 } >Chain
 ```
 
-This demonstrates that **loops can be nested** without any special syntax. Each loop is just a block with `>Chain`.
+**CRITICAL: Register Isolation**
+
+This example demonstrates a common pitfall. Note that:
+- The outer loop counter `outer_i` is stored in the **Store** (no `_.` prefix)
+- The inner loop counter `inner_j` is stored in the **Store** (no `_.` prefix)
+
+**Why not use Register paths (`_.i`, `_.j`)?**
+
+Each nested block execution gets its **own independent Register**. If we tried:
+```soma
+0 !_.i           ) Outer block's Register
+{
+  _.i 3 ><       ) Read from outer block's Register
+  {
+    0 !_.j       ) Inner block's Register (DIFFERENT from outer!)
+    {
+      _.j 3 ><   ) Read from innermost block's Register
+      {
+        _.i _.j >print   ) ERROR: This inner block can't see outer's _.i!
+```
+
+The innermost block cannot access the outer block's `_.i` because **each block has its own isolated Register**.
+
+**Solutions for nested loops:**
+1. **Use Store** (shown above) — Store is global and accessible to all blocks
+2. **Pass via AL** — Pass outer counter values explicitly through the AL
+3. **Use CellRefs** — Share structure references between blocks
+
+This demonstrates that **loops can be nested** without any special syntax, but **nested blocks must communicate via Store or AL**, not via Register paths.
 
 ---
 
@@ -847,7 +979,7 @@ In SOMA, blocks can:
 - Be stored in the Store (like variables)
 - Be passed on the AL (like arguments)
 - Be returned from other blocks (like return values)
-- Refer to themselves (`_.self`)
+- Refer to themselves (`>block` built-in)
 - Form recursive structures
 
 This makes blocks **more powerful** than macros in most languages, because macros are typically compile-time only.
@@ -857,8 +989,8 @@ This makes blocks **more powerful** than macros in most languages, because macro
 You can build complex control flow by **composing blocks**:
 
 ```soma
-{ condition_a { body_a _.self } { } >Choose } !loop_a
-{ condition_b { body_b _.self } { } >Choose } !loop_b
+{ condition_a { body_a >block } { } >Choose } !loop_a
+{ condition_b { body_b >block } { } >Choose } !loop_b
 
 condition_top
   { loop_a >Chain }
@@ -867,6 +999,8 @@ condition_top
 ```
 
 This selects between two different loop behaviors based on `condition_top`. Try doing that with traditional `while` statements!
+
+**Note:** The loop definitions reference `condition_a`, `body_a`, `condition_b`, and `body_b` which would be Store paths (not Register paths), making them accessible to the nested loop blocks. Each loop's body block uses `>block` to refer to its own enclosing loop block.
 
 ### 9.3 No Hidden Machinery
 
@@ -891,40 +1025,47 @@ Let's build a small library of reusable control structures:
 { >swap { } >Choose } !if
 
 [WHILE - loop with precondition]
-{ !_.body !_.cond
+{ !while_body !while_cond
   {
-    _.cond
-    { _.body _.self }
+    while_cond                ) Read condition from Store
+    { while_body >block }     ) Read body from Store, continue loop
     { }
     >Choose
   }
 } !while
 
 [DO - loop with postcondition]
-{ !_.body !_.cond
+{ !do_body !do_cond
   {
-    _.body
-    _.cond
-    { _.self }
+    do_body                   ) Execute body from Store
+    do_cond                   ) Read condition from Store
+    { >block }
     { }
     >Choose
   }
 } !do
 
 [REPEAT - fixed count loop]
-{ !_.body !_.count
+{ !repeat_body !repeat_count
   {
-    _.count 0 >>
+    repeat_count 0 >>         ) Read count from Store
     {
-      _.body
-      _.count 1 >- !_.count
-      _.self
+      repeat_body             ) Execute body from Store
+      repeat_count 1 >- !repeat_count  ) Update Store counter
+      >block
     }
     { }
     >Choose
   }
 } !repeat
 ```
+
+**Note on Register isolation:**
+These control structure definitions store their parameters in the **Store** (e.g., `while_cond`, `while_body`) rather than in Register paths (`_.cond`, `_.body`). This is necessary because:
+- The outer block that defines the control structure has its own Register
+- The inner loop blocks have **separate, isolated Registers**
+- Inner blocks cannot access the outer block's Register
+- Store paths are globally accessible to all blocks
 
 ### 10.2 Use The Library
 
@@ -937,15 +1078,15 @@ if >Chain
 
 **Using `while`:**
 ```soma
-_.counter 10 ><  ; condition block
-{ _.counter >print _.counter 1 >+ !_.counter }  ; body block
+{ outer_counter 10 >< }      ) condition block (reads from Store)
+{ outer_counter >print outer_counter 1 >+ !outer_counter }  ) body block (uses Store)
 while >Chain
 ```
 
 **Using `repeat`:**
 ```soma
-{ "hello" >print }  ; body
-5  ; count
+{ "hello" >print }  ) body
+5  ) count
 repeat >Chain
 ```
 
@@ -1094,11 +1235,17 @@ Because everything is explicit, debugging is often **easier** than in languages 
 
 **Correction:** This document uses `>==` consistently for equality, `><` for less-than, and `>>` for greater-than.
 
-### 14.3 `_.self` Semantics
+### 14.3 `>block` Built-in
 
-This document now uses **`_.self`** consistently throughout. When a block executes, the SOMA runtime automatically creates a Register Cell at path `_.self` containing the Block value being executed. This enables self-referential loops without explicit CellRef management.
+This document now uses **`>block`** consistently throughout. The `>block` built-in pushes the currently executing block onto the AL. This enables self-referential loops and recursive block patterns.
 
-All register paths use the `_.path` syntax where `_` is the register root.
+Key properties of `>block`:
+- It's a built-in operation (like `>choose`, `>chain`)
+- Can be aliased to any name (enabling internationalization)
+- Always returns the currently executing block
+- Works at all nesting levels
+
+All control flow patterns use `>block` rather than the deprecated `_.self` magic binding.
 
 ---
 

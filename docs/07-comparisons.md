@@ -268,39 +268,25 @@ SOMA:
 {
   !_.body
   !_.test
-  {
-    _.test >Chain
-    { _.body >Chain _.self }
-    {}
-    >Choose
-  }
+  _.test _.body { !_.b !_.t _.t >Chain { _.b >Chain _.self } {} >Choose } !_.loop
+  _.loop
 } !while
 
 { counter 10 >< } !cond
-{ counter >print counter 1 >+ !counter _.self } !body
+{ counter >print counter 1 >+ !counter } !body
 cond body >while >Chain
-```
-
-More concisely:
-
-```soma
-{
-  !_.body
-  !_.test
-  {
-    _.test >Chain
-    { _.body >Chain _.self }
-    {}
-    >Choose
-  }
-} !while
 ```
 
 Here, the while block:
 
-   1. Stores the test and body blocks in the register
-   2. Constructs a self-referencing loop block
-   3. Returns the loop block for >Chain to execute
+   1. Stores the test and body blocks in its own Register
+   2. Constructs a loop block that captures test/body via AL
+   3. The loop block stores them in its own Register and recurses via _.self
+   4. Returns the loop block for >Chain to execute
+
+Note: Each nested block execution gets a fresh Register. The loop block must
+receive test and body via the AL, then store them in its own Register before
+recursing.
 
 No jumps. No labels. No macro expansion. Just blocks referring to blocks.
 
@@ -385,12 +371,10 @@ structures are indistinguishable from built-ins:
 ```soma
 ) Define control primitives
 { !_ >_ } !^                              ) Execute AL top
-{ !_.body !_.test _.test { >_.body _.self } { } >Choose } !while
-{ !_.else !_.then !_.cond _.cond { >_.then } { >_.else } >Choose >Chain } !ifelse
+{ !_.else !_.then !_.cond _.cond _.then _.else >swap >Choose >Chain } !ifelse
 
 ) Use them exactly like language features
 0 !counter
-{ counter 10 >< } { counter 1 >+ !counter } >while     ) Count to 10
 counter 5 >> { "big" >print } { "small" >print } >ifelse
 ```
 
@@ -620,23 +604,15 @@ SOMA:
 ```soma
 {
   !_.max
-  0 !_.i
-  {
-    _.i _.max ><
-    {
-      _.i >print
-      _.i 1 >+ !_.i
-      _.self
-    }
-    {}
-    >Choose
-  }
+  0 _.max { !_.m !_.i _.i _.m >< { _.i >print _.i 1 >+ _.m _.self } {} >Choose } !_.loop
+  _.loop
 } !count-up
 
 10 >count-up >Chain
 ```
 
-The loop is a self-referencing block, not a compiled construct.
+The loop block receives both the counter and max via AL, stores them in its own
+Register, and recurses via _.self. Each recursive call gets a fresh Register.
 
 
 3.6  The EXECUTE Primitive vs User-Defined `^`
@@ -1008,14 +984,16 @@ SOMA:
   !_.n
   _.n 0 >==
   { 1 }
-  { _.n _.n 1 >- >fact >* }
+  { _.n 1 >- >fact >Chain _.n >* }
   >Choose
 } !fact
 
 5 >fact >Chain >print
 ```
 
-Execution proceeds via >Chain repeatedly selecting blocks.
+The recursive call passes `n-1` via AL to the inner fact execution. When it
+returns, the result is multiplied by the current `_.n`. Each block execution
+has its own isolated Register.
 
 
 5.6  Summary: LC vs SOMA

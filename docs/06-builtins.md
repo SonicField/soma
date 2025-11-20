@@ -242,6 +242,44 @@ a.b. >id      ; AL: [<unique identity integer>]
 
 ---
 
+## Block Operations
+
+### >block
+**Signature:** `() -> Block`
+
+Pushes the currently executing block onto the AL.
+
+**Behavior:**
+- Always succeeds (execution always occurs within a block context)
+- At top-level: returns the outermost block (the implicit "program" block)
+- In nested blocks: returns the current block (not the parent block)
+- Can be aliased like any built-in, enabling internationalization
+
+**Examples:**
+```soma
+; Get current block for recursion
+{ >print >block } >chain       ; Infinite loop: print, then execute this block again
+
+; Store reference to current block
+{ >block !_.me }               ; Store CellRef to this block in Register
+
+; Compare blocks
+{
+  >block !_.outer
+  { >block _.outer >== } >chain    ; False - different blocks
+}
+
+; Internationalization via aliasing
+block !блок                    ; Russian
+block !ブロック                 ; Japanese
+block !block                   ; Swedish
+{ >print >блок } >chain        ; Use Russian alias
+```
+
+**Errors:** None.
+
+---
+
 ## No-Op
 
 ### >noop
@@ -279,6 +317,7 @@ The following table summarizes all core built-in operations:
 | `>dump`  | 0    | 0      | Dump machine state            |
 | `>type`  | 1    | 1      | Get type name as string       |
 | `>id`    | 1    | 1      | Get identity of CellRef/Thing |
+| `>block` | 0    | 1      | Push current executing block  |
 | `>noop`  | 0    | 0      | No operation                  |
 
 ---

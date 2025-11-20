@@ -179,62 +179,93 @@ Here:
 
 ---
 
-## 5. The _.self Binding
+## 5. Everything is a Block
 
-### Automatic Binding Rule
+### The `>block` Built-in
 
-**When a Block begins execution, the SOMA runtime automatically creates a Register Cell at path `_.self` containing the Block value being executed.** This binding is local to the execution context and is destroyed when the Block completes.
+SOMA provides a built-in operation `>block` that pushes the currently executing block onto the AL. This enables blocks to reference themselves without any special magic or automatic bindings.
 
-This is a **core semantic feature** of SOMA, enabling self-referential blocks without requiring external naming or storage.
+**Stack Effect:**
+```
+[] → [Block]
+```
 
-### Formal Definition
+**Semantics:**
+Pushes the currently executing block onto the AL.
 
-When Block B begins execution:
+### Everything Executes in a Block Context
 
-1. A new Register is created for this execution context
-2. A Cell is automatically created at Register path `_.self`
-3. The Cell's payload is set to the Block value B
-4. During execution, `_.self` resolves to this Block value
-5. When execution ends, the Register (including `_.self`) is destroyed
+All SOMA execution occurs within a block context:
 
-### Type and Scope
+- **Top-level code** is itself a block (the outermost block)
+- **Explicit blocks** `{ ... }` are nested blocks
+- There is no "outside" the outermost block—that's the runtime environment
 
-- `_.self` is a **Register path** (starts with `_`)
-- Accessing it yields a **Block value** (not a CellRef)
-- Can be pushed onto AL, stored, or passed like any Block
-- Local to the currently executing Block
-- **Nested blocks get their own `_.self`** (pointing to their Block, not parent's)
+### No Infinite Regress
+
+We don't need to ask "what executes the top-level block?" The top-level code IS a block, axiomatically. The SOMA runtime executes it. There's nothing to formalize "outside" SOMA's computational model.
+
+### `>block` Works Everywhere
+
+```soma
+; Top-level
+>block              ; Returns the outermost block (the "program")
+
+; Inside explicit block
+{ >block }          ; Returns this block
+
+; Nested blocks
+{
+  >block !outer
+  {
+    >block !inner
+    outer inner >Equal    ; False - different blocks
+  }
+}
+```
+
+### Just Another Built-in
+
+`>block` is not special syntax or a magic binding. It's a regular built-in operation, just like `>choose` or `>chain`. This means:
+
+- It can be aliased to any name: `block !блок` (Russian), `block !kedja` (Swedish)
+- No English-centric constraints
+- No special Register treatment
+- Simpler specification
 
 ### Example: Infinite Loop
 
 ```soma
-{ _.self >Chain }
+{ >block >Chain }
 ```
 
 **How it works:**
 1. Block begins execution
-2. `_.self` is automatically bound to this block
-3. `_.self` is pushed onto the AL
-4. `>Chain` executes the block (which is on top of AL)
-5. The cycle repeats indefinitely
+2. `>block` pushes this block onto the AL
+3. `>Chain` executes the block (which is on top of AL)
+4. The cycle repeats indefinitely
 
 This creates an infinite loop without any external naming or storage.
 
-### Example: Nested Blocks Each Get Their Own _.self
+### Example: Nested Blocks Each Have Access to Their Own Block
 
 ```soma
 {
   "Outer block executing" >print
-  _.self !outer_self
+  >block !outer_self_reg           ; Store in outer's Register
 
   {
     "Inner block executing" >print
-    _.self !inner_self
+    >block !inner_self_reg         ; Store in inner's Register
   } >Chain
 
-  outer_self inner_self >==
-  { "DIFFERENT blocks" }
-  { "SAME block (impossible)" }
+  ; After inner block completes, inner's Register is destroyed
+  ; outer_self_reg still exists in outer's Register
+  ; inner_self_reg is GONE (was in inner's Register)
+
+  >block outer_self_reg >==        ; Compare current block with saved value
+  { "Same block (correct)" }
+  { "Different blocks (impossible)" }
   >Choose >Chain >print
 }
 ```
@@ -243,17 +274,55 @@ This creates an infinite loop without any external naming or storage.
 ```
 Outer block executing
 Inner block executing
-DIFFERENT blocks
+Same block (correct)
 ```
 
 **How it works:**
-1. Outer block executes, `_.self` is bound to the outer Block
-2. Outer Block stores its `_.self` in `outer_self`
-3. Inner block executes, `_.self` is **rebound** to the inner Block
-4. Inner Block stores its `_.self` in `inner_self`
-5. The two blocks are compared and found to be different
+1. Outer block executes, `>block` returns the outer Block
+2. Outer Block stores the block reference in Register₁ at path `outer_self_reg`
+3. Inner block executes, creates Register₂
+4. Inner block's `>block` returns the inner Block
+5. Inner Block stores the block reference in Register₂ at path `inner_self_reg`
+6. Inner block completes → **Register₂ is destroyed** (along with `inner_self_reg`)
+7. Back in outer block with Register₁
+8. `>block` refers to outer block again
+9. Comparing `>block` with `outer_self_reg` shows they're the same
 
-**Key insight:** Each block execution context has its own `_.self` binding. Nested execution creates a new binding that shadows the parent's binding for the duration of the inner block.
+**Key insight:**
+- Each block can use `>block` to get a reference to itself
+- Inner block's Register is destroyed when it completes
+- Outer block's Register persists and its values are still accessible
+- **If you want to compare blocks across execution contexts, store them in the Store, not the Register!**
+
+### Corrected Example: Comparing Inner and Outer Blocks
+
+If you want to actually compare the inner and outer blocks, you must use the Store:
+
+```soma
+{
+  "Outer block executing" >print
+  >block !outer_block              ; Store in Store (global)
+
+  {
+    "Inner block executing" >print
+    >block !inner_block            ; Store in Store (global)
+  } >Chain
+
+  outer_block inner_block >==
+  { "SAME block (impossible)" }
+  { "DIFFERENT blocks (correct)" }
+  >Choose >Chain >print
+}
+```
+
+**Output:**
+```
+Outer block executing
+Inner block executing
+DIFFERENT blocks (correct)
+```
+
+Now the comparison works because both blocks are stored in the Store, which persists across block executions.
 
 ---
 
@@ -385,35 +454,36 @@ square          ; Pushes the Block value onto AL
 >square         ; Executes the Block (nothing pushed onto AL)
 ```
 
-### Self-Execution via `>_.self`
+### Self-Execution via `>block`
 
-The automatic `_.self` binding can be executed with `>`:
+The `>block` built-in can be combined with `>` prefix to execute the current block:
 
 ```soma
 {
   (Loop iteration) >print
-  >_.self           ; Execute this block again (infinite loop)
+  >block >Chain         ; Execute this block again (infinite loop)
 }
 ```
 
 **How it works:**
 1. The Block prints a message
-2. `>_.self` executes the Block again
-3. This creates an infinite loop
+2. `>block` pushes the current block onto the AL
+3. `>Chain` executes it again
+4. This creates an infinite loop
 
 **More practical: Conditional self-execution:**
 
 ```soma
 {
-  _.counter 1 >+ !_.counter
-  _.counter >print
-  _.counter 10 ><
-    { >_.self }     ; Continue if counter < 10
-    { }             ; Stop otherwise
+  counter 1 >+ !counter
+  counter >print
+  counter 10 ><
+    { >block >Chain }     ; Continue if counter < 10
+    { }                   ; Stop otherwise
   >Choose >Chain
 } !count_to_ten
 
-0 !_.counter
+0 !counter
 >count_to_ten       ; Prints: 1 2 3 4 5 6 7 8 9 10
 ```
 
@@ -466,7 +536,7 @@ This pattern is powerful: it takes a Block from the AL and executes it, similar 
 - Works with **Store paths** and **Register paths**
 - Makes execution **explicit**: `print` (value) vs `>print` (execution)
 - Built-ins are just Blocks at Store paths
-- Enables self-execution via `>_.self`
+- Enables self-execution via `>block`
 - Foundation for user-defined execution patterns
 
 The `>` modifier is what makes SOMA's execution model explicit and first-class. Blocks are values until you explicitly execute them.
@@ -499,10 +569,16 @@ The block is stored, then retrieved and executed.
 ```
 
 **How it works:**
-1. Block pops two values and stores them in local register cells `_.x` and `_.y`
-2. Pushes both back onto the AL
-3. Adds them with `>+`
-4. Leaves the result on the AL
+1. Block starts execution → Creates fresh Register
+2. Pops 7 and stores in `_.y` (in this block's Register)
+3. Pops 3 and stores in `_.x` (in this block's Register)
+4. Pushes `_.x` (3) back onto AL
+5. Pushes `_.y` (7) back onto AL
+6. Adds them with `>+`
+7. Leaves result (10) on AL
+8. Block completes → Register (with `_.x` and `_.y`) is destroyed
+
+**Key insight:** The Register cells `_.x` and `_.y` are temporary and destroyed when the block ends. The result persists only because it was left on the AL.
 
 ---
 
@@ -530,7 +606,7 @@ The block is stored, then retrieved and executed.
   _.counter 1 >+ !_.counter
   _.counter >print
   _.counter 10 ><
-    { _.self }
+    { >block >Chain }
     { }
   >Choose >Chain
 } !count_to_ten
@@ -542,14 +618,35 @@ count_to_ten >Chain
 **Output:** `1 2 3 4 5 6 7 8 9 10`
 
 **How it works:**
-1. Block increments and prints `_.counter`
+1. Block increments and prints `_.counter` (from the **Register**)
 2. Checks if `_.counter < 10`
-3. If true, pushes `_.self` (the block itself) back onto the AL
-4. If false, pushes an empty block `{}`
+3. If true, executes a block containing `>block >Chain` (recursive call)
+4. If false, executes an empty block `{}`
 5. `>Chain` continues execution as long as a Block is on top of AL
 6. When `_.counter` reaches 10, the empty block is executed and the loop terminates
 
-**Note:** The register path `_.counter` is local to the block's execution context and persists across recursive invocations via the Store binding `count_to_ten`.
+**Important Register note:**
+- `_.counter` is in the **Register** (local to each execution)
+- Each recursive call via `>block` gets its own fresh Register
+- BUT the counter persists because... wait, this example is **wrong**!
+
+**This example is actually broken** due to Register isolation. Each recursive call would get a fresh Register with no `_.counter`, causing it to fail. The correct version would store the counter in the **Store**:
+
+```soma
+{
+  counter 1 >+ !counter      ; Use Store, not Register
+  counter >print
+  counter 10 ><
+    { >block >Chain }
+    { }
+  >Choose >Chain
+} !count_to_ten
+
+0 !counter                   ; Initialize in Store
+>count_to_ten
+```
+
+Now it works because `counter` is in the Store (global, persistent).
 
 ---
 
@@ -560,21 +657,23 @@ True !state
 
 {
   state
-  { False !state "Switched to OFF" >print _.self }
-  { True !state "Switched to ON" >print _.self }
-  >Choose
+  { False !state "Switched to OFF" >print >block >Chain }
+  { True !state "Switched to ON" >print >block >Chain }
+  >Choose >Chain
 } !toggle
 
-toggle >Chain
+>toggle
 ```
 
 **Output:** Alternates between `Switched to OFF` and `Switched to ON` forever.
 
 **How it works:**
-1. The block reads `state` from the Store
+1. The block reads `state` from the **Store** (not Register!)
 2. Uses `>Choose` to select between two blocks
-3. Each block updates `state` and pushes `_.self` back onto the AL
+3. Each block updates `state` in the **Store** and recursively calls `>block >Chain`
 4. `>Chain` continues execution indefinitely
+
+**Key insight:** The `state` variable must be in the Store (global) for it to persist across recursive calls. If it were in the Register (`_.state`), each recursive call would get a fresh Register and lose the state.
 
 ---
 
@@ -582,18 +681,20 @@ toggle >Chain
 
 ```soma
 {
-  _.condition
-  { _.self }    ; Recurse if true
-  { }           ; Terminate if false
+  condition                ; Read from Store (must be global!)
+  { >block >Chain }        ; Recurse if true
+  { }                      ; Terminate if false
   >Choose >Chain
 } !loop_while_true
 ```
 
 This is the fundamental pattern for loops in SOMA:
-- Test a condition
-- If true, push `_.self` to continue
-- If false, push empty block to terminate
+- Test a condition (from Store or AL)
+- If true, execute `>block >Chain` to continue
+- If false, execute empty block to terminate
 - `>Chain` executes whatever's on top of the AL
+
+**Important:** The condition must come from the Store or be passed via AL. If it's in the Register (`_.condition`), each recursive call gets a fresh Register and won't see the condition.
 
 ---
 
@@ -613,11 +714,41 @@ This is the fundamental pattern for loops in SOMA:
 
 ---
 
-## 8. Register Lifetime and Nested Execution
+## 8. Register Lifetime and Isolation
 
-### Register Creation and Destruction
+### The Fundamental Rule: Complete Isolation
 
-Each block execution creates a fresh Register:
+**Each block execution creates a fresh, empty Register that is destroyed when the block completes.**
+
+Registers are **completely isolated** between blocks:
+- Inner blocks **cannot** see outer block's Register cells
+- Parent blocks **cannot** see child block's Register cells
+- There is **no lexical scoping** of Registers
+- There is **no Register nesting** or inheritance
+
+**If you want to share data between blocks, you must:**
+- Use the **Store** (global, persistent state)
+- Pass values via the **AL** (stack-based communication)
+- Use **CellRefs** to share structure
+
+### Register Lifecycle
+
+When a block begins execution:
+
+1. **Create** a fresh, empty Register
+2. Execute the block's tokens
+3. **Destroy** the Register completely
+
+### Register Properties
+
+- **Isolated**: No connection to parent/child block Registers
+- **Temporary**: Destroyed when block completes
+- **Local**: Only visible within the executing block
+- **Fresh**: Always starts empty
+
+---
+
+### Example 1: Nested Blocks Have Separate Registers
 
 ```soma
 {
@@ -627,24 +758,275 @@ Each block execution creates a fresh Register:
 }
 ```
 
-**How it works:**
-1. Outer block creates Register₁ with `_.x = 1`
-2. Inner block creates Register₂ with `_.x = 2`
-3. Inner block prints its own `_.x` (value: 2)
-4. Inner block completes, Register₂ is destroyed
-5. Outer block prints its own `_.x` (value: 1)
+**Execution trace:**
 
-**Key insight:** Registers are **stack-allocated** even though SOMA has no call stack. They are scoped to block execution, not to a call frame.
+1. Outer block executes → Creates **Register₁** (empty)
+2. `1 !_.x` → Store 1 in Register₁ at path `_.x`
+3. `{ 2 !_.x _.x >print }` → Creates a Block value (not executed yet)
+4. `>Chain` → Execute the inner block
+   - Inner block starts → Creates **Register₂** (empty, completely separate)
+   - `2 !_.x` → Store 2 in Register₂ at path `_.x`
+   - `_.x` → Read Register₂ path `_.x` (value: 2)
+   - `>print` → Prints `2`
+   - Inner block completes → **Register₂ is destroyed**
+5. Back in outer block with Register₁
+6. `_.x` → Read Register₁ path `_.x` (still 1)
+7. `>print` → Prints `1`
+
+**Key insight:** The inner block's `_.x` and outer block's `_.x` are in **completely different Registers**. They don't interfere with each other at all.
+
+**Output:**
+```
+2
+1
+```
+
+---
+
+### Example 2: Inner Block Cannot See Outer Register (ERROR)
+
+```soma
+>{1 !_.n >{_.n >print}}  ; FATAL ERROR
+```
+
+**What happens:**
+
+1. Outer block executes → Creates Register₁
+2. `1 !_.n` → Store 1 in Register₁ at path `_.n`
+3. `>{_.n >print}` → Execute inner block
+   - Inner block starts → Creates **Register₂** (fresh, empty)
+   - `_.n` → Try to read Register₂ at path `_.n`
+   - Register₂ has no `_.n` → Resolves to **Void**
+   - Push Void onto AL
+   - `>print` → Try to execute the path "print" (not `>print`!)
+   - Wait, this example needs fixing...
+
+Let me show the correct error case:
+
+```soma
+>{1 !_.n >{_.n 10 >+}}  ; Inner block gets Void for _.n
+```
+
+**What happens:**
+
+1. Outer block executes → Creates Register₁
+2. `1 !_.n` → Store 1 in Register₁ at path `_.n`
+3. `>{_.n 10 >+}` → Execute inner block
+   - Inner block starts → Creates **Register₂** (fresh, empty)
+   - `_.n` → Read Register₂ at path `_.n`
+   - Register₂ has no `_.n` → Resolves to **Void**
+   - Push Void onto AL
+   - `10` → Push 10 onto AL
+   - `>+` → Try to add Void and 10 → **FATAL ERROR**
+
+**Key insight:** Inner blocks cannot access outer block's Register cells. Each block sees **only its own Register**.
+
+---
+
+### Example 3: Multiple Nested Blocks, Each Isolated
+
+```soma
+{
+  1 !_.n                ; Outer Register: _.n = 1
+
+  { 2 !_.n } >Chain     ; Inner₁ Register: _.n = 2 (then destroyed)
+
+  _.n >print            ; Outer Register: _.n still = 1
+
+  { 3 !_.n } >Chain     ; Inner₂ Register: _.n = 3 (then destroyed)
+
+  _.n >print            ; Outer Register: _.n still = 1
+}
+```
+
+**Output:**
+```
+1
+1
+```
+
+**Key insight:** Each inner block gets its own fresh Register. Neither inner block can affect the outer block's Register, and the two inner blocks don't share a Register either.
+
+---
+
+### ❌ WRONG: Trying to Access Outer Register
+
+```soma
+; WRONG - Inner block can't see outer's _.value
+{
+  42 !_.value
+  >{ _.value >print }  ; ERROR: _.value is Void in inner block
+}
+```
+
+This **fails** because the inner block has its own empty Register.
+
+---
+
+### ✅ RIGHT: Pass Data via AL
+
+```soma
+; RIGHT - Pass value through the AL
+{
+  42 !_.value
+  _.value              ; Push onto AL
+  >{ >print }          ; Inner block pops from AL and prints
+}
+```
+
+**Output:** `42`
+
+**How it works:**
+1. Outer block stores 42 in `_.value`
+2. Outer block pushes 42 onto AL
+3. Inner block executes with AL containing [42]
+4. Inner block pops 42 and prints it
+
+**Key insight:** The AL is shared across all blocks. Use it to pass data explicitly.
+
+---
+
+### ✅ RIGHT: Share Data via Store
+
+```soma
+; RIGHT - Use Store for shared state
+{
+  42 !shared_value     ; Store in Store (global)
+  >{
+    shared_value >print  ; Inner reads from Store
+  }
+}
+```
+
+**Output:** `42`
+
+**How it works:**
+1. Outer block writes 42 to Store at path "shared_value"
+2. Inner block reads from Store at path "shared_value"
+3. Inner block prints 42
+
+**Key insight:** The Store is global and persistent. All blocks can access it.
+
+---
+
+### ✅ RIGHT: Return Data via AL
+
+```soma
+{
+  >{ 5 !_.n _.n _.n >* } !_.square  ; Define helper in outer Register
+
+  7 >_.square          ; Call with 7
+  >print               ; Prints: 49
+}
+```
+
+**How it works:**
+1. Define `_.square` block in outer Register
+2. `7` pushes 7 onto AL
+3. `>_.square` executes the block
+   - Creates fresh Register₃
+   - `!_.n` pops 7 from AL, stores in Register₃
+   - `_.n _.n >*` computes 7 × 7 = 49
+   - Leaves 49 on AL
+   - Register₃ is destroyed
+4. Outer block continues with AL = [49]
+5. `>print` prints 49
+
+**Key insight:** Blocks communicate via the AL. The inner block receives input from AL and returns output to AL.
+
+---
+
+### Common Pattern: Nested Loop Counters
+
+```soma
+{
+  0 !_.i                           ; Outer counter
+
+  {
+    0 !_.i                         ; Inner counter (different Register!)
+    _.i 5 ><
+      { _.i 1 >+ !_.i >block >Chain }    ; Inner loop uses its own _.i
+      { }
+    >Choose >Chain
+  } !_.inner_loop
+
+  _.i 3 ><
+    {
+      >_.inner_loop                ; Call inner loop
+      _.i 1 >+ !_.i                ; Increment outer _.i
+      >block >Chain
+    }
+    { }
+  >Choose >Chain
+}
+```
+
+**Key points:**
+- Outer block has `_.i` for outer counter
+- `_.inner_loop` block (when executed) has its own `_.i` for inner counter
+- They don't interfere because they're in different Registers
+- Each loop maintains its own counter independently
+
+---
+
+### Common Pattern: Helper Functions with Local State
+
+```soma
+{
+  { !_.x _.x _.x >* } !_.square    ; Helper: square a number
+  { !_.x _.x 2 >* } !_.double      ; Helper: double a number
+
+  5 >_.square >print               ; Prints: 25
+  5 >_.double >print               ; Prints: 10
+}
+```
+
+**Key points:**
+- Each helper function call gets a fresh Register
+- Both `_.square` and `_.double` use `_.x` in their own Registers
+- No interference even though both use the same path name
+- Complete isolation guarantees safety
+
+---
+
+### Register vs Store vs AL: When to Use Each
+
+| Aspect | Store | Register | AL |
+|--------|-------|----------|-----|
+| **Scope** | Global | Block-local | Flow-based |
+| **Lifetime** | Persistent | Block execution only | Transient |
+| **Sharing** | All blocks can access | Isolated per block | Explicit passing |
+| **Purpose** | Shared state | Local computation | Data flow |
+| **Example** | `config.port` | `_.temp` | Stack operations |
+
+**When to use Store:**
+- Shared configuration
+- Persistent data
+- Global state
+- Communication between unrelated blocks
+
+**When to use Register:**
+- Temporary computation (`_.temp`, `_.result`)
+- Loop counters in recursive blocks
+- Local variables that don't need to persist
+
+**When to use AL:**
+- Function arguments (pass to inner blocks)
+- Return values (leave on stack)
+- Stack-based computation
+- Explicit data flow between blocks
+
+---
 
 ### Recursive Self-Reference
 
-The `_.self` binding enables recursion without external state:
+The `>block` built-in enables recursion without external state:
 
 ```soma
 {
   _.n 0 >==
   { 1 }                          ; Base case
-  { _.n 1 >- !_.n _.self >Chain  ; Recursive case
+  { _.n 1 >- !_.n >block >Chain  ; Recursive case
     _.n >* }
   >Choose >Chain
 } !factorial
@@ -658,11 +1040,39 @@ factorial >Chain >print  ; Prints: 120
 2. If true, push `1` (base case)
 3. If false:
    - Decrement `_.n`
-   - Push `_.self` (the factorial block)
+   - Push the current block via `>block`
    - Execute it with `>Chain`
    - Multiply the result by current `_.n`
 
-**Note:** Each recursive invocation gets its own `_.self` binding pointing to the same Block value, but with a fresh Register.
+**Important:** Each recursive invocation uses `>block` to reference the same Block value, but with a **completely fresh, isolated Register**.
+
+**Note about this example:** The `_.n` here is in the **outer scope** (before `!factorial`), not in the factorial block's Register. The factorial block reads and writes `_.n` from the Store, not from its Register. If `_.n` were in the Register, it would be destroyed after the first execution, breaking the recursion.
+
+### Corrected Recursive Example (Using Register)
+
+If you want to use Register-local state for recursion, you need to pass state via AL:
+
+```soma
+{
+  !_.n                           ; Pop initial value into Register
+  _.n 0 >==
+  { 1 }                          ; Base case: return 1
+  {
+    _.n 1 >-                     ; Compute n-1
+    >block >Chain                ; Recursive call with n-1
+    _.n >*                       ; Multiply result by original n
+  }
+  >Choose >Chain
+} !factorial
+
+5 >factorial >print  ; Prints: 120
+```
+
+**This works because:**
+1. Each recursive call gets its own Register with its own `_.n`
+2. The recursive call pops n-1 from AL and stores it in its own `_.n`
+3. Results are returned via AL
+4. Each level of recursion has isolated state
 
 ---
 
@@ -675,7 +1085,7 @@ It is critical to understand that **blocks are fundamentally different from func
 | Declare parameters                | No declared parameters               |
 | Return a value                    | Leave values on AL                   |
 | Create stack frames               | Transform state in-place             |
-| Support recursion via call stack  | Support cycles via _.self reference  |
+| Support recursion via call stack  | Support cycles via >block built-in   |
 | Hidden execution machinery        | Explicit state transformation        |
 
 **Functions hide state.** They abstract over arguments and returns.
@@ -694,18 +1104,18 @@ Blocks in SOMA are:
 - **Executed linearly** – token by token, left to right
 - **Stack-free** – no call frames, no return path
 - **State transformers** – they transform `(AL, Store, Register)` into `(AL', Store', Register')`
-- **Self-aware** – every block has access to itself via the automatic `_.self` binding
+- **Self-referential** – every block can reference itself via the `>block` built-in
 
-### The _.self Binding (Summary)
+### The `>block` Built-in (Summary)
 
-**When a Block begins execution, `_.self` is automatically bound to the Block value being executed.** This is a core semantic feature that enables:
+**`>block` is a built-in operation that pushes the currently executing block onto the AL.** This enables:
 
 - Self-referential loops
 - Recursive computation
 - Finite state machines
 - Conditional continuation
 
-Nested blocks each receive their own `_.self` binding, ensuring clean scoping and preventing interference between execution contexts.
+`>block` is just another built-in (like `>choose` or `>chain`), which means it can be aliased to any name in any language, removing English-centric constraints.
 
 SOMA programs do not reduce. **They run.**
 
@@ -723,23 +1133,25 @@ Blocks are executed in the following ways:
 - `>Choose` executes the selected block
 - **`>path` executes blocks at any path** (Store or Register) — this is now formally defined (see Section 6)
 
-### 2. **What happens to parent's _.self during nested execution?**
+### 2. **Register Isolation (RESOLVED)**
 
-If block A executes block B, we know B gets its own `_.self` binding. But:
-- Does A's `_.self` remain accessible in A's Register?
-- Is it shadowed, or is it in a different scope entirely?
+**Question:** What happens during nested execution?
 
-The specification suggests each block gets a **completely fresh Register**, which would mean parent registers are inaccessible during nested execution. This implies:
+**Answer:** Each block gets a **completely fresh, isolated Register**. Parent Registers are completely inaccessible during nested execution.
 
 ```soma
 {
-  _.self !outer_self
-  { _.self !inner_self } >Chain
-  outer_self >print  ; Is outer_self accessible here?
+  >block !outer_self     ; Store in Store (not Register!)
+  { >block !inner_self } >Chain
+  outer_self >print      ; This works because outer_self is in Store
 }
 ```
 
-**Clarification needed:** Are Store writes during nested execution visible after the nested block completes? (Answer: Yes, because the Store is global.) But are Register writes lost when the nested block ends? (Answer: Yes, because Registers are local to execution context.)
+**Clarified:**
+- **Store writes** during nested execution ARE visible after the nested block completes (Store is global)
+- **Register writes** are lost when the nested block ends (Registers are block-local and destroyed)
+- Parent and child blocks have **completely separate Registers** with no sharing
+- To share data between blocks: use Store (global) or AL (explicit passing)
 
 ---
 
@@ -747,4 +1159,4 @@ The specification suggests each block gets a **completely fresh Register**, whic
 
 Blocks are SOMA's answer to functions, procedures, and lambdas—but they reject the abstraction model entirely. They are **values that transform state**, nothing more and nothing less. Understanding blocks means understanding that SOMA doesn't hide mutation under the hood. It makes mutation the foundation of computation.
 
-The automatic `_.self` binding is what makes blocks truly powerful, enabling self-reference without requiring external naming schemes or workarounds. Every block knows itself, and that self-knowledge is the foundation of control flow in SOMA.
+The `>block` built-in is what makes blocks truly powerful, enabling self-reference without requiring external naming schemes or workarounds. Every block can access itself via `>block`, and that capability is the foundation of control flow in SOMA.

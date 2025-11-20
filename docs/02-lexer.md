@@ -497,11 +497,8 @@ After reviewing all three source files, here are the key inconsistencies between
 
 **Resolution**: The lexer.py implementation follows soma-lexer.md: `>` and `!` are separate modifier tokens, not part of built-in names.
 
-### 3. Unicode Identifiers
+### 3. Unicode
 
-**soma-lexer.md**: Does not specify identifier character rules
-**soma-v1.0.md § 3.11.3**: Defines UAX #31 Unicode identifier syntax with XID_Start and XID_Continue
-
-**Resolution**: This appears to be a parser-level concern, not lexer-level. The lexer treats paths as sequences of non-whitespace characters, and the parser would enforce identifier validity.
+SOMA is designed to be written in Unicode. Character encoding and identifier validation rules are implementation-defined.
 
 All examples and test cases in this document are verified against the implemented lexer behavior in lexer.py.

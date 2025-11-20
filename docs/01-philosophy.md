@@ -25,11 +25,55 @@ Where a calculus hides mutation under layers of abstraction, SOMA expresses muta
 
 A SOMA program operates on explicit, visible machine state:
 
-1. **The Accumulator List (AL)** - a linear stack-like value conduit
-2. **The Store** - a hierarchical graph of identity-bearing cells
-3. **The Register** - execution-local hierarchical graph of cells
+1. **The Accumulator List (AL)** - a linear stack-like value conduit for passing data between operations
+2. **The Store** - a global, persistent hierarchical graph of identity-bearing cells
+3. **The Register** - a block-local, isolated hierarchical graph of cells created fresh for each block execution
 
 That's it. No hidden call stack. No exception handlers. No continuation frames. Everything that happens is visible, explicit, and introspectable.
+
+### State Scope and Lifetime
+
+Each of these three components serves a distinct purpose in SOMA's state model:
+
+**The AL (flow-based):** Values flow through the AL as computation proceeds. The AL is the universal conduit—all operations read from it and write to it. When a block executes, it inherits the current AL state and may modify it for subsequent operations.
+
+**The Store (global, persistent):** The Store is shared state that persists across all block executions. When you write `!config.port`, that value lives in the Store and remains accessible from anywhere, at any time. The Store is how different parts of your program share data.
+
+**The Register (block-local, isolated):** The Register is fundamentally different. Each time a block executes, it receives a completely fresh, empty Register. Inner blocks cannot see outer blocks' Registers. There is no lexical scoping, no nesting, no inheritance—only complete isolation.
+
+### Register Isolation Example
+
+Consider this code:
+
+```soma
+>{1 !_.n >{2 !_.n} _.n >print}
+```
+
+**What happens:**
+1. Outer block executes with fresh Register₁
+2. `1 !_.n` stores 1 in Register₁ at path `_.n`
+3. `>{2 !_.n}` executes inner block with fresh Register₂ (empty!)
+4. `2 !_.n` stores 2 in Register₂ at path `_.n`
+5. Inner block completes, Register₂ is destroyed
+6. `_.n >print` reads from Register₁, which still has `_.n = 1`
+7. **Prints 1**
+
+The inner block's Register is completely separate. Its `_.n` does not affect the outer block's `_.n`.
+
+If the inner block tried to *read* the outer's Register, it would fail:
+
+```soma
+>{1 !_.n >{_.n >print}}  ; FATAL ERROR
+```
+
+The inner block's Register has no `_.n` path, so `_.n` resolves to Void. Trying to execute Void is a fatal error.
+
+**To share data between blocks, you must use:**
+- **The Store** (global state): `!data.value` in outer, `data.value` in inner
+- **The AL** (explicit passing): push values before calling inner block
+- **Return values** via AL: inner block leaves values on AL for outer to consume
+
+This isolation model keeps state boundaries explicit and prevents hidden dependencies.
 
 ---
 
@@ -103,11 +147,13 @@ A function:
 - Has arity
 - Returns a value
 - Creates a stack frame
+- Has lexical scope
 
 A SOMA block:
 - Has no arity (consumes whatever it needs from the AL)
 - Does not return (leaves new values on the AL)
 - Does not create a stack frame
+- Gets a fresh, isolated Register on each execution
 
 Blocks are **state transformers**. They act upon the machine state and leave it changed.
 
@@ -117,6 +163,8 @@ Blocks are **state transformers**. They act upon the machine state and leave it 
 ```
 
 `square` is not a function. It is a sequence of tokens that transforms state.
+
+**Each time a block executes, it gets a brand new Register.** The Register exists only during that block's execution and is destroyed when the block completes. This means blocks cannot rely on outer block Register values—they must receive data via the AL or Store.
 
 ### Execution is Explicit
 
@@ -207,6 +255,23 @@ It replaces:
 - Temporary variables
 
 You could build SOMA with just the Store, but the AL provides a minimal amount of dynamic structure without sacrificing clarity.
+
+### Comparing the Three State Spaces
+
+| Aspect | Store | Register | AL |
+|--------|-------|----------|-----|
+| **Scope** | Global | Block-local | Flow-based |
+| **Lifetime** | Persistent | Single block execution | Transient |
+| **Sharing** | All blocks can access | Isolated per block | Inherited by nested blocks |
+| **Purpose** | Shared, persistent state | Local computation scratch space | Data flow between operations |
+| **Example** | `config.port` | `_.temp` | Stack operations |
+| **Access pattern** | By path | By path (within block only) | Push/pop |
+
+**When to use each:**
+
+- **Store:** Configuration, shared data, persistence across block executions
+- **Register:** Temporary local variables, loop counters within a block, `_.self` reference
+- **AL:** Passing arguments to blocks, returning values from blocks, intermediate computation results
 
 ---
 
