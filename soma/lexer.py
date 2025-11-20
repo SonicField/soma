@@ -171,6 +171,11 @@ def lex(source):
         start_line = line
         start_col = col
 
+        # --- Comments: ')' starts a line comment outside strings ---
+        if ch == ")":
+            i, line, col = _skip_comment(source, i, line, col)
+            continue
+
         # --- String literal: ( ... ) with \HEX\ escapes ---
         if ch == "(":
             value, i, line, col = _lex_string(source, i, line, col)
@@ -449,4 +454,42 @@ def _lex_string(source, i, line, col):
         start_line,
         start_col,
     )
+
+
+def _skip_comment(source, i, line, col):
+    """
+    Skip a SOMA line comment starting at position i where source[i] == ')'.
+
+    A comment consumes ')' and all characters up to (but not including) the
+    first line terminator (\\n, \\r, or \\r\\n) or EOF.
+
+    Returns:
+        (new_i, new_line, new_col)
+    """
+    n = len(source)
+    # Consume the ')'
+    i += 1
+    col += 1
+
+    # Skip until line terminator or EOF
+    while i < n and source[i] not in ("\n", "\r"):
+        i += 1
+        col += 1
+
+    if i >= n:
+        # Comment ran to EOF
+        return i, line, col
+
+    # We hit some kind of newline
+    if source[i] == "\r":
+        i += 1
+        # Optional '\n' in CRLF
+        if i < n and source[i] == "\n":
+            i += 1
+    else:  # '\n'
+        i += 1
+
+    line += 1
+    col = 1
+    return i, line, col
 

@@ -716,5 +716,191 @@ class TestStringIntegrationExamples(unittest.TestCase):
         )
 
 
+class TestComments(unittest.TestCase):
+    """
+    Tests for SOMA line comments.
+
+    Comment rules encoded here:
+
+    - Outside strings, a ')' at the start of a token begins a comment
+      that runs to the end of the current line.
+    - "End of line" means the first occurrence of:
+         * '\\n'
+         * '\\r'
+         * '\\r\\n' (treated as a single newline)
+         * or EOF.
+    - No tokens are emitted for the comment introducer ')' or any
+      characters in the comment text.
+    - Inside a string literal, ')' is the string terminator; comments
+      cannot begin inside a string.
+    - A ')' that is not at token start (e.g. in 'a)b') does NOT start
+      a comment; it's just part of the PATH.
+    """
+
+    # --- Full-line comments ---
+
+    def test_full_line_comment_only_no_newline(self):
+        # Entire file is a single comment, no trailing newline.
+        tokens = lex(") This is a comment")
+        self.assertEqual(kinds(tokens), [])
+        self.assertEqual(values(tokens), [])
+
+    def test_full_line_comment_only_with_lf(self):
+        tokens = lex(") This is a comment\n")
+        self.assertEqual(kinds(tokens), [])
+        self.assertEqual(values(tokens), [])
+
+    def test_full_line_comment_only_with_crlf(self):
+        tokens = lex(") This is a comment\r\n")
+        self.assertEqual(kinds(tokens), [])
+        self.assertEqual(values(tokens), [])
+
+    def test_full_line_comment_only_with_cr(self):
+        tokens = lex(") This is a comment\r")
+        self.assertEqual(kinds(tokens), [])
+        self.assertEqual(values(tokens), [])
+
+    def test_full_line_comment_with_string_like_text(self):
+        # "(Hello World) >print" should NOT be parsed as code.
+        tokens = lex(") (Hello World) >print")
+        self.assertEqual(kinds(tokens), [])
+        self.assertEqual(values(tokens), [])
+
+    # --- Comments after code on the same line ---
+
+    def test_comment_at_end_of_line_after_code_lf(self):
+        tokens = lex(">dogs ) this is a comment\n")
+        self.assertEqual(
+            kinds(tokens),
+            [TokenKind.EXEC, TokenKind.PATH],
+        )
+        self.assertEqual(values(tokens), [">", "dogs"])
+
+    def test_comment_at_end_of_line_after_code_crlf(self):
+        tokens = lex(">dogs ) this is a comment\r\n>a\n")
+        self.assertEqual(
+            kinds(tokens),
+            [TokenKind.EXEC, TokenKind.PATH, TokenKind.EXEC, TokenKind.PATH],
+        )
+        self.assertEqual(values(tokens), [">", "dogs", ">", "a"])
+
+    def test_comment_at_end_of_line_after_code_cr(self):
+        tokens = lex(">dogs ) this is a comment\r>a\n")
+        self.assertEqual(
+            kinds(tokens),
+            [TokenKind.EXEC, TokenKind.PATH, TokenKind.EXEC, TokenKind.PATH],
+        )
+        self.assertEqual(values(tokens), [">", "dogs", ">", "a"])
+
+    def test_comment_at_end_of_file_without_newline(self):
+        tokens = lex(">a ) trailing comment at EOF")
+        self.assertEqual(
+            kinds(tokens),
+            [TokenKind.EXEC, TokenKind.PATH],
+        )
+        self.assertEqual(values(tokens), [">", "a"])
+
+    # --- Comments between code lines ---
+
+    def test_comment_between_two_code_lines_lf(self):
+        source = ">a\n) comment\n>b\n"
+        tokens = lex(source)
+        self.assertEqual(
+            kinds(tokens),
+            [TokenKind.EXEC, TokenKind.PATH, TokenKind.EXEC, TokenKind.PATH],
+        )
+        self.assertEqual(values(tokens), [">", "a", ">", "b"])
+
+    def test_comment_between_two_code_lines_crlf(self):
+        source = ">a\r\n) comment\r\n>b\r\n"
+        tokens = lex(source)
+        self.assertEqual(
+            kinds(tokens),
+            [TokenKind.EXEC, TokenKind.PATH, TokenKind.EXEC, TokenKind.PATH],
+        )
+        self.assertEqual(values(tokens), [">", "a", ">", "b"])
+
+    def test_comment_between_two_code_lines_cr(self):
+        source = ">a\r) comment\r>b\r"
+        tokens = lex(source)
+        self.assertEqual(
+            kinds(tokens),
+            [TokenKind.EXEC, TokenKind.PATH, TokenKind.EXEC, TokenKind.PATH],
+        )
+        self.assertEqual(values(tokens), [">", "a", ">", "b"])
+
+    # --- Comments inside blocks ---
+
+    def test_comment_inside_block_on_its_own_line(self):
+        source = "{\n  >a\n  ) ignore this\n  >b\n}\n"
+        tokens = lex(source)
+        self.assertEqual(
+            kinds(tokens),
+            [
+                TokenKind.LBRACE,
+                TokenKind.EXEC,
+                TokenKind.PATH,
+                TokenKind.EXEC,
+                TokenKind.PATH,
+                TokenKind.RBRACE,
+            ],
+        )
+        self.assertEqual(
+            values(tokens),
+            ["{", ">", "a", ">", "b", "}"],
+        )
+
+    def test_comment_after_block_on_same_line(self):
+        tokens = lex("{>a}>b ) trailing comment\n")
+        self.assertEqual(
+            kinds(tokens),
+            [
+                TokenKind.LBRACE,
+                TokenKind.EXEC,
+                TokenKind.PATH,
+                TokenKind.RBRACE,
+                TokenKind.EXEC,
+                TokenKind.PATH,
+            ],
+        )
+        self.assertEqual(
+            values(tokens),
+            ["{", ">", "a", "}", ">", "b"],
+        )
+
+    # --- Interaction with strings ---
+
+    def test_comment_does_not_start_inside_string(self):
+        # The ')' here ends the string; the following ')' starts a comment.
+        source = "(hello) ) this is a comment\n>print\n"
+        tokens = lex(source)
+        self.assertEqual(
+            kinds(tokens),
+            [TokenKind.STRING, TokenKind.EXEC, TokenKind.PATH],
+        )
+        self.assertEqual(values(tokens), ["hello", ">", "print"])
+
+    def test_comment_line_following_string_line(self):
+        source = "(hello)\n) comment about print\n>print\n"
+        tokens = lex(source)
+        self.assertEqual(
+            kinds(tokens),
+            [TokenKind.STRING, TokenKind.EXEC, TokenKind.PATH],
+        )
+        self.assertEqual(values(tokens), ["hello", ">", "print"])
+
+    # --- ')' not at token start should NOT start a comment ---
+
+    def test_closing_paren_in_middle_of_path_is_not_comment(self):
+        # Here 'a)b' is a single PATH; comment starts at ') rest' only.
+        source = "a)b ) comment\n"
+        tokens = lex(source)
+        self.assertEqual(
+            kinds(tokens),
+            [TokenKind.PATH],
+        )
+        self.assertEqual(values(tokens), ["a)b"])
+
+
 if __name__ == "__main__":
     unittest.main()
