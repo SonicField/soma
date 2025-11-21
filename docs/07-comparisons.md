@@ -85,19 +85,19 @@ explicit control flow.
 Example: Implementing WHEN
 
 ```soma
-{ >dup { >drop } >swap >choose >chain } !when
+{ {} >choose } !when
 
 ; Usage
-x 10 >> { "large" >print "value" >print } >when
+x 10 >=> { (large) >print (value) >print } >when
 ```
 
 How it works:
 
-   1. >dup duplicates the boolean condition
-   2. { >drop } is the "false branch" (discard the block)
-   3. >swap reorders: [block, bool, drop-block]
-   4. >choose executes drop-block if false, else executes the body block
-   5. >chain executes whatever block was chosen
+   1. AL starts with: [bool, block]
+   2. {} pushes an empty block → AL = [bool, block, {}]
+   3. >choose consumes the boolean and selects:
+      - if bool is True, execute block (the user's code)
+      - if bool is False, execute {} (do nothing)
 
 **This is not a macro. It is a block.**
 
@@ -130,8 +130,8 @@ Example usage:
    3. `>^` → executes block at "^", which is `{ !_ >_ }`
       - Block executes with fresh Register:
         - `!_` → pops print_block from AL, stores at register root `_`
-        - `>_` → reads register root value and **executes it** (the print_block)
-        - Print block pops "Cats" and prints it
+        - `>_` → reads register root value (the print_block) and executes it
+        - The print block pops "Cats" and prints it
 
 **Output:** `Cats`
 
@@ -141,7 +141,7 @@ The `>` prefix modifier reads the value at a path AND executes it. This
 atomic operation works with:
 
    * Store paths: `>print`, `>my_func`, `>^`
-   * Register paths: `>_`, `>_.action`, `>_.self`
+   * Register paths: `>_`, `>_.action`
 
 Because blocks can store and execute other blocks via `>path`, users can
 define execution patterns that look indistinguishable from language features.
@@ -173,10 +173,10 @@ to execute their arguments:
 
 ```soma
 ) Define IF/ELSE
-{ >swap >choose } !if_else
+{ >choose } !if_else
 
 ) Use it exactly like a built-in
-x 0 >== { "zero" >print } { "non-zero" >print } >if_else
+x 0 >== { (zero) >print } { (non-zero) >print } >if_else
 ```
 
 The `if_else` block is not syntactically privileged. It's just a block stored
@@ -200,9 +200,9 @@ Common Lisp:
 SOMA:
 
 ```soma
-{ >swap >choose } !my-if
+{ >choose } !my-if
 
-x 0 >== { "zero" >print } { "non-zero" >print } >my-if
+x 0 >== { (zero) >print } { (non-zero) >print } >my-if
 ```
 
 The SOMA version is **not** syntactically privileged. It's a block stored in
@@ -228,18 +228,20 @@ Common Lisp:
 SOMA:
 
 ```soma
-{ >swap {} >swap >choose >chain } !unless
+{ {} >swap >choose } !unless
 
-config.exists False >== { >create-default-config } >unless
+config.exists { >create-default-config } >unless
 ```
 
 Decomposition:
 
-   * >swap: reorder [block, bool] → [bool, block]
-   * {}: push empty block (the "do nothing" branch)
-   * >swap: reorder [bool, block, {}] → [bool, {}, block]
-   * >choose: if bool is True, execute {}; else execute block
-   * >chain: execute the chosen block
+   * Start with AL = [bool, block]
+   * {} pushes empty block → AL = [bool, block, {}]
+   * >swap reorders → AL = [bool, {}, block]
+   * >choose: if bool is True, execute {} (do nothing); if False, execute block
+
+The key insight: by pushing {} and swapping, we place the empty block in the "true"
+position and the user's block in the "false" position, inverting the condition.
 
 
 2.7  WHILE: Looping Constructs
@@ -262,33 +264,50 @@ Common Lisp:
 
 This requires TAGBODY and GO—non-local jumps.
 
-SOMA:
+SOMA (using stdlib `while` abstraction):
 
 ```soma
-{
-  !_.body
-  !_.test
-  _.test _.body { !_.b !_.t _.t >chain { _.b >chain _.self } {} >choose } !_.loop
-  _.loop
-} !while
+0 !counter
 
-{ counter 10 >< } !cond
-{ counter >print counter 1 >+ !counter } !body
-cond body >while >chain
+{ counter 10 >< } { counter >print counter 1 >+ !counter } >while
 ```
 
-Here, the while block:
+The stdlib `while` block takes two arguments on AL:
+   * A condition block (executed to test continuation)
+   * A body block (executed on each iteration)
 
-   1. Stores the test and body blocks in its own Register
-   2. Constructs a loop block that captures test/body via AL
-   3. The loop block stores them in its own Register and recurses via _.self
-   4. Returns the loop block for >chain to execute
+It uses `>chain` internally to loop, pushing the loop block back onto AL when
+the condition is true.
 
-Note: Each nested block execution gets a fresh Register. The loop block must
-receive test and body via the AL, then store them in its own Register before
-recursing.
+**Alternative: Inline pattern without abstraction**
 
-No jumps. No labels. No macro expansion. Just blocks referring to blocks.
+For comparison, here's an inline loop that doesn't use the stdlib while:
+
+```soma
+0 !counter
+
+{
+  counter >print
+  counter 1 >+ !counter
+
+  counter 10 ><
+    { >loop }
+    { }
+  >choose
+} !loop
+>loop
+```
+
+This inline pattern:
+
+   1. Executes the body (print counter, increment counter)
+   2. Tests the condition (counter < 10)
+   3. If true: `>choose` executes `{ >loop }`, which executes the loop block again
+   4. If false: `>choose` executes `{}`, which does nothing and terminates
+
+The key difference from the doc's original version: `{ >loop }` executes the loop
+block (via the `>` prefix), while `{ loop }` would just push the block onto AL
+without executing it.
 
 
 2.8  Higher-Order Functions Using `>path`
@@ -299,15 +318,15 @@ Example: APPLY
 
 ```soma
 { !_.x !_.f _.x >_.f } !apply
-42 increment >apply     ) Apply increment to 42
+increment 42 >apply     ) Apply increment to 42
 ```
 
 **Execution:**
-   1. `42` → AL = [42]
-   2. `increment` → AL = [42, increment_block]
+   1. `increment` → AL = [increment_block]
+   2. `42` → AL = [increment_block, 42]
    3. `>apply` → executes apply block:
-      - `!_.x` → stores 42 in register
-      - `!_.f` → stores increment_block in register
+      - `!_.x` → pops 42 from AL, stores in register
+      - `!_.f` → pops increment_block from AL, stores in register
       - `_.x` → AL = [42]
       - `>_.f` → executes increment_block with 42 on AL
 
@@ -315,14 +334,14 @@ Example: TWICE (execute a block twice)
 
 ```soma
 { !_.f >_.f >_.f } !twice
-{ "Hello" >print } >twice     ) Prints "Hello" twice
+{ (Hello) >print } >twice     ) Prints (Hello) twice
 ```
 
 Example: CALL-WITH (execute with argument)
 
 ```soma
 { !_.arg !_.func _.arg >_.func } !call_with
-42 square >call_with     ) Squares 42
+square 42 >call_with     ) Squares 42
 ```
 
 These look like **language features** but they're **user-defined blocks**
@@ -331,17 +350,20 @@ using `>path` semantics.
 
 2.9  Dispatch Tables Using `>path`
 
-Dispatch tables become trivial with `>path`:
+Dispatch tables can be implemented using conditionals:
 
 ```soma
 ) Define handlers
-{ "Adding..." >print } !handlers.add
-{ "Subtracting..." >print } !handlers.sub
-{ "Multiplying..." >print } !handlers.mul
+{ (Adding...) >print } !handlers.add
+{ (Subtracting...) >print } !handlers.sub
+{ (Multiplying...) >print } !handlers.mul
 
 ) Dispatch based on operation
-"add" !op
-op "handlers." >swap >concat >Store-read >^     ) Executes handlers.add
+(add) !op
+op (add) >==
+  { handlers.add >^ }
+  { op (sub) >== { handlers.sub >^ } { handlers.mul >^ } >choose }
+>choose
 ```
 
 More sophisticated dispatching:
@@ -349,18 +371,21 @@ More sophisticated dispatching:
 ```soma
 {
   !_.op
-  _.op "add" >== { 10 20 >+ >print } !_.actions.add
-  _.op "mul" >== { 10 20 >* >print } !_.actions.mul
+  { 10 20 >+ >print } !_.actions.add
+  { 10 20 >* >print } !_.actions.mul
 
-  _.op "_.actions." >swap >concat >Register-read >^
+  _.op (add) >==
+    _.actions.add
+    _.actions.mul
+  >choose
 } !dispatch
 
-"add" >dispatch     ) Executes add operation
-"mul" >dispatch     ) Executes mul operation
+(add) >dispatch     ) Executes add operation (prints 30)
+(mul) >dispatch     ) Executes mul operation (prints 200)
 ```
 
-The `>^` pattern (execute AL top) enables dynamic dispatch without any
-special language support.
+These patterns use conditional execution with `>choose` to select the right
+handler, avoiding dynamic path construction which isn't supported in SOMA.
 
 
 2.10  User-Defined Control That Looks Like Built-ins
@@ -371,11 +396,11 @@ structures are indistinguishable from built-ins:
 ```soma
 ) Define control primitives
 { !_ >_ } !^                              ) Execute AL top
-{ !_.else !_.then !_.cond _.cond _.then _.else >swap >choose >chain } !ifelse
+{ !_.else !_.then !_.cond _.cond _.then _.else >choose } !ifelse
 
 ) Use them exactly like language features
 0 !counter
-counter 5 >> { "big" >print } { "small" >print } >ifelse
+counter 5 >> { (big) >print } { (small) >print } >ifelse
 ```
 
 These control structures:
@@ -573,8 +598,8 @@ SOMA:
 {
   !_.n
   _.n 10 >>
-  { "Greater than 10" >print }
-  { "Not greater" >print }
+  { (Greater than 10) >print }
+  { (Not greater) >print }
   >choose
 } !test-value
 
@@ -602,17 +627,31 @@ DO...LOOP compiles to loop control structures with index management.
 SOMA:
 
 ```soma
-{
-  !_.max
-  0 _.max { !_.m !_.i _.i _.m >< { _.i >print _.i 1 >+ _.m _.self } {} >choose } !_.loop
-  _.loop
-} !count-up
+0 !i
+10 !max
 
-10 >count-up >chain
+{
+  i >print
+  i 1 >+ !i
+
+  i max ><
+    { >count-loop }
+    { }
+  >choose
+} !count-loop
+>count-loop
 ```
 
-The loop block receives both the counter and max via AL, stores them in its own
-Register, and recurses via _.self. Each recursive call gets a fresh Register.
+This inline loop uses Store variables `i` and `max`. Each iteration:
+- Prints the current value
+- Increments the counter
+- Tests if i < max
+- If true: `{ >count-loop }` executes the count-loop block again (via `>`)
+- If false: empty block terminates the loop
+
+Note: The key is `{ >count-loop }` which executes the named block. Using
+`{ count-loop }` without `>` would just push the block onto AL instead of
+executing it.
 
 
 3.6  The EXECUTE Primitive vs User-Defined `^`
@@ -641,7 +680,7 @@ SOMA has **no built-in execute-from-AL operation**. But you can define it:
 Now `>^` behaves exactly like Forth's EXECUTE:
 
 ```soma
-{ "Hello" >print } !greet
+{ (Hello) >print } !greet
 
 greet >^        ) Execute the block on AL top
 ```
@@ -686,6 +725,10 @@ greet >twice
 Both achieve the same result, but SOMA's version uses user-defined
 execution (`>_.f`), while Forth uses the built-in EXECUTE.
 
+Note: In the SOMA version, `>twice` executes with a fresh Register, so `!_.f`
+stores the greet block in that Register's local namespace, isolated from the
+Store.
+
 
 3.7  Key Distinction: Self-Executing vs First-Class
 
@@ -707,7 +750,7 @@ greet  \ Executes immediately
 SOMA:
 
 ```soma
-{ "Hello" >print } !greet
+{ (Hello) >print } !greet
 greet  \ Pushes the block onto AL, does NOT execute
 >greet \ Executes the block
 ```
@@ -830,10 +873,10 @@ SOMA:
 0 !count
 
 count 1 >+ !count
-"Count: " count >to-string >concat >print
+(Count: ) count >toString >concat >print
 
 count 1 >+ !count
-"Count: " count >to-string >concat >print
+(Count: ) count >toString >concat >print
 ```
 
 No layering needed. Everything is state. Printing is a state operation that
@@ -981,19 +1024,28 @@ SOMA:
 
 ```soma
 {
-  !_.n
-  _.n 0 >==
+  !fact-n
+  fact-n 0 >==
   { 1 }
-  { _.n 1 >- >fact >chain _.n >* }
+  { fact-n fact-n 1 >- fact >chain >* }
   >choose
 } !fact
 
-5 >fact >chain >print
+5 fact >chain >print
 ```
 
-The recursive call passes `n-1` via AL to the inner fact execution. When it
-returns, the result is multiplied by the current `_.n`. Each block execution
-has its own isolated Register.
+Execution flow:
+1. `5 fact >chain` → Creates new Register with fact-n = 5, executes fact block
+2. Base case check: fact-n 0 >== → False
+3. Recursive case: fact-n (pushes 5), fact-n 1 >- (pushes 4), fact >chain
+   - `fact >chain` creates a FRESH Register context with fact-n = 4
+   - The inner execution has its own fact-n = 4, isolated from the outer fact-n = 5
+4. When inner execution completes with result on AL, `>*` multiplies by current fact-n
+
+Each `>chain` creates a new Register context, providing isolation for recursive
+calls. Note that this example uses Store variables (fact-n) instead of Register
+variables (_.n) to ensure the recursive state is accessible across the entire
+block execution, including within nested `>choose` blocks.
 
 
 5.6  Summary: LC vs SOMA

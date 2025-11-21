@@ -1,0 +1,528 @@
+) SOMA Comparison Operators Tests
+) Tests for FFI comparison primitives and stdlib derived comparisons
+
+) =============================================================================
+) SECTION 1: FFI PRIMITIVES (Built-in Comparison Operators)
+) =============================================================================
+
+) -----------------------------------------------------------------------------
+) 1.1 Less-Than (><) - FFI Primitive
+) -----------------------------------------------------------------------------
+
+) TEST: Less-than (true case - integers)
+) EXPECT_AL: [True]
+1 2 ><
+
+) TEST: Less-than (false case - integers)
+) EXPECT_AL: [False]
+2 1 ><
+
+) TEST: Less-than (equal integers)
+) EXPECT_AL: [False]
+5 5 ><
+
+) TEST: Less-than (true case - strings)
+) EXPECT_AL: [True]
+(apple) (banana) ><
+
+) TEST: Less-than (false case - strings)
+) EXPECT_AL: [False]
+(zebra) (aardvark) ><
+
+) TEST: Less-than (equal strings)
+) EXPECT_AL: [False]
+(hello) (hello) ><
+
+) TEST: Less-than with negative integers (true)
+) EXPECT_AL: [True]
+-5 -3 ><
+
+) TEST: Less-than with negative integers (false)
+) EXPECT_AL: [False]
+-3 -5 ><
+
+) TEST: Less-than negative vs positive
+) EXPECT_AL: [True]
+-10 5 ><
+
+) TEST: Less-than zero comparisons
+) EXPECT_AL: [True]
+0 1 ><
+
+) TEST: Less-than zero equal
+) EXPECT_AL: [False]
+0 0 ><
+
+) -----------------------------------------------------------------------------
+) 1.2 Equality (>==) - FFI Primitive (if available) or Stdlib
+) -----------------------------------------------------------------------------
+
+) TEST: Equality (equal integers)
+) EXPECT_AL: [True]
+5 5 >==
+
+) TEST: Equality (different integers)
+) EXPECT_AL: [False]
+5 3 >==
+
+) TEST: Equality (equal strings)
+) EXPECT_AL: [True]
+(hello) (hello) >==
+
+) TEST: Equality (different strings)
+) EXPECT_AL: [False]
+(hello) (world) >==
+
+) TEST: Equality (zero)
+) EXPECT_AL: [True]
+0 0 >==
+
+) TEST: Equality (negative integers)
+) EXPECT_AL: [True]
+-42 -42 >==
+
+) -----------------------------------------------------------------------------
+) 1.3 Greater-Than (>>) - FFI Primitive (if available) or Stdlib
+) -----------------------------------------------------------------------------
+
+) TEST: Greater-than (true case)
+) EXPECT_AL: [True]
+5 3 >>
+
+) TEST: Greater-than (false case)
+) EXPECT_AL: [False]
+3 5 >>
+
+) TEST: Greater-than (equal)
+) EXPECT_AL: [False]
+5 5 >>
+
+) TEST: Greater-than (negative integers true)
+) EXPECT_AL: [True]
+-3 -5 >>
+
+) TEST: Greater-than (negative integers false)
+) EXPECT_AL: [False]
+-5 -3 >>
+
+) TEST: Greater-than positive vs negative
+) EXPECT_AL: [True]
+5 -10 >>
+
+) TEST: Greater-than with zero (true)
+) EXPECT_AL: [True]
+1 0 >>
+
+) TEST: Greater-than with zero (false)
+) EXPECT_AL: [False]
+0 1 >>
+
+) TEST: Greater-than strings (true)
+) EXPECT_AL: [True]
+(zebra) (aardvark) >>
+
+) TEST: Greater-than strings (false)
+) EXPECT_AL: [False]
+(aardvark) (zebra) >>
+
+) =============================================================================
+) SECTION 2: STDLIB DERIVED COMPARISONS
+) =============================================================================
+
+) -----------------------------------------------------------------------------
+) 2.1 Greater-Than (>>) - Derived from >swap and ><
+) Note: Tests stdlib implementation if >> is not FFI primitive
+) -----------------------------------------------------------------------------
+
+) TEST: Stdlib greater-than implementation (10 > 5)
+) EXPECT_AL: [True]
+10 5 >>
+
+) TEST: Stdlib greater-than implementation (5 > 10)
+) EXPECT_AL: [False]
+5 10 >>
+
+) TEST: Stdlib greater-than implementation (5 > 5)
+) EXPECT_AL: [False]
+5 5 >>
+
+) -----------------------------------------------------------------------------
+) 2.2 Not-Equal (>=!) - Derived from ><, >over, >rot, >or
+) -----------------------------------------------------------------------------
+
+) TEST: Not-equal (different integers)
+) EXPECT_AL: [True]
+5 10 >=!
+
+) TEST: Not-equal (equal integers)
+) EXPECT_AL: [False]
+5 5 >=!
+
+) TEST: Not-equal (different negative)
+) EXPECT_AL: [True]
+-5 -10 >=!
+
+) TEST: Not-equal (equal negative)
+) EXPECT_AL: [False]
+-5 -5 >=!
+
+) TEST: Not-equal (different strings)
+) EXPECT_AL: [True]
+(hello) (world) >=!
+
+) TEST: Not-equal (equal strings)
+) EXPECT_AL: [False]
+(cat) (cat) >=!
+
+) TEST: Not-equal (zero vs positive)
+) EXPECT_AL: [True]
+0 1 >=!
+
+) TEST: Not-equal (zero vs zero)
+) EXPECT_AL: [False]
+0 0 >=!
+
+) -----------------------------------------------------------------------------
+) 2.3 Equality (>==) - Derived from >!=! and >not
+) Note: If >== is FFI primitive, these test the stdlib alternative
+) -----------------------------------------------------------------------------
+
+) TEST: Stdlib equality (equal integers)
+) EXPECT_AL: [True]
+5 5 >==
+
+) TEST: Stdlib equality (different integers)
+) EXPECT_AL: [False]
+5 10 >==
+
+) TEST: Stdlib equality (equal strings)
+) EXPECT_AL: [True]
+(cat) (cat) >==
+
+) TEST: Stdlib equality (different strings)
+) EXPECT_AL: [False]
+(dog) (cat) >==
+
+) -----------------------------------------------------------------------------
+) 2.4 Less-Than-Or-Equal (>>=<) - Derived from >swap, ><, >not
+) -----------------------------------------------------------------------------
+
+) TEST: Less-or-equal (less than)
+) EXPECT_AL: [True]
+3 5 >=<
+
+) TEST: Less-or-equal (equal)
+) EXPECT_AL: [True]
+5 5 >=<
+
+) TEST: Less-or-equal (greater than)
+) EXPECT_AL: [False]
+7 5 >=<
+
+) TEST: Less-or-equal (negative less)
+) EXPECT_AL: [True]
+-10 -5 >=<
+
+) TEST: Less-or-equal (negative equal)
+) EXPECT_AL: [True]
+-5 -5 >=<
+
+) TEST: Less-or-equal (negative greater)
+) EXPECT_AL: [False]
+-3 -5 >=<
+
+) TEST: Less-or-equal (zero cases - less)
+) EXPECT_AL: [True]
+0 1 >=<
+
+) TEST: Less-or-equal (zero cases - equal)
+) EXPECT_AL: [True]
+0 0 >=<
+
+) TEST: Less-or-equal (zero cases - greater)
+) EXPECT_AL: [False]
+1 0 >=<
+
+) TEST: Less-or-equal (strings - less)
+) EXPECT_AL: [True]
+(apple) (banana) >=<
+
+) TEST: Less-or-equal (strings - equal)
+) EXPECT_AL: [True]
+(hello) (hello) >=<
+
+) TEST: Less-or-equal (strings - greater)
+) EXPECT_AL: [False]
+(zebra) (apple) >=<
+
+) -----------------------------------------------------------------------------
+) 2.5 Greater-Than-Or-Equal (>>=>) - Derived from ><, >not
+) -----------------------------------------------------------------------------
+
+) TEST: Greater-or-equal (greater)
+) EXPECT_AL: [True]
+7 5 >=>
+
+) TEST: Greater-or-equal (equal)
+) EXPECT_AL: [True]
+5 5 >=>
+
+) TEST: Greater-or-equal (less)
+) EXPECT_AL: [False]
+3 5 >=>
+
+) TEST: Greater-or-equal (negative greater)
+) EXPECT_AL: [True]
+-3 -5 >=>
+
+) TEST: Greater-or-equal (negative equal)
+) EXPECT_AL: [True]
+-5 -5 >=>
+
+) TEST: Greater-or-equal (negative less)
+) EXPECT_AL: [False]
+-10 -5 >=>
+
+) TEST: Greater-or-equal (zero cases - greater)
+) EXPECT_AL: [True]
+1 0 >=>
+
+) TEST: Greater-or-equal (zero cases - equal)
+) EXPECT_AL: [True]
+0 0 >=>
+
+) TEST: Greater-or-equal (zero cases - less)
+) EXPECT_AL: [False]
+0 1 >=>
+
+) TEST: Greater-or-equal (strings - greater)
+) EXPECT_AL: [True]
+(zebra) (apple) >=>
+
+) TEST: Greater-or-equal (strings - equal)
+) EXPECT_AL: [True]
+(hello) (hello) >=>
+
+) TEST: Greater-or-equal (strings - less)
+) EXPECT_AL: [False]
+(apple) (zebra) >=>
+
+) =============================================================================
+) SECTION 3: PRACTICAL USAGE PATTERNS
+) =============================================================================
+
+) -----------------------------------------------------------------------------
+) 3.1 Comparisons with Choose (If-Then-Else Pattern)
+) -----------------------------------------------------------------------------
+
+) TEST: Conditional execution with less-than (true branch)
+) EXPECT_AL: [100]
+5 10 >< { 100 } { 200 } >choose
+
+) TEST: Conditional execution with less-than (false branch)
+) EXPECT_AL: [200]
+10 5 >< { 100 } { 200 } >choose
+
+) TEST: Conditional execution with equality (true branch)
+) EXPECT_AL: [42]
+7 7 >== { 42 } { 99 } >choose
+
+) TEST: Conditional execution with equality (false branch)
+) EXPECT_AL: [99]
+7 8 >== { 42 } { 99 } >choose
+
+) TEST: Conditional execution with greater-than (true branch)
+) EXPECT_AL: [1]
+10 5 >> { 1 } { 0 } >choose
+
+) TEST: Conditional execution with greater-than (false branch)
+) EXPECT_AL: [0]
+5 10 >> { 1 } { 0 } >choose
+
+) -----------------------------------------------------------------------------
+) 3.2 Chained Comparisons
+) -----------------------------------------------------------------------------
+
+) TEST: Range check using AND (in range)
+) EXPECT_AL: [True]
+50 0 >> 50 100 >< >and
+
+) TEST: Range check using AND (below range)
+) EXPECT_AL: [False]
+-5 0 >> -5 100 >< >and
+
+) TEST: Range check using AND (above range)
+) EXPECT_AL: [False]
+150 0 >> 150 100 >< >and
+
+) -----------------------------------------------------------------------------
+) 3.3 Comparison with Store Values
+) -----------------------------------------------------------------------------
+
+) TEST: Compare store value with constant
+) EXPECT_AL: [True]
+42 !x x 40 >>
+
+) TEST: Compare two store values (less-than)
+) EXPECT_AL: [True]
+5 !a 10 !b a b ><
+
+) TEST: Compare two store values (equal)
+) EXPECT_AL: [True]
+7 !a 7 !b a b >==
+
+) TEST: Compare two store values (greater-than)
+) EXPECT_AL: [True]
+15 !a 10 !b a b >>
+
+) -----------------------------------------------------------------------------
+) 3.4 Edge Cases and Boundary Values
+) -----------------------------------------------------------------------------
+
+) TEST: Maximum values comparison (equal large)
+) EXPECT_AL: [True]
+999999 999999 >==
+
+) TEST: Minimum values comparison (equal small negative)
+) EXPECT_AL: [True]
+-999999 -999999 >==
+
+) TEST: Large difference less-than
+) EXPECT_AL: [True]
+-999999 999999 ><
+
+) TEST: Large difference greater-than
+) EXPECT_AL: [True]
+999999 -999999 >>
+
+) TEST: Boundary value less-or-equal (boundary)
+) EXPECT_AL: [True]
+100 100 >=<
+
+) TEST: Boundary value greater-or-equal (boundary)
+) EXPECT_AL: [True]
+100 100 >=>
+
+) -----------------------------------------------------------------------------
+) 3.5 Comparison Result Manipulation
+) -----------------------------------------------------------------------------
+
+) TEST: Negate comparison result (True to False)
+) EXPECT_AL: [False]
+5 10 >< >not
+
+) TEST: Negate comparison result (False to True)
+) EXPECT_AL: [True]
+10 5 >< >not
+
+) TEST: Combine comparisons with OR (first true)
+) EXPECT_AL: [True]
+5 3 >> 5 10 >< >or
+
+) TEST: Combine comparisons with OR (second true)
+) EXPECT_AL: [True]
+3 5 >> 5 10 >< >or
+
+) TEST: Combine comparisons with OR (both false)
+) EXPECT_AL: [False]
+3 5 >> 10 5 >< >or
+
+) TEST: Combine comparisons with AND (both true)
+) EXPECT_AL: [True]
+10 5 >> 10 15 >< >and
+
+) TEST: Combine comparisons with AND (first false)
+) EXPECT_AL: [False]
+5 10 >> 5 15 >< >and
+
+) -----------------------------------------------------------------------------
+) 3.6 Comparison in Dup/Swap Patterns
+) -----------------------------------------------------------------------------
+
+) TEST: Duplicate and compare with self
+) EXPECT_AL: [True]
+42 >dup >==
+
+) TEST: Compare after swap
+) EXPECT_AL: [False]
+3 5 >swap >< ) After swap: 5 3 ><, which tests 5 < 3
+
+) TEST: Duplicate both and compare (pattern from min/max)
+) EXPECT_AL: [3, 7, True]
+3 7 >over >over ><
+
+) =============================================================================
+) SECTION 4: TYPE CONSISTENCY
+) =============================================================================
+
+) -----------------------------------------------------------------------------
+) 4.1 Same-Type Comparisons (Valid)
+) -----------------------------------------------------------------------------
+
+) TEST: Integer comparison chain
+) EXPECT_AL: [True]
+1 2 >< 2 3 >< >and
+
+) TEST: String comparison chain
+) EXPECT_AL: [True]
+(a) (b) >< (b) (c) >< >and
+
+) -----------------------------------------------------------------------------
+) 4.2 Empty Strings
+) -----------------------------------------------------------------------------
+
+) TEST: Empty string equals empty string
+) EXPECT_AL: [True]
+() () >==
+
+) TEST: Empty string less than non-empty
+) EXPECT_AL: [True]
+() (a) ><
+
+) TEST: Non-empty greater than empty
+) EXPECT_AL: [True]
+(a) () >>
+
+) =============================================================================
+) SECTION 5: COMPARISON IN CONTROL FLOW
+) =============================================================================
+
+) -----------------------------------------------------------------------------
+) 5.1 Using Comparisons for Guards
+) -----------------------------------------------------------------------------
+
+) TEST: Guard with greater-or-equal (passes)
+) EXPECT_AL: [100]
+10 5 >=> { 100 } { 0 } >choose
+
+) TEST: Guard with greater-or-equal (fails)
+) EXPECT_AL: [0]
+3 5 >=> { 100 } { 0 } >choose
+
+) TEST: Guard with less-or-equal (passes)
+) EXPECT_AL: [100]
+3 5 >=< { 100 } { 0 } >choose
+
+) TEST: Guard with less-or-equal (fails)
+) EXPECT_AL: [0]
+7 5 >=< { 100 } { 0 } >choose
+
+) -----------------------------------------------------------------------------
+) 5.2 Nested Comparisons in Blocks
+) -----------------------------------------------------------------------------
+
+) TEST: Nested comparison in block (outer)
+) EXPECT_AL: [True]
+{ 5 10 >< } >chain
+
+) TEST: Block returning comparison result
+) EXPECT_AL: [False]
+{ 10 5 >< } >chain
+
+) TEST: Block with multiple comparisons
+) EXPECT_AL: [True]
+{ 5 10 >< 7 7 >== >and } >chain
+
+) =============================================================================
+) END OF COMPARISONS TEST SUITE
+) =============================================================================
