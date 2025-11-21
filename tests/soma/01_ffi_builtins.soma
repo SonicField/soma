@@ -1,0 +1,103 @@
+) SOMA FFI Built-ins Tests
+) Tests for core FFI primitives
+
+) TEST: True constant
+) EXPECT_AL: [True]
+True
+
+) TEST: False constant
+) EXPECT_AL: [False]
+False
+
+) TEST: Nil constant
+) EXPECT_AL: [Nil]
+Nil
+
+) TEST: Void constant
+) EXPECT_AL: [Void]
+Void
+
+) TEST: Less-than (true case)
+) EXPECT_AL: [True]
+1 2 ><
+
+) TEST: Less-than (false case)
+) EXPECT_AL: [False]
+2 1 ><
+
+) TEST: Less-than (equal)
+) EXPECT_AL: [False]
+5 5 ><
+
+) TEST: String less-than (true)
+) EXPECT_AL: [True]
+(apple) (banana) ><
+
+) TEST: String less-than (false)
+) EXPECT_AL: [False]
+(zebra) (aardvark) ><
+
+) TEST: Addition
+) EXPECT_AL: [7]
+3 4 >+
+
+) TEST: Subtraction
+) EXPECT_AL: [3]
+10 7 >-
+
+) TEST: Multiplication
+) EXPECT_AL: [30]
+5 6 >*
+
+) TEST: Division
+) EXPECT_AL: [5]
+20 4 >/
+
+) TEST: Modulo
+) EXPECT_AL: [1]
+10 3 >%
+
+) TEST: String concatenation
+) EXPECT_AL: ["Hello World"]
+(Hello ) (World) >concat
+
+) TEST: Integer to string
+) EXPECT_AL: ["42"]
+42 >to_string
+
+) TEST: String to int (success)
+) EXPECT_AL: [123]
+(123) >to_int
+
+) TEST: String to int (failure)
+) EXPECT_AL: [Nil]
+(not a number) >to_int
+
+) TEST: IsVoid on Void
+) EXPECT_AL: [True]
+Void >IsVoid
+
+) TEST: IsVoid on Nil
+) EXPECT_AL: [False]
+Nil >IsVoid
+
+) TEST: IsVoid on int
+) EXPECT_AL: [False]
+42 >IsVoid
+
+) TEST: IsNil on Nil
+) EXPECT_AL: [True]
+Nil >IsNil
+
+) TEST: IsNil on Void
+) EXPECT_AL: [False]
+Void >IsNil
+
+) TEST: IsVoid on undefined path
+) EXPECT_AL: [True]
+undefined_path >IsVoid
+
+) TEST: Print output
+) EXPECT_OUTPUT: Hello
+) EXPECT_AL: []
+(Hello) >print

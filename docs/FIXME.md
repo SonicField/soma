@@ -2,8 +2,8 @@
 
 **Status:** Outstanding questions and clarifications needed
 **Date:** 2025-11-20
-**Note:** Resolved issues (_.self, >path execution, Register isolation) have been removed
-**Latest:** Register isolation for nested blocks resolved 2025-11-20 - complete isolation model adopted
+**Note:** Historical issues like `>path` execution and Register isolation have been resolved
+**Latest:** All semantic ambiguities resolved 2025-11-20 - specification complete
 
 ---
 

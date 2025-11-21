@@ -1,0 +1,1438 @@
+"""
+SOMA Virtual Machine
+
+Implements the runtime execution engine for SOMA programs using a compile-once,
+execute-fast model with RunNodes.
+
+Architecture:
+1. Parse source -> AST (handled by parser.py)
+2. Compile AST -> RunNodes (compile_program, compile_node)
+3. Execute RunNodes (VM.execute)
+
+This separates slow isinstance dispatch (compilation) from fast execution.
+"""
+
+from typing import List, Union, Optional, Callable, Any
+from dataclasses import dataclass
+from enum import Enum, auto
+
+from soma.parser import (
+    Program, IntNode, StringNode, BlockNode, ValuePath, ReferencePath,
+    ExecNode, StoreNode
+)
+
+
+# ==================== Error Classes ====================
+
+
+class RuntimeError(Exception):
+    """Runtime error during VM execution."""
+    pass
+
+
+class CompileError(Exception):
+    """Error during AST compilation to RunNodes."""
+    pass
+
+
+# ==================== Value Types ====================
+
+
+class ThingType(Enum):
+    """Value type tags for runtime type checking."""
+    INT = auto()
+    STRING = auto()
+    BLOCK = auto()
+    NIL = auto()
+    VOID = auto()
+    CELLREF = auto()
+    FFI = auto()  # Foreign objects from invoke
+
+
+class VoidSingleton:
+    """
+    Singleton representing 'never set' (auto-vivified cells).
+
+    Void represents the state of a cell that has been created through
+    auto-vivification but has never had a value explicitly written to it.
+    """
+    _instance = None
+
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+
+    def __repr__(self):
+        return "Void"
+
+
+class NilSingleton:
+    """
+    Singleton representing 'explicitly set to empty'.
+
+    Nil represents an explicit empty value, distinct from Void which
+    represents 'never set'.
+    """
+    _instance = None
+
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+
+    def __repr__(self):
+        return "Nil"
+
+
+class TrueSingleton:
+    """
+    Singleton representing boolean True.
+
+    FFI built-in for boolean operations. In SOMA, True is used by
+    comparison operators and can be tested in >choose.
+    """
+    _instance = None
+
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+
+    def __repr__(self):
+        return "True"
+
+
+class FalseSingleton:
+    """
+    Singleton representing boolean False.
+
+    FFI built-in for boolean operations. In SOMA, False is treated
+    the same as Nil in conditional contexts.
+    """
+    _instance = None
+
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+
+    def __repr__(self):
+        return "False"
+
+
+# Global singleton instances
+Void = VoidSingleton()
+Nil = NilSingleton()
+True_ = TrueSingleton()
+False_ = FalseSingleton()
+
+
+@dataclass
+class Block:
+    """
+    Executable block (first-class value).
+
+    Contains compiled RunNodes for the block body.
+    Blocks are immutable values that can be stored, passed around,
+    and executed multiple times.
+
+    Attributes:
+        body: List of compiled RunNodes for the block body
+    """
+    body: List['RunNode']
+
+    def execute(self, vm: 'VM'):
+        """
+        Execute this block in the given VM context.
+
+        Creates a fresh Register for block-local state, executes all
+        statements, then restores the previous register (destroying
+        the block-local state).
+
+        Args:
+            vm: The VM instance to execute in
+        """
+        # Save current register and block context
+        saved_register = vm.register
+        saved_block = vm.current_block
+
+        # Create fresh Register for this block
+        vm.register = Register()
+        vm.current_block = self
+
+        try:
+            # Execute block body
+            for rn in self.body:
+                rn.execute(vm)
+        finally:
+            # Restore register (block-local state destroyed)
+            vm.register = saved_register
+            vm.current_block = saved_block
+
+
+@dataclass
+class CellRef:
+    """
+    Reference to a Cell (not the value, the Cell itself).
+
+    Immutable value that provides access to a Cell.
+    The Cell persists as long as the CellRef exists (or the path exists
+    in the Store/Register).
+
+    Attributes:
+        cell: The Cell being referenced
+    """
+    cell: 'Cell'
+
+    def __repr__(self):
+        return f"CellRef({id(self.cell)})"
+
+
+@dataclass
+class BuiltinBlock:
+    """
+    Special Block for built-in operations.
+
+    Instead of RunNode body, has a Python function that operates on the VM.
+    Used for built-in operations like >block, >choose, >chain.
+
+    Attributes:
+        name: Name of the built-in (for debugging/error messages)
+        fn: Python function that takes a VM and performs the operation
+    """
+    name: str
+    fn: Callable[['VM'], None]
+
+    def execute(self, vm: 'VM'):
+        """Execute built-in function."""
+        self.fn(vm)
+
+    def __repr__(self):
+        return f"<builtin {self.name}>"
+
+
+# Thing type union - any value that can live on the AL or in a Cell
+Thing = Union[int, str, Block, VoidSingleton, NilSingleton, CellRef, BuiltinBlock, Any]
+
+
+# ==================== Cell and Storage ====================
+
+
+@dataclass
+class Cell:
+    """
+    A Cell in the hierarchical graph.
+
+    Has two orthogonal components:
+    - value: The payload (any Thing)
+    - children: Dict of sub-paths to child Cells
+
+    A Cell can have both a value and children simultaneously.
+    """
+    value: Thing
+    children: dict[str, 'Cell']
+
+    def __init__(self, value: Thing = None):
+        """
+        Initialize a Cell with a value.
+
+        Args:
+            value: Initial value (defaults to Void if None)
+        """
+        if value is None:
+            value = Void
+        self.value = value
+        self.children = {}
+
+
+class Store:
+    """
+    Global hierarchical Cell graph.
+
+    Persistent across entire program execution.
+    Pre-populated with built-in operations.
+
+    Provides value and reference access to the Cell graph with
+    auto-vivification for paths.
+    """
+
+    def __init__(self):
+        """Initialize Store with built-in operations."""
+        self.root: dict[str, Cell] = {}
+        self._populate_builtins()
+
+    def _populate_builtins(self):
+        """Pre-populate Store with built-in operations and constants."""
+        # Core control flow built-ins
+        block_builtin = BuiltinBlock("block", builtin_block)
+        choose_builtin = BuiltinBlock("choose", builtin_choose)
+        chain_builtin = BuiltinBlock("chain", builtin_chain)
+
+        self.root["block"] = Cell(value=block_builtin)
+        self.root["Block"] = Cell(value=block_builtin)
+        self.root["choose"] = Cell(value=choose_builtin)
+        self.root["Choose"] = Cell(value=choose_builtin)
+        self.root["chain"] = Cell(value=chain_builtin)
+        self.root["Chain"] = Cell(value=chain_builtin)
+
+        # Boolean constants and special values
+        self.root["True"] = Cell(value=True_)
+        self.root["False"] = Cell(value=False_)
+        self.root["Nil"] = Cell(value=Nil)
+        self.root["Void"] = Cell(value=Void)
+
+        # Comparison operators
+        self.root["<"] = Cell(value=BuiltinBlock("<", builtin_lt))
+
+        # Arithmetic operators
+        self.root["+"] = Cell(value=BuiltinBlock("+", builtin_add))
+        self.root["-"] = Cell(value=BuiltinBlock("-", builtin_subtract))
+        self.root["*"] = Cell(value=BuiltinBlock("*", builtin_multiply))
+        self.root["/"] = Cell(value=BuiltinBlock("/", builtin_divide))
+        self.root["%"] = Cell(value=BuiltinBlock("%", builtin_modulo))
+
+        # I/O operations
+        self.root["print"] = Cell(value=BuiltinBlock("print", builtin_print))
+        self.root["read_line"] = Cell(value=BuiltinBlock("read_line", builtin_read_line))
+
+        # String operations
+        self.root["concat"] = Cell(value=BuiltinBlock("concat", builtin_concat))
+
+        # Type conversions
+        self.root["to_string"] = Cell(value=BuiltinBlock("to_string", builtin_to_string))
+        self.root["to_int"] = Cell(value=BuiltinBlock("to_int", builtin_to_int))
+
+        # Type predicates
+        self.root["IsVoid"] = Cell(value=BuiltinBlock("IsVoid", builtin_is_void))
+        self.root["IsNil"] = Cell(value=BuiltinBlock("IsNil", builtin_is_nil))
+
+    def read_value(self, components: List[str]) -> Thing:
+        """
+        Read Cell value at path.
+
+        Returns Void if path doesn't exist (auto-vivification never happened).
+
+        Args:
+            components: List of path components (e.g., ["a", "b", "c"])
+
+        Returns:
+            The value at the path, or Void if path doesn't exist
+        """
+        cell = self._get_cell(components)
+        return cell.value if cell else Void
+
+    def read_ref(self, components: List[str]) -> CellRef:
+        """
+        Read CellRef at path.
+
+        Auto-vivifies path if it doesn't exist (creates Cells with Void value).
+
+        Args:
+            components: List of path components
+
+        Returns:
+            CellRef to the Cell at the path
+        """
+        cell = self._get_or_create_cell(components)
+        return CellRef(cell)
+
+    def write_value(self, components: List[str], value: Thing):
+        """
+        Write value to Cell at path.
+
+        Auto-vivifies intermediate Cells with Void value.
+        Raises error if value is Void (Void-Payload-Invariant).
+
+        If the current value at the path is a CellRef, writes through
+        the CellRef to its target Cell.
+
+        Args:
+            components: List of path components
+            value: Value to write
+
+        Raises:
+            RuntimeError: If attempting to write Void as payload
+        """
+        if isinstance(value, VoidSingleton):
+            raise RuntimeError(
+                f"Cannot write Void as payload (Void-Payload-Invariant). "
+                f"Path: {'.'.join(components)}"
+            )
+
+        # Auto-vivify intermediate cells and get target cell
+        cell = self._get_or_create_cell(components)
+
+        # Check if current value is a CellRef - if so, write through
+        if isinstance(cell.value, CellRef):
+            # Write to the Cell that the CellRef points to
+            cell.value.cell.value = value
+        else:
+            # Normal write
+            cell.value = value
+
+    def write_ref(self, components: List[str], value: Thing):
+        """
+        Replace entire Cell at path.
+
+        If value is Void, deletes the Cell (structural deletion).
+        Otherwise, replaces the Cell.
+
+        Args:
+            components: List of path components
+            value: Value to write (Void triggers deletion)
+        """
+        if isinstance(value, VoidSingleton):
+            # Structural deletion
+            self._delete_cell(components)
+        else:
+            # Replace Cell
+            cell = self._get_or_create_cell(components)
+            cell.value = value
+            cell.children.clear()  # Remove all children
+
+    def _get_cell(self, components: List[str]) -> Optional[Cell]:
+        """
+        Get Cell at path without creating.
+
+        Args:
+            components: List of path components
+
+        Returns:
+            Cell if it exists, None otherwise
+        """
+        if len(components) == 0:
+            return None
+
+        current = self.root
+        for component in components[:-1]:
+            if component not in current:
+                return None
+            current = current[component].children
+
+        final_component = components[-1]
+        return current.get(final_component)
+
+    def _get_or_create_cell(self, components: List[str]) -> Cell:
+        """
+        Get or create Cell at path (auto-vivification).
+
+        Args:
+            components: List of path components
+
+        Returns:
+            Cell at the path (created if necessary)
+        """
+        if len(components) == 0:
+            # Special case: empty path not allowed
+            raise RuntimeError("Cannot get cell with empty path")
+
+        current = self.root
+
+        # Auto-vivify intermediate cells
+        for component in components[:-1]:
+            if component not in current:
+                current[component] = Cell(value=Void)
+            current = current[component].children
+
+        # Get or create final cell
+        final_component = components[-1]
+        if final_component not in current:
+            current[final_component] = Cell(value=Void)
+
+        return current[final_component]
+
+    def _delete_cell(self, components: List[str]):
+        """
+        Delete Cell at path (structural deletion).
+
+        Args:
+            components: List of path components
+        """
+        if len(components) == 0:
+            return
+
+        # Navigate to parent
+        current = self.root
+        for component in components[:-1]:
+            if component not in current:
+                return  # Path doesn't exist, nothing to delete
+            current = current[component].children
+
+        # Delete child
+        final_component = components[-1]
+        if final_component in current:
+            del current[final_component]
+
+
+class Register:
+    """
+    Block-local hierarchical Cell graph.
+
+    Created fresh for each block execution.
+    Destroyed when block completes.
+    Completely isolated from parent block's Register.
+
+    Has the same interface as Store (read_value, read_ref, write_value, write_ref).
+    """
+
+    def __init__(self):
+        """Initialize empty Register."""
+        self.root: dict[str, Cell] = {}
+
+    def read_value(self, components: List[str]) -> Thing:
+        """
+        Read Cell value at path.
+
+        Returns Void if path doesn't exist.
+
+        Args:
+            components: List of path components
+
+        Returns:
+            The value at the path, or Void if path doesn't exist
+        """
+        cell = self._get_cell(components)
+        return cell.value if cell else Void
+
+    def read_ref(self, components: List[str]) -> CellRef:
+        """
+        Read CellRef at path.
+
+        Auto-vivifies path if it doesn't exist.
+
+        Args:
+            components: List of path components
+
+        Returns:
+            CellRef to the Cell at the path
+        """
+        cell = self._get_or_create_cell(components)
+        return CellRef(cell)
+
+    def write_value(self, components: List[str], value: Thing):
+        """
+        Write value to Cell at path.
+
+        Auto-vivifies intermediate Cells.
+        Raises error if value is Void.
+
+        If the current value at the path is a CellRef, writes through
+        the CellRef to its target Cell.
+
+        Args:
+            components: List of path components
+            value: Value to write
+
+        Raises:
+            RuntimeError: If attempting to write Void as payload
+        """
+        if isinstance(value, VoidSingleton):
+            raise RuntimeError(
+                f"Cannot write Void as payload (Void-Payload-Invariant). "
+                f"Path: {'.'.join(components)}"
+            )
+
+        # Auto-vivify intermediate cells and get target cell
+        cell = self._get_or_create_cell(components)
+
+        # Check if current value is a CellRef - if so, write through
+        if isinstance(cell.value, CellRef):
+            # Write to the Cell that the CellRef points to
+            cell.value.cell.value = value
+        else:
+            # Normal write
+            cell.value = value
+
+    def write_ref(self, components: List[str], value: Thing):
+        """
+        Replace entire Cell at path.
+
+        If value is Void, deletes the Cell.
+        Otherwise, replaces the Cell.
+
+        Args:
+            components: List of path components
+            value: Value to write (Void triggers deletion)
+        """
+        if isinstance(value, VoidSingleton):
+            # Structural deletion
+            self._delete_cell(components)
+        else:
+            # Replace Cell
+            cell = self._get_or_create_cell(components)
+            cell.value = value
+            cell.children.clear()  # Remove all children
+
+    def _get_cell(self, components: List[str]) -> Optional[Cell]:
+        """Get Cell at path without creating."""
+        if len(components) == 0:
+            return None
+
+        current = self.root
+        for component in components[:-1]:
+            if component not in current:
+                return None
+            current = current[component].children
+
+        final_component = components[-1]
+        return current.get(final_component)
+
+    def _get_or_create_cell(self, components: List[str]) -> Cell:
+        """Get or create Cell at path (auto-vivification)."""
+        if len(components) == 0:
+            # Special case: empty path not allowed
+            raise RuntimeError("Cannot get cell with empty path")
+
+        current = self.root
+
+        # Auto-vivify intermediate cells
+        for component in components[:-1]:
+            if component not in current:
+                current[component] = Cell(value=Void)
+            current = current[component].children
+
+        # Get or create final cell
+        final_component = components[-1]
+        if final_component not in current:
+            current[final_component] = Cell(value=Void)
+
+        return current[final_component]
+
+    def _delete_cell(self, components: List[str]):
+        """Delete Cell at path (structural deletion)."""
+        if len(components) == 0:
+            return
+
+        # Navigate to parent
+        current = self.root
+        for component in components[:-1]:
+            if component not in current:
+                return  # Path doesn't exist, nothing to delete
+            current = current[component].children
+
+        # Delete child
+        final_component = components[-1]
+        if final_component in current:
+            del current[final_component]
+
+
+# ==================== RunNode and Compilation ====================
+
+
+@dataclass
+class RunNode:
+    """
+    Executable wrapper around AST node.
+
+    Combines AST node (for error reporting/debugging) with a compiled
+    execution function (for fast dispatch-free execution).
+
+    Attributes:
+        ast_node: Original AST node
+        execute: Execution function that takes VM and performs the operation
+    """
+    ast_node: Any  # AST node type
+    execute: Callable[['VM'], None]
+
+    def __repr__(self):
+        return f"RunNode({self.ast_node.__class__.__name__})"
+
+
+@dataclass
+class CompiledProgram:
+    """
+    Compiled SOMA program ready for execution.
+
+    Attributes:
+        run_nodes: List of compiled RunNodes for top-level statements
+    """
+    run_nodes: List[RunNode]
+
+    def execute(self, vm: 'VM'):
+        """
+        Execute all statements in the program.
+
+        Args:
+            vm: VM instance to execute in
+        """
+        for rn in self.run_nodes:
+            rn.execute(vm)
+
+
+def compile_program(program: Union[Program, dict]) -> CompiledProgram:
+    """
+    Compile AST Program to executable RunNodes.
+
+    This is the one-time compilation phase where we dispatch on AST
+    node types and create execution functions. During execution, we
+    just call these functions without any type checking.
+
+    Args:
+        program: Parsed AST Program (either Program object or dict from parse())
+
+    Returns:
+        CompiledProgram ready for execution
+
+    Raises:
+        CompileError: If compilation fails
+    """
+    # Handle dict input from parse()
+    if isinstance(program, dict):
+        from soma.parser import Parser
+        from soma.lexer import lex
+
+        # If it's already a dict, we need to reconstruct the Program
+        # Actually, we need to work with the dict structure
+        statements = [_dict_to_ast(stmt) for stmt in program["body"]]
+        run_nodes = [compile_node(stmt) for stmt in statements]
+    else:
+        # It's a Program object
+        run_nodes = [compile_node(stmt) for stmt in program.statements]
+
+    return CompiledProgram(run_nodes)
+
+
+def _dict_to_ast(node_dict: dict) -> Any:
+    """Convert dictionary AST representation back to AST node objects."""
+    kind = node_dict["kind"]
+
+    if kind == "IntNode":
+        return IntNode(value=node_dict["value"])
+    elif kind == "StringNode":
+        return StringNode(value=node_dict["value"])
+    elif kind == "BlockNode":
+        body = [_dict_to_ast(n) for n in node_dict["body"]]
+        return BlockNode(body=body)
+    elif kind == "ValuePath":
+        return ValuePath(components=node_dict["components"])
+    elif kind == "ReferencePath":
+        return ReferencePath(components=node_dict["components"])
+    elif kind == "ExecNode":
+        target = _dict_to_ast(node_dict["target"])
+        return ExecNode(target=target)
+    elif kind == "StoreNode":
+        target = _dict_to_ast(node_dict["target"])
+        return StoreNode(target=target)
+    else:
+        raise CompileError(f"Unknown AST node kind: {kind}")
+
+
+def compile_node(node: Any) -> RunNode:
+    """
+    Compile AST node to RunNode.
+
+    This is where isinstance dispatch happens (once, at compile time).
+    Returns a RunNode with an execute function that operates on the VM.
+
+    Args:
+        node: AST node to compile
+
+    Returns:
+        RunNode with execution function
+
+    Raises:
+        CompileError: If node type is unknown
+    """
+    if isinstance(node, IntNode):
+        # Compile integer literal - push value onto AL
+        value = node.value
+        return RunNode(
+            ast_node=node,
+            execute=lambda vm: vm.al.append(value)
+        )
+
+    elif isinstance(node, StringNode):
+        # Compile string literal - push value onto AL
+        value = node.value
+        return RunNode(
+            ast_node=node,
+            execute=lambda vm: vm.al.append(value)
+        )
+
+    elif isinstance(node, BlockNode):
+        # Compile block - recursively compile body, then push Block onto AL
+        body = [compile_node(n) for n in node.body]
+        block = Block(body)
+        return RunNode(
+            ast_node=node,
+            execute=lambda vm: vm.al.append(block)
+        )
+
+    elif isinstance(node, ValuePath):
+        # Compile value path read
+        components = node.components
+        is_register = (components[0] == "_")
+
+        if is_register:
+            # Register path: strip leading _ for actual components
+            if len(components) == 1:
+                # Single _ = register root value
+                reg_components = []
+            else:
+                # _.x.y = register path without leading _
+                reg_components = components[1:]
+
+            def read_register_value(vm):
+                if len(reg_components) == 0:
+                    # Reading _ (register root) - need special handling
+                    # Read from a pseudo root cell
+                    cell = vm.register.root.get("_")
+                    if cell:
+                        vm.al.append(cell.value)
+                    else:
+                        vm.al.append(Void)
+                else:
+                    vm.al.append(vm.register.read_value(reg_components))
+
+            return RunNode(
+                ast_node=node,
+                execute=read_register_value
+            )
+        else:
+            # Store path
+            return RunNode(
+                ast_node=node,
+                execute=lambda vm: vm.al.append(vm.store.read_value(components))
+            )
+
+    elif isinstance(node, ReferencePath):
+        # Compile reference path read
+        components = node.components
+        is_register = (components[0] == "_")
+
+        if is_register:
+            # Register path
+            if len(components) == 1:
+                # _. = register root ref
+                reg_components = []
+            else:
+                reg_components = components[1:]
+
+            def read_register_ref(vm):
+                if len(reg_components) == 0:
+                    # Reading _. (register root ref)
+                    # Get or create the _ cell in register
+                    if "_" not in vm.register.root:
+                        vm.register.root["_"] = Cell(value=Void)
+                    vm.al.append(CellRef(vm.register.root["_"]))
+                else:
+                    vm.al.append(vm.register.read_ref(reg_components))
+
+            return RunNode(
+                ast_node=node,
+                execute=read_register_ref
+            )
+        else:
+            # Store path
+            return RunNode(
+                ast_node=node,
+                execute=lambda vm: vm.al.append(vm.store.read_ref(components))
+            )
+
+    elif isinstance(node, ExecNode):
+        # Compile execute operation
+        target_node = compile_node(node.target)
+
+        def exec_fn(vm: VM):
+            # Execute target to get value on AL
+            target_node.execute(vm)
+
+            # Pop and execute
+            if len(vm.al) == 0:
+                raise RuntimeError(f"AL underflow: exec requires value on AL")
+
+            thing = vm.al.pop()
+
+            # Execute the thing (must be a Block or BuiltinBlock)
+            if isinstance(thing, (Block, BuiltinBlock)):
+                thing.execute(vm)
+            elif isinstance(thing, (VoidSingleton, NilSingleton)):
+                # Void/Nil on AL treated as underflow (nothing to execute)
+                raise RuntimeError(
+                    f"AL underflow: exec requires executable Block on AL, got {type(thing).__name__}"
+                )
+            else:
+                raise RuntimeError(
+                    f"Cannot execute {type(thing).__name__}: only Blocks are executable"
+                )
+
+        return RunNode(ast_node=node, execute=exec_fn)
+
+    elif isinstance(node, StoreNode):
+        # Compile store operation
+        target = node.target
+        is_ref = isinstance(target, ReferencePath)
+        components = target.components
+        is_register = (components[0] == "_")
+
+        # Determine actual components (strip _ for register paths)
+        if is_register:
+            if len(components) == 1:
+                # _ or _. = register root
+                actual_components = []
+            else:
+                # _.x.y = strip leading _
+                actual_components = components[1:]
+        else:
+            actual_components = components
+
+        def store_fn(vm: VM):
+            if len(vm.al) == 0:
+                raise RuntimeError(f"AL underflow: store requires value on AL")
+
+            value = vm.al.pop()
+
+            # Write to Store or Register
+            storage = vm.register if is_register else vm.store
+
+            if is_ref:
+                # Reference write - replace entire cell
+                if len(actual_components) == 0:
+                    # Writing to _ or _. (register root)
+                    if is_register:
+                        # Create or replace root cell
+                        if isinstance(value, VoidSingleton):
+                            # Delete root cell
+                            if "_" in vm.register.root:
+                                del vm.register.root["_"]
+                        else:
+                            vm.register.root["_"] = Cell(value=value)
+                    else:
+                        raise RuntimeError("Cannot write ref to empty store path")
+                else:
+                    storage.write_ref(actual_components, value)
+            else:
+                # Value write
+                if len(actual_components) == 0:
+                    # Writing to _ (register root value)
+                    if is_register:
+                        if isinstance(value, VoidSingleton):
+                            raise RuntimeError(
+                                "Cannot write Void as payload (Void-Payload-Invariant). Path: _"
+                            )
+                        # Create or update root cell
+                        if "_" not in vm.register.root:
+                            vm.register.root["_"] = Cell(value=value)
+                        else:
+                            # Check for CellRef write-through
+                            root_cell = vm.register.root["_"]
+                            if isinstance(root_cell.value, CellRef):
+                                # Write through the CellRef
+                                root_cell.value.cell.value = value
+                            else:
+                                # Normal write
+                                root_cell.value = value
+                    else:
+                        raise RuntimeError("Cannot write value to empty store path")
+                else:
+                    storage.write_value(actual_components, value)
+
+        return RunNode(ast_node=node, execute=store_fn)
+
+    else:
+        raise CompileError(f"Unknown AST node type: {type(node).__name__}")
+
+
+# ==================== Virtual Machine ====================
+
+
+class VM:
+    """
+    SOMA Virtual Machine.
+
+    Maintains the three core state structures:
+    - AL (Accumulator List): LIFO stack for values
+    - Store: Global hierarchical Cell graph
+    - Register: Block-local hierarchical Cell graph (changes per block)
+    - current_block: Currently executing block (None at top-level)
+    """
+
+    def __init__(self):
+        """Initialize VM with empty AL, fresh Store, and empty Register."""
+        self.al: List[Thing] = []
+        self.store: Store = Store()
+        self.register: Register = Register()
+        self.current_block: Optional[Block] = None
+
+    def execute(self, compiled_program: CompiledProgram):
+        """
+        Execute a compiled program.
+
+        Args:
+            compiled_program: CompiledProgram to execute
+        """
+        compiled_program.execute(self)
+
+
+# ==================== Built-in Operations ====================
+
+
+def builtin_block(vm: VM):
+    """
+    >block built-in: Push current block to AL.
+
+    AL before: [...]
+    AL after: [current_block, ...]
+
+    Raises:
+        RuntimeError: If called at top-level (no current block)
+    """
+    if vm.current_block is None:
+        raise RuntimeError(">block called at top-level (no current block)")
+
+    # Push current block to AL
+    vm.al.append(vm.current_block)
+
+
+def builtin_choose(vm: VM):
+    """
+    >choose built-in: Conditional execution.
+
+    AL before: [condition, true_branch, false_branch, ...]
+    AL after: [result_of_executed_branch, ...]
+
+    The condition is popped and evaluated:
+    - Nil/Void/False = False
+    - Everything else (including True) = True
+
+    Then the appropriate branch (which must be a Block) is executed.
+
+    Raises:
+        RuntimeError: If AL underflow or branch is not a Block
+    """
+    if len(vm.al) < 3:
+        raise RuntimeError("AL underflow: >choose requires 3 values (false, true, condition)")
+
+    # Pop in reverse order: false, true, condition (LIFO)
+    false_branch = vm.al.pop()
+    true_branch = vm.al.pop()
+    condition = vm.al.pop()
+
+    # Evaluate condition: Nil/Void/False = False, everything else = True
+    is_true = not isinstance(condition, (NilSingleton, VoidSingleton, FalseSingleton))
+
+    # Choose branch
+    branch = true_branch if is_true else false_branch
+
+    # Execute branch (must be Block or BuiltinBlock)
+    if isinstance(branch, (Block, BuiltinBlock)):
+        branch.execute(vm)
+    else:
+        raise RuntimeError(f">choose branch must be Block, got {type(branch).__name__}")
+
+
+def builtin_chain(vm: VM):
+    """
+    >chain built-in: Sequential execution.
+
+    AL before: [block, ...]
+    AL after: [... result of block ...]
+
+    Pops block from AL and executes it. The block's effects (AL changes,
+    Store/Register modifications) persist after >chain completes.
+
+    Raises:
+        RuntimeError: If AL underflow or value is not a Block
+    """
+    if len(vm.al) < 1:
+        raise RuntimeError("AL underflow: >chain requires 1 value (block)")
+
+    # Peek at top of AL
+    thing = vm.al.pop()
+
+    # If it's a Block, execute it and loop
+    # The loop continues as long as the block leaves a block on AL
+    while isinstance(thing, (Block, BuiltinBlock)):
+        # Execute the block
+        thing.execute(vm)
+
+        # Check if there's another block on AL to continue the chain
+        if len(vm.al) > 0 and isinstance(vm.al[-1], (Block, BuiltinBlock)):
+            thing = vm.al.pop()
+        else:
+            # No more blocks, stop chaining
+            break
+
+    # If the thing wasn't a block, just push it back (chain stops gracefully)
+    if not isinstance(thing, (Block, BuiltinBlock)):
+        vm.al.append(thing)
+
+
+# ==================== FFI Built-ins ====================
+
+
+def builtin_lt(vm: VM):
+    """
+    < (less-than): Comparison operator.
+
+    AL before: [a, b, ...]
+    AL after: [result, ...]
+
+    Polymorphic: works with int and string.
+    - Int: numeric comparison
+    - String: lexicographic comparison
+
+    Pushes True or False onto AL.
+
+    Raises:
+        RuntimeError: If AL underflow or type mismatch
+    """
+    if len(vm.al) < 2:
+        raise RuntimeError("AL underflow: < requires 2 values")
+
+    b = vm.al.pop()
+    a = vm.al.pop()
+
+    # Type check: both must be same type
+    if type(a) != type(b):
+        raise RuntimeError(f"Type mismatch in <: cannot compare {type(a).__name__} and {type(b).__name__}")
+
+    if isinstance(a, int) and isinstance(b, int):
+        result = True_ if a < b else False_
+    elif isinstance(a, str) and isinstance(b, str):
+        result = True_ if a < b else False_
+    else:
+        raise RuntimeError(f"Cannot compare type {type(a).__name__} with <")
+
+    vm.al.append(result)
+
+
+def builtin_add(vm: VM):
+    """
+    + (add): Integer addition.
+
+    AL before: [a, b, ...]
+    AL after: [a + b, ...]
+
+    Raises:
+        RuntimeError: If AL underflow or operands not integers
+    """
+    if len(vm.al) < 2:
+        raise RuntimeError("AL underflow: + requires 2 values")
+
+    b = vm.al.pop()
+    a = vm.al.pop()
+
+    if not isinstance(a, int) or not isinstance(b, int):
+        raise RuntimeError(f"Type error in +: expected int, got {type(a).__name__} and {type(b).__name__}")
+
+    vm.al.append(a + b)
+
+
+def builtin_subtract(vm: VM):
+    """
+    - (subtract): Integer subtraction.
+
+    AL before: [a, b, ...]
+    AL after: [a - b, ...]
+
+    Raises:
+        RuntimeError: If AL underflow or operands not integers
+    """
+    if len(vm.al) < 2:
+        raise RuntimeError("AL underflow: - requires 2 values")
+
+    b = vm.al.pop()
+    a = vm.al.pop()
+
+    if not isinstance(a, int) or not isinstance(b, int):
+        raise RuntimeError(f"Type error in -: expected int, got {type(a).__name__} and {type(b).__name__}")
+
+    vm.al.append(a - b)
+
+
+def builtin_multiply(vm: VM):
+    """
+    * (multiply): Integer multiplication.
+
+    AL before: [a, b, ...]
+    AL after: [a * b, ...]
+
+    Raises:
+        RuntimeError: If AL underflow or operands not integers
+    """
+    if len(vm.al) < 2:
+        raise RuntimeError("AL underflow: * requires 2 values")
+
+    b = vm.al.pop()
+    a = vm.al.pop()
+
+    if not isinstance(a, int) or not isinstance(b, int):
+        raise RuntimeError(f"Type error in *: expected int, got {type(a).__name__} and {type(b).__name__}")
+
+    vm.al.append(a * b)
+
+
+def builtin_divide(vm: VM):
+    """
+    / (divide): Integer division.
+
+    AL before: [a, b, ...]
+    AL after: [a // b, ...]
+
+    Uses floor division (//).
+
+    Raises:
+        RuntimeError: If AL underflow, operands not integers, or division by zero
+    """
+    if len(vm.al) < 2:
+        raise RuntimeError("AL underflow: / requires 2 values")
+
+    b = vm.al.pop()
+    a = vm.al.pop()
+
+    if not isinstance(a, int) or not isinstance(b, int):
+        raise RuntimeError(f"Type error in /: expected int, got {type(a).__name__} and {type(b).__name__}")
+
+    if b == 0:
+        raise RuntimeError("Division by zero")
+
+    vm.al.append(a // b)
+
+
+def builtin_modulo(vm: VM):
+    """
+    % (modulo): Integer modulo.
+
+    AL before: [a, b, ...]
+    AL after: [a % b, ...]
+
+    Raises:
+        RuntimeError: If AL underflow, operands not integers, or modulo by zero
+    """
+    if len(vm.al) < 2:
+        raise RuntimeError("AL underflow: % requires 2 values")
+
+    b = vm.al.pop()
+    a = vm.al.pop()
+
+    if not isinstance(a, int) or not isinstance(b, int):
+        raise RuntimeError(f"Type error in %: expected int, got {type(a).__name__} and {type(b).__name__}")
+
+    if b == 0:
+        raise RuntimeError("Modulo by zero")
+
+    vm.al.append(a % b)
+
+
+def builtin_print(vm: VM):
+    """
+    print: Output value to stdout.
+
+    AL before: [value, ...]
+    AL after: [...]
+
+    Converts value to string and prints it.
+
+    Raises:
+        RuntimeError: If AL underflow
+    """
+    if len(vm.al) < 1:
+        raise RuntimeError("AL underflow: print requires 1 value")
+
+    value = vm.al.pop()
+
+    # Convert to string representation
+    if isinstance(value, str):
+        print(value)
+    elif isinstance(value, int):
+        print(str(value))
+    elif isinstance(value, TrueSingleton):
+        print("True")
+    elif isinstance(value, FalseSingleton):
+        print("False")
+    elif isinstance(value, NilSingleton):
+        print("Nil")
+    elif isinstance(value, VoidSingleton):
+        print("Void")
+    else:
+        print(repr(value))
+
+
+def builtin_read_line(vm: VM):
+    """
+    read_line: Read a line from stdin.
+
+    AL before: [...]
+    AL after: [string, ...]
+
+    Reads a line from stdin (without trailing newline) and pushes it as a string.
+
+    Raises:
+        RuntimeError: If EOF
+    """
+    try:
+        line = input()
+        vm.al.append(line)
+    except EOFError:
+        raise RuntimeError("read_line: EOF encountered")
+
+
+def builtin_concat(vm: VM):
+    """
+    concat: String concatenation.
+
+    AL before: [a, b, ...]
+    AL after: [a + b, ...]
+
+    Concatenates two strings.
+
+    Raises:
+        RuntimeError: If AL underflow or operands not strings
+    """
+    if len(vm.al) < 2:
+        raise RuntimeError("AL underflow: concat requires 2 values")
+
+    b = vm.al.pop()
+    a = vm.al.pop()
+
+    if not isinstance(a, str) or not isinstance(b, str):
+        raise RuntimeError(f"Type error in concat: expected string, got {type(a).__name__} and {type(b).__name__}")
+
+    vm.al.append(a + b)
+
+
+def builtin_to_string(vm: VM):
+    """
+    to_string: Convert int to string.
+
+    AL before: [int, ...]
+    AL after: [string, ...]
+
+    Raises:
+        RuntimeError: If AL underflow or value not an integer
+    """
+    if len(vm.al) < 1:
+        raise RuntimeError("AL underflow: to_string requires 1 value")
+
+    value = vm.al.pop()
+
+    if not isinstance(value, int):
+        raise RuntimeError(f"Type error in to_string: expected int, got {type(value).__name__}")
+
+    vm.al.append(str(value))
+
+
+def builtin_to_int(vm: VM):
+    """
+    to_int: Parse string to int.
+
+    AL before: [string, ...]
+    AL after: [int, ...] or [Nil, ...]
+
+    Pushes Nil if parsing fails.
+
+    Raises:
+        RuntimeError: If AL underflow or value not a string
+    """
+    if len(vm.al) < 1:
+        raise RuntimeError("AL underflow: to_int requires 1 value")
+
+    value = vm.al.pop()
+
+    if not isinstance(value, str):
+        raise RuntimeError(f"Type error in to_int: expected string, got {type(value).__name__}")
+
+    try:
+        result = int(value)
+        vm.al.append(result)
+    except ValueError:
+        vm.al.append(Nil)
+
+
+def builtin_is_void(vm: VM):
+    """
+    IsVoid: Test if value is Void.
+
+    AL before: [value, ...]
+    AL after: [True/False, ...]
+
+    Pushes True if value is Void, False otherwise.
+
+    Raises:
+        RuntimeError: If AL underflow
+    """
+    if len(vm.al) < 1:
+        raise RuntimeError("AL underflow: IsVoid requires 1 value")
+
+    value = vm.al.pop()
+    result = True_ if isinstance(value, VoidSingleton) else False_
+    vm.al.append(result)
+
+
+def builtin_is_nil(vm: VM):
+    """
+    IsNil: Test if value is Nil.
+
+    AL before: [value, ...]
+    AL after: [True/False, ...]
+
+    Pushes True if value is Nil, False otherwise.
+
+    Raises:
+        RuntimeError: If AL underflow
+    """
+    if len(vm.al) < 1:
+        raise RuntimeError("AL underflow: IsNil requires 1 value")
+
+    value = vm.al.pop()
+    result = True_ if isinstance(value, NilSingleton) else False_
+    vm.al.append(result)
+
+
+# ==================== Main Entry Point ====================
+
+
+def run_soma_program(source: str) -> List[Thing]:
+    """
+    Complete pipeline: source -> lexed -> parsed -> compiled -> executed.
+
+    This is the main entry point for executing SOMA programs.
+
+    Args:
+        source: SOMA source code string
+
+    Returns:
+        The final AL state after execution
+
+    Raises:
+        CompileError: If compilation fails
+        RuntimeError: If execution fails
+    """
+    # 1. Lex
+    from soma.lexer import lex
+    tokens = lex(source)
+
+    # 2. Parse
+    from soma.parser import Parser
+    parser = Parser(tokens)
+    ast = parser.parse()
+
+    # 3. Compile
+    compiled = compile_program(ast)
+
+    # 4. Execute
+    vm = VM()
+    vm.execute(compiled)
+
+    return vm.al
+
+
+# ==================== Example Usage ====================
+
+
+if __name__ == "__main__":
+    # Example: Square function
+    source = """
+    { !_ _ _ >* } !square
+    5 >square
+    """
+
+    try:
+        result_al = run_soma_program(source)
+        print(f"Final AL: {result_al}")  # Should be [25]
+    except NotImplementedError as e:
+        print(f"Not yet implemented: {e}")
+    except (CompileError, RuntimeError) as e:
+        print(f"Error: {e}")

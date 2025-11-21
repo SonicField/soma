@@ -1,0 +1,141 @@
+) SOMA Standard Library
+) Derived operations built from FFI primitives
+
+) ==================== Boolean Logic ====================
+
+) not: Boolean negation
+{{False}{True}>choose} !not
+
+) and: Logical AND
+{{}{>drop False} >choose} !and
+
+) or: Logical OR
+{{>drop True}{} >choose} !or
+
+) ==================== Comparison Operators ====================
+
+) Greater-than: execute as >>
+{>swap ><} !>
+
+) Not equal: execute as >=!
+{>over >over >swap >< >rot >rot >< >or} !=!
+
+) Equality: execute as >==
+{>=! >not} !==
+
+) Less-than-or-equal: execute as >=<
+{>swap >< >not} !=<
+
+) Greater-than-or-equal: execute as >=>
+{>< >not} !=>
+
+) ==================== Stack Manipulation ====================
+
+) dup: Duplicate top
+{!_.value _.value _.value} !dup
+
+) drop: Remove top
+{!_} !drop
+
+) swap: Swap top two
+{!_.a !_.b _.a _.b} !swap
+
+) over: Copy second to top
+{!_.a !_.b _.b _.a _.b} !over
+
+) rot: Rotate top three
+{!_.a !_.b !_.c _.b _.a _.c} !rot
+
+) ==================== Arithmetic Helpers ====================
+
+) inc: Increment by 1
+{1 >+} !inc
+
+) dec: Decrement by 1
+{1 >-} !dec
+
+) abs: Absolute value
+{>dup 0 >< {0 >swap >-} {} >choose} !abs
+
+) min: Minimum of two values
+{>over >over >< {>drop} {>swap >drop} >choose} !min
+
+) max: Maximum of two values
+{>over >over >> {>drop} {>swap >drop} >choose} !max
+
+) ==================== Control Flow Helpers ====================
+
+) times: Execute block N times
+) AL: [n, block, ...] -> [...]
+) Usage: 10 { (Hello) >print } >times
+{
+  {
+    !_.user_blk !_.cnt
+    >_.user_blk
+    _.cnt 1 >-
+    !_.new_cnt
+    _.new_cnt _.user_blk
+    >block
+    0 _.new_cnt ><
+    {}
+    {>drop >drop >drop Nil}
+    >choose
+  } >chain
+  >drop
+} !times
+
+) if: Execute block if condition is true
+) AL: [condition, block, ...] -> [...]
+) Usage: True { (Hello) >print } >if
+{{} >choose} !if
+
+) ifelse: Conditional with both branches (alias for choose)
+) AL: [condition, true_block, false_block, ...] -> [...]
+) Usage: x 0 >< { (positive) } { (not positive) } >ifelse
+{>choose} !ifelse
+
+) chainIf: Conditional chain - very common pattern
+) AL: [condition, true_block, false_block, ...] -> [...]
+) If true: executes true_block, then chains whatever it left on AL
+) If false: executes false_block, stops chain (typically pushes Nil)
+{>choose >chain} !chainIf
+
+) Execute from AL (like Forth's EXECUTE)
+{!_ >_} !^
+
+) while: Loop while condition is true
+) AL: [cond_block, body_block, ...] -> [...]
+) Usage: { count 10 >< } { count >print count >inc } >while
+{
+  {
+    !_.body !_.cond
+    _.cond _.body                 ) Push state back onto AL
+    >block                        ) Push loop block
+    >_.cond                       ) Execute condition LAST so bool is on top
+    {
+      !_.loop !_.body !_.cond     ) Pop state from AL (choose already popped)
+      >_.body                     ) Execute body
+      _.cond _.body _.loop        ) Push state back for next iteration
+    }
+    {>drop >drop >drop Nil}       ) False: cleanup
+    >choose
+  } >chain
+  >drop
+} !while
+
+) do: Execute body first, then loop while condition is true
+) AL: [body_block, cond_block, ...] -> [...]
+) Usage: { count >print count >inc } { count 10 >< } >do
+{
+  {
+    !_.cond !_.body
+    >_.body                       ) Execute body first
+    _.body _.cond                 ) Push state back onto AL
+    >block                        ) Push loop block
+    >_.cond                       ) Execute condition LAST so bool is on top
+    {}                            ) True: empty (state already on AL)
+    {>drop >drop >drop Nil}       ) False: cleanup
+    >choose
+  } >chain
+  >drop
+} !do

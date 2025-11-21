@@ -1,0 +1,185 @@
+) SOMA Standard Library Tests
+) Tests for derived operations in stdlib.soma
+
+) Note: These tests load stdlib.soma first
+
+) First, load the standard library
+) (This is done by including the stdlib source inline)
+
+) TEST: not with True
+) EXPECT_AL: [False]
+True >not
+
+) TEST: not with False
+) EXPECT_AL: [True]
+False >not
+
+) TEST: and (True, True)
+) EXPECT_AL: [True]
+True True >and
+
+) TEST: and (True, False)
+) EXPECT_AL: [False]
+True False >and
+
+) TEST: and (False, True)
+) EXPECT_AL: [False]
+False True >and
+
+) TEST: and (False, False)
+) EXPECT_AL: [False]
+False False >and
+
+) TEST: or (True, True)
+) EXPECT_AL: [True]
+True True >or
+
+) TEST: or (True, False)
+) EXPECT_AL: [True]
+True False >or
+
+) TEST: or (False, True)
+) EXPECT_AL: [True]
+False True >or
+
+) TEST: or (False, False)
+) EXPECT_AL: [False]
+False False >or
+
+) TEST: Greater-than (true)
+) EXPECT_AL: [True]
+5 3 >>
+
+) TEST: Greater-than (false)
+) EXPECT_AL: [False]
+3 5 >>
+
+) TEST: Equality (equal ints)
+) EXPECT_AL: [True]
+5 5 >==
+
+) TEST: Equality (different ints)
+) EXPECT_AL: [False]
+5 3 >==
+
+) TEST: Equality (equal strings)
+) EXPECT_AL: [True]
+(hello) (hello) >==
+
+) TEST: Not-equal (different)
+) EXPECT_AL: [True]
+5 3 >=!
+
+) TEST: Not-equal (equal)
+) EXPECT_AL: [False]
+5 5 >=!
+
+) TEST: Less-or-equal (less)
+) EXPECT_AL: [True]
+3 5 >=<
+
+) TEST: Less-or-equal (equal)
+) EXPECT_AL: [True]
+5 5 >=<
+
+) TEST: Less-or-equal (greater)
+) EXPECT_AL: [False]
+7 5 >=<
+
+) TEST: Greater-or-equal (greater)
+) EXPECT_AL: [True]
+7 5 >=>
+
+) TEST: Greater-or-equal (equal)
+) EXPECT_AL: [True]
+5 5 >=>
+
+) TEST: Greater-or-equal (less)
+) EXPECT_AL: [False]
+3 5 >=>
+
+) TEST: dup
+) EXPECT_AL: [42, 42]
+42 >dup
+
+) TEST: drop
+) EXPECT_AL: [10]
+10 20 >drop
+
+) TEST: swap
+) EXPECT_AL: [20, 10]
+10 20 >swap
+
+) TEST: over
+) EXPECT_AL: [10, 20, 10]
+10 20 >over
+
+) TEST: inc
+) EXPECT_AL: [43]
+42 >inc
+
+) TEST: dec
+) EXPECT_AL: [41]
+42 >dec
+
+) TEST: abs (positive)
+) EXPECT_AL: [5]
+5 >abs
+
+) TEST: abs (negative)
+) EXPECT_AL: [5]
+0 5 >- >abs
+
+) TEST: min
+) EXPECT_AL: [3]
+5 3 >min
+
+) TEST: max
+) EXPECT_AL: [5]
+5 3 >max
+
+) TEST: times loop
+) EXPECT_OUTPUT: Hello
+) EXPECT_OUTPUT: Hello
+) EXPECT_OUTPUT: Hello
+) EXPECT_AL: []
+3 { (Hello) >print } >times
+
+) TEST: if with True
+) EXPECT_OUTPUT: executed
+) EXPECT_AL: []
+True { (executed) >print } >if
+
+) TEST: if with False
+) EXPECT_AL: []
+False { (should not print) >print } >if
+
+) TEST: ifelse with True
+) EXPECT_OUTPUT: true branch
+) EXPECT_AL: []
+True { (true branch) >print } { (false branch) >print } >ifelse
+
+) TEST: ifelse with False
+) EXPECT_OUTPUT: false branch
+) EXPECT_AL: []
+False { (true branch) >print } { (false branch) >print } >ifelse
+
+) TEST: while loop
+) EXPECT_OUTPUT: 0
+) EXPECT_OUTPUT: 1
+) EXPECT_OUTPUT: 2
+) EXPECT_AL: []
+0 !count
+{ count 3 >< }
+{ count >to_string >print  count >inc !count }
+>while
+
+) TEST: do loop
+) EXPECT_OUTPUT: 0
+) EXPECT_OUTPUT: 1
+) EXPECT_OUTPUT: 2
+) EXPECT_AL: []
+0 !count
+{ count >to_string >print  count >inc !count }
+{ count 3 >< }
+>do

@@ -244,8 +244,8 @@ def lex(source):
 
             next_ch = source[j]
 
-            if _is_whitespace(next_ch):
-                # Whitespace terminates the integer token: valid INT.
+            if _is_whitespace(next_ch) or next_ch in ("{", "}"):
+                # Whitespace or structural delimiter terminates the integer token: valid INT.
                 value = source[i:j]
                 emit(TokenKind.INT, value, start_line, start_col)
                 col += (j - i)
@@ -253,7 +253,7 @@ def lex(source):
                 continue
 
             # If we reach here, the character immediately after the digits
-            # is not whitespace and not EOF. That is illegal for a numeric literal.
+            # is not whitespace, not a brace, and not EOF. That is illegal for a numeric literal.
             raise LexError(
                 "Illegal numeric literal starting at %r" % source[i : j + 1],
                 start_line,

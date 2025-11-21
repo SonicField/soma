@@ -1,4 +1,4 @@
-# SOMA v1.0 Language Specification
+# SOMA v1.1 Language Specification
 
 **State-Oriented Machine Algebra**
 
@@ -43,4 +43,4 @@ This creates a block that pops a value into the register, concatenates it with "
 
 ---
 
-*Category: Informational | Version: 1.0 | Date: 16 Nov 2025*
+*Category: Informational | Version: 1.1 | Date: 20 Nov 2025*
