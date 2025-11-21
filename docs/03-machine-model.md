@@ -85,7 +85,7 @@ Example:
 
 ```soma
 { >dup >* } !square
-5 square >Chain
+5 square >chain
 ```
 
 | Step | Token | AL State | Description |
@@ -95,7 +95,7 @@ Example:
 | 2 | `!square` | `[]` | Pop block, store at `square` |
 | 3 | `5` | `[5]` | Push 5 |
 | 4 | `square` | `[{>dup >*}, 5]` | Push block from Store |
-| 5 | `>Chain` | Executes block | |
+| 5 | `>chain` | Executes block | |
 | 5.1 | `>dup` | `[5, 5]` | Duplicate top |
 | 5.2 | `>*` | `[25]` | Multiply |
 | 6 | (end) | `[25]` | Final AL state |
@@ -104,15 +104,15 @@ The block consumed 1 value (implicitly) and produced 1 value.
 
 ### 1.6 AL as Control Context
 
-The AL determines which Block executes next under `>Choose` and `>Chain`.
+The AL determines which Block executes next under `>choose` and `>chain`.
 
 Example: Conditional execution
 
 ```soma
-True { "Yes" >print } { "No" >print } >Choose
+True { "Yes" >print } { "No" >print } >choose
 ```
 
-| Before `>Choose` | AL State |
+| Before `>choose` | AL State |
 |------------------|----------|
 | Top → Bottom | `[{...No...}, {...Yes...}, True]` |
 
@@ -840,7 +840,7 @@ Blocks communicate via the AL (stack).
     _.i 5 ><
       { _.i 1 >+ !_.i >block }     ) Inner loop uses its own _.i
       { }
-    >Choose >Chain
+    >choose >chain
   } !_.inner_loop
 
   _.i 3 ><
@@ -850,7 +850,7 @@ Blocks communicate via the AL (stack).
       >block
     }
     { }
-  >Choose >Chain
+  >choose >chain
 }
 ```
 
@@ -940,7 +940,7 @@ Registers are destroyed when their Block completes, but **Cells referenced by es
 **Example: Register destroyed, but value lost (no CellRef)**
 
 ```soma
-1 { _ 1 >+ !_ } >Chain _  >print   ; ERROR: Register Not Set
+1 { _ 1 >+ !_ } >chain _  >print   ; ERROR: Register Not Set
 ```
 
 | Step | Description |
@@ -954,7 +954,7 @@ Registers are destroyed when their Block completes, but **Cells referenced by es
 **Example: CellRef escapes, Cell persists**
 
 ```soma
-{ (value) !_.data _.data. } >Chain !escaped_ref
+{ (value) !_.data _.data. } >chain !escaped_ref
 escaped_ref >print   ; Prints "value" - Cell persists!
 ```
 
@@ -979,7 +979,7 @@ escaped_ref >print   ; Prints "value" - Cell persists!
   Nil !_.head.next.next
 
   _.head.       ) Return CellRef to list
-} >Chain !list
+} >chain !list
 
 ) Block destroyed, Register destroyed, but list persists!
 list.value              ) 1
@@ -998,7 +998,7 @@ The linked list was built in the Register, but returned as a CellRef. The Regist
   { _.obj.counter 1 >+ !_.obj.counter } !_.obj.increment
 
   _.obj.        ) Return handle to object
-} >Chain !myObj
+} >chain !myObj
 
 myObj.data              ) "initial data"
 myObj.counter           ) 0
@@ -1034,7 +1034,7 @@ saved_context.y >print      ; prints 2
 
 ```soma
 { !_.x !_.y _.x _.y >+ } !add_two
-3 5 add_two >Chain
+3 5 add_two >chain
 ```
 
 | Step | Token | AL State | Register State | Description |
@@ -1401,7 +1401,7 @@ This distinction is analogous to:
 **Properties:**
 
 - Auto-vivified intermediate cells start with Void value
-- Can be detected (hypothetically with `>IsVoid`)
+- Can be detected (hypothetically with `>isVoid`)
 - Reading returns Void (not an error)
 - **Cannot** be written as a value (fatal error)
 - **Can** be used for structural deletion (`Void !path.`)
@@ -1514,19 +1514,19 @@ The Void-Payload Invariant restricts the **value** component only. A Cell's **su
 
 ### 6.5 Distinguishing Void from Nil
 
-**Hypothetical `>IsVoid` operation:**
+**Hypothetical `>isVoid` operation:**
 
 ```soma
 42 !a.b.c       ; Auto-vivifies a and a.b with Void
 
-a.b >IsVoid     ; True - never explicitly set
-(Never set) (Has been set) >Choose >print    ; Prints "Never set"
+a.b >isVoid     ; True - never explicitly set
+(Never set) (Has been set) >choose >print    ; Prints "Never set"
 
 Nil !a.b        ; Explicitly set to Nil
 
-a.b >IsVoid     ; False - now has been set (to Nil)
+a.b >isVoid     ; False - now has been set (to Nil)
 a.b             ; Returns Nil
-(Never set) (Has been set) >Choose >print    ; Prints "Has been set"
+(Never set) (Has been set) >choose >print    ; Prints "Has been set"
 ```
 
 **The distinction in practice:**
@@ -1798,7 +1798,7 @@ a >print   ; prints 99
 
 ```soma
 { 100 !_.temp _.temp } !block
-block >Chain >print   ; prints 100
+block >chain >print   ; prints 100
 _.temp >print         ; ERROR: Register not set
 ```
 
@@ -1989,7 +1989,7 @@ Store a CellRef to a built-in at a different path - create aliases.
   7 !_.root.right.value
 
   _.root.       ) Return CellRef to root
-} >Chain !tree
+} >chain !tree
 
 ) Tree persists, accessible via CellRef (Register destroyed)
 tree.value              ) 5
@@ -2250,7 +2250,7 @@ When a fatal error occurs: **"The Store remains in its last valid state."**
 
 During analysis of the specification, the following issues were identified:
 
-1. **CellRef vs Block in `>Chain` examples**: Several examples use `square.` or `toggle.` (CellRefs) where `>Chain` expects a Block value. These should use `square` (payload) instead.
+1. **CellRef vs Block in `>chain` examples**: Several examples use `square.` or `toggle.` (CellRefs) where `>chain` expects a Block value. These should use `square` (payload) instead.
 
 ~~2. **Register destruction semantics for escaped CellRefs**: RESOLVED - Section 3.13 and Section 4.4 now clarify that Cells (whether in Store or Register) persist as long as they're accessible via any CellRef, even after the Register is destroyed. The CellRef keeps the Cell alive.~~
 

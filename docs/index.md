@@ -25,21 +25,22 @@ This creates a block that pops a value into the register, concatenates it with "
 
 ## Implementation Status
 
-**Implemented:** Lexer
+**Implemented:** Lexer, Parser
 
-**Future:** Parser, Runtime
+**Future:** Runtime
 
 ## Table of Contents
 
 1. [Philosophy](01-philosophy.md) - SOMA's design principles and relationship to other computational models
-2. [Lexer](02-lexer.md) - Tokens, literals, paths, and syntactic rules
+2. [Lexical Analysis and Parsing](02-lexer.md) - Tokens, AST nodes, path parsing, and validation
 3. [Machine Model](03-machine-model.md) - The Accumulator List, Store, Registers, and Values
 4. [Blocks and Execution](04-blocks-execution.md) - First-class blocks and the execution model
-5. [Control Flow](05-control-flow.md) - `>Choose`, `>Chain`, and algebraic flow control
+5. [Control Flow](05-control-flow.md) - `>choose`, `>chain`, and algebraic flow control
 6. [Built-ins](06-builtins.md) - Core operations and their AL contracts
 7. [Comparisons](07-comparisons.md) - SOMA vs Forth, Haskell, Lambda Calculus, and others
 8. [Examples](08-examples.md) - Working SOMA programs demonstrating key concepts
 9. [Errors and Semantics](09-errors-semantics.md) - Fatal errors, abstract machine, and formal grammar
+10. [Standard Library](10-stdlib.md) - Derived operations built from FFI primitives
 
 ---
 

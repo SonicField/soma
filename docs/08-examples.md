@@ -28,14 +28,14 @@ All examples in this document have been validated against the SOMA v1.0 specific
 The simplest SOMA program:
 
 ```soma
-"Hello, world!" >print
+(Hello, world!) >print
 ```
 
 **Execution trace:**
 
 1. Initial state: `AL = []`, `Store = {}`
-2. Token `"Hello, world!"` pushes string onto AL
-   - `AL = ["Hello, world!"]`
+2. Token `(Hello, world!)` pushes string onto AL
+   - `AL = [(Hello, world!)]`
 3. Token `>print` consumes top of AL and writes to stdout
    - `AL = []`
 
@@ -49,20 +49,20 @@ Hello, world!
 Using a block to encapsulate behavior:
 
 ```soma
-{ "Hello, world!" >print } !say_hello
-say_hello >Chain
+{ (Hello, world!) >print } !say_hello
+>say_hello
 ```
 
 **Execution trace:**
 
-1. Block `{ "Hello, world!" >print }` is pushed onto AL
+1. Block `{ (Hello, world!) >print }` is pushed onto AL
    - `AL = [Block]`
 2. `!say_hello` pops block and stores it in Store
    - `AL = []`
    - `Store = { say_hello: Block }`
 3. `say_hello` pushes the block back onto AL
    - `AL = [Block]`
-4. `>Chain` executes the block (which prints and leaves no block on AL, so >Chain terminates)
+4. `>say_hello` executes the block (which prints and returns)
    - `AL = []`
 
 **Output:**
@@ -75,22 +75,22 @@ Hello, world!
 A block that takes a parameter from the AL:
 
 ```soma
-{ !_.msg "Hello, " _.msg >concat >print } !greet
-"world" greet >Chain
+{ !_.msg (Hello, ) _.msg >concat >print } !greet
+(world) greet >chain
 ```
 
 **Execution trace:**
 
 1. Block is stored at `greet`
-2. `"world"` is pushed onto AL
-   - `AL = ["world"]`
+2. `(world)` is pushed onto AL
+   - `AL = [(world)]`
 3. `greet` pushes the block onto AL
-   - `AL = [Block, "world"]`
-4. `>Chain` executes the block:
+   - `AL = [Block, (world)]`
+4. `>chain` executes the block:
    - **Block creates fresh, empty Register**
-   - `!_.msg` pops `"world"` and stores in **this block's Register** as `_.msg`
-   - `"Hello, "` is pushed
-   - `_.msg` retrieves `"world"` from **this block's Register** and pushes it
+   - `!_.msg` pops `(world)` and stores in **this block's Register** as `_.msg`
+   - `(Hello, )` is pushed
+   - `_.msg` retrieves `(world)` from **this block's Register** and pushes it
    - `>concat` pops two strings, concatenates, pushes result
    - `>print` outputs the concatenated string
    - **Block completes, Register is destroyed**
@@ -192,7 +192,7 @@ stats = {
 Execute a block only if a condition is true:
 
 ```soma
-True { "Condition is true" >print } {} >Choose
+True { (Condition is true) >print } {} >choose
 ```
 
 **Explanation:**
@@ -211,9 +211,9 @@ Condition is true
 ```soma
 15 !age
 age 18 >>
-  { "Adult" >print }
-  { "Minor" >print }
->Choose
+  { (Adult) >print }
+  { (Minor) >print }
+>choose
 ```
 
 **Execution trace:**
@@ -221,9 +221,9 @@ age 18 >>
 1. `age 18 >>` compares: is age > 18?
    - Result: `False` (15 is not greater than 18)
    - `AL = [False]`
-2. `>Choose` pops the condition and the two blocks
+2. `>choose` pops the condition and the two blocks
    - Since False, executes second block
-   - Second block prints "Minor"
+   - Second block prints (Minor)
 
 **Output:**
 ```
@@ -236,23 +236,23 @@ Minor
 25 !temperature
 
 temperature 30 >>
-  { "Hot" >print }
+  { (Hot) >print }
   {
     temperature 20 >>
-      { "Warm" >print }
-      { "Cold" >print }
-    >Choose
+      { (Warm) >print }
+      { (Cold) >print }
+    >choose
   }
->Choose
+>choose
 ```
 
 **Execution trace:**
 
 1. Compare temperature (25) with 30: `False`
-2. Execute else branch (the nested Choose)
+2. Execute else branch (the nested choose)
    - **Inner block gets fresh, empty Register**
 3. Compare temperature (25) with 20: `True`
-4. Execute "Warm" branch
+4. Execute (Warm) branch
 
 **Output:**
 ```
@@ -264,13 +264,13 @@ Warm
 ### 4.4 Equality Testing
 
 ```soma
-"password123" !stored_password
-"password123" !user_input
+(password123) !stored_password
+(password123) !user_input
 
 stored_password user_input >==
-  { "Access granted" >print }
-  { "Access denied" >print }
->Choose
+  { (Access granted) >print }
+  { (Access denied) >print }
+>choose
 ```
 
 **Output:**
@@ -282,13 +282,13 @@ Access granted
 
 ## 5. Building Control Structures
 
-SOMA has no built-in loops. All iteration is built from `>Choose` (conditional) and `>Chain` (continuation). This section shows how to build loops step by step using `>block`.
+SOMA has no built-in loops. All iteration is built from `>choose` (conditional) and `>chain` (continuation). This section shows how to build loops step by step using `>block`.
 
 ### 5.1 Building a While Loop (Step by Step)
 
-**Step 1: Understanding >Chain**
+**Step 1: Understanding >chain**
 
-`>Chain` executes blocks repeatedly. It:
+`>chain` executes blocks repeatedly. It:
 1. Pops the top of AL
 2. If it's a Block, executes it
 3. After execution, if AL top is a Block, repeats
@@ -299,7 +299,7 @@ SOMA has no built-in loops. All iteration is built from `>Choose` (conditional) 
 To loop, a block can reference itself using `>block`:
 
 ```soma
-{ "tick" >print >block } >Chain
+{ (tick) >print >block } >chain
 ```
 
 **Problem:** This loops forever! We need a condition.
@@ -318,8 +318,8 @@ We need the block to choose whether to continue:
   counter 5 ><
     { >block }
     { }
-  >Choose
-} >Chain
+  >choose
+} >chain
 ```
 
 **Execution:**
@@ -329,7 +329,7 @@ We need the block to choose whether to continue:
 3. Increments counter in Store to 1
 4. Checks if 1 < 5: True
 5. Chooses first branch: pushes `>block` (the current block) onto AL
-6. `>Chain` sees block, continues
+6. `>chain` sees block, continues
 7. **New block execution with fresh Register**
 8. Repeats until counter reaches 5
 
@@ -359,8 +359,8 @@ Here's the general pattern for while loops in SOMA:
   {Condition}
     { >block }
     { }
-  >Choose
-} >Chain
+  >choose
+} >chain
 ```
 
 **Example: Sum from 1 to 10**
@@ -376,8 +376,8 @@ Here's the general pattern for while loops in SOMA:
   i 10 >>
     { }
     { >block }
-  >Choose
-} >Chain
+  >choose
+} >chain
 
 sum >print
 ```
@@ -399,14 +399,14 @@ A do-while loop executes at least once:
 0 !counter
 
 {
-  "Executed at least once" >print
+  (Executed at least once) >print
   counter 1 >+ !counter
 
   counter 1 ><
     { >block }
     { }
-  >Choose
-} >Chain
+  >choose
+} >chain
 ```
 
 **Output:**
@@ -414,42 +414,44 @@ A do-while loop executes at least once:
 Executed at least once
 ```
 
-**Explanation:**
-
-Even though `counter` starts at 0 and the condition `counter < 1` becomes false after first iteration, the block executes once before checking.
+**Example:**
+  1. Prints "Executed at least once"
+  2. Increments counter to 1
+  3. Checks condition: 1 < 1 → False
+  4. Chooses empty block → stops
 
 ### 5.4 Infinite Loop Pattern
 
 The simplest loop in SOMA:
 
 ```soma
-{ "tick" >print >block } >Chain
+{ (tick) >print >block } >chain
 ```
 
 This demonstrates the power of `>block`: the block can reference itself without any external storage or naming.
 
-### 5.5 How Loops Are Just Blocks + >Choose + >Chain
+### 5.5 How Loops Are Just Blocks + >choose + >chain
 
 Let's make this explicit:
 
 **While loop anatomy:**
 
 ```
-{Condition} {Body + Continue} {} >Choose
+{Condition} {Body + Continue} {} >choose
 ```
 
 **The "Continue" part:**
 - If condition true: execute body, then push `>block` back (loop)
 - If condition false: execute empty block (stop)
 
-**>Chain's role:**
+**>chain's role:**
 - Keeps executing whatever block is on AL
 - Stops when AL top is not a block
 
 **Key insight:** There's no special loop syntax. Just:
 1. Blocks (encapsulated behavior)
-2. >Choose (conditional execution)
-3. >Chain (continuation)
+2. >choose (conditional execution)
+3. >chain (continuation)
 4. **>block** (self-reference without naming)
 
 ---
@@ -480,9 +482,9 @@ Let's make this explicit:
   1 !_.n
   {
     2 !_.n
-  } >Chain
+  } >chain
   _.n >print
-} >Chain
+} >chain
 ```
 
 **What happens:**
@@ -511,8 +513,8 @@ Let's make this explicit:
   1 !_.n
   {
     _.n >print
-  } >Chain
-} >Chain
+  } >chain
+} >chain
 ```
 
 **What happens:**
@@ -534,8 +536,8 @@ Let's make this explicit:
   {
     !_.inner_n
     _.inner_n >print
-  } >Chain
-} >Chain
+  } >chain
+} >chain
 ```
 
 **What happens:**
@@ -560,8 +562,8 @@ Let's make this explicit:
   1 !shared_data
   {
     shared_data >print
-  } >Chain
-} >Chain
+  } >chain
+} >chain
 ```
 
 **What happens:**
@@ -584,7 +586,7 @@ Let's make this explicit:
   { !_.n _.n _.n >* } !_.square
   7 >_.square
   >print
-} >Chain
+} >chain
 ```
 
 **What happens:**
@@ -622,10 +624,10 @@ Let's make this explicit:
     counter 1 >+ !counter
   } !increment
 
-  increment >Chain
-  increment >Chain
-  increment >Chain
-} >Chain
+  increment >chain
+  increment >chain
+  increment >chain
+} >chain
 ```
 
 **Output:**
@@ -682,9 +684,9 @@ Let's make this explicit:
     _.i 3 ><
       { >block }
       { }
-    >Choose
-  } >Chain
-} >Chain
+    >choose
+  } >chain
+} >chain
 ```
 
 **Problem:** Each loop iteration is a fresh block execution with fresh Register. `_.i` is reset to Void each time (or doesn't exist), causing errors.
@@ -700,8 +702,8 @@ Let's make this explicit:
   i 3 ><
     { >block }
     { }
-  >Choose
-} >Chain
+  >choose
+} >chain
 ```
 
 **Output:**
@@ -717,19 +719,19 @@ Let's make this explicit:
 
 ```soma
 {
-  "outer_value" !outer_var
+  (outer_value) !outer_var
 
   {
     ) Define inner helper in outer Register
     {
       !_.param
-      _.param " processed" >concat
+      _.param ( processed) >concat
     } !_.inner_helper
 
     ) Use the helper
     outer_var >_.inner_helper >print
-  } >Chain
-} >Chain
+  } >chain
+} >chain
 ```
 
 **Output:**
@@ -739,7 +741,7 @@ outer_value processed
 
 **What happens:**
 
-1. Outer block: Stores "outer_value" in **Store** as `outer_var`
+1. Outer block: Stores (outer_value) in **Store** as `outer_var`
 2. Outer block: Stores helper block in **outer's Register** as `_.inner_helper`
 3. Inner block executes with **fresh Register**:
    - `outer_var` reads from **Store** (works!)
@@ -753,13 +755,13 @@ outer_value processed
 {
   {
     !_.param
-    _.param " processed" >concat
+    _.param ( processed) >concat
   } !_.helper
 
   {
-    "value" >_.helper >print
-  } >Chain
-} >Chain
+    (value) >_.helper >print
+  } >chain
+} >chain
 ```
 
 **Problem:** Inner block can't see `_.helper` from outer Register.
@@ -770,13 +772,13 @@ outer_value processed
 {
   {
     !_.param
-    _.param " processed" >concat
+    _.param ( processed) >concat
   } !helper
 
   {
-    "value" >helper >print
-  } >Chain
-} >Chain
+    (value) >helper >print
+  } >chain
+} >chain
 ```
 
 **Output:**
@@ -800,17 +802,17 @@ True !state
 
 {
   state
-    { "ON" >print False !state }
-    { "OFF" >print True !state }
-  >Choose
+    { (ON) >print False !state }
+    { (OFF) >print True !state }
+  >choose
 
   count 1 >+ !count
 
   count 5 ><
     { >block }
     { }
-  >Choose
-} >Chain
+  >choose
+} >chain
 ```
 
 **Output:**
@@ -836,27 +838,27 @@ A traffic light with three states: Red → Green → Yellow → Red
 0 !cycle_count
 
 {
-  "RED" >print
-  green >Chain
+  (RED) >print
+  green >chain
 } !red
 
 {
-  "GREEN" >print
-  yellow >Chain
+  (GREEN) >print
+  yellow >chain
 } !green
 
 {
-  "YELLOW" >print
+  (YELLOW) >print
 
   cycle_count 1 >+ !cycle_count
 
   cycle_count 3 ><
-    { red >Chain }
+    { red >chain }
     { }
-  >Choose
+  >choose
 } !yellow
 
-red >Chain
+red >chain
 ```
 
 **Output:**
@@ -888,27 +890,27 @@ The `yellow` state checks if we've completed 3 cycles and either continues to `r
 A door that can be opened and closed:
 
 ```soma
-"open" !door_input
+(open) !door_input
 
 {
-  "Door is CLOSED" >print
+  (Door is CLOSED) >print
 
-  door_input "open" >==
-    { opened >Chain }
-    { closed >Chain }
-  >Choose
+  door_input (open) >==
+    { opened >chain }
+    { closed >chain }
+  >choose
 } !closed
 
 {
-  "Door is OPEN" >print
+  (Door is OPEN) >print
 
-  door_input "close" >==
-    { closed >Chain }
-    { opened >Chain }
-  >Choose
+  door_input (close) >==
+    { closed >chain }
+    { opened >chain }
+  >choose
 } !opened
 
-closed >Chain
+closed >chain
 ```
 
 **Output:**
@@ -941,9 +943,9 @@ The `door_input` Store cell determines which state transition occurs. All FSM st
   0 !stack.count
 } !pop_last
 
-"Hello" push_first >Chain
+(Hello) push_first >chain
 stack.data.0 >print
-pop_last >Chain >print
+pop_last >chain >print
 ```
 
 **Output:**
@@ -957,9 +959,9 @@ Hello
 ### 8.2 Record/Struct Pattern
 
 ```soma
-"Alice" !person.name
+(Alice) !person.name
 30 !person.age
-"Engineering" !person.department
+(Engineering) !person.department
 
 {
   person.name >print
@@ -967,7 +969,7 @@ Hello
   person.department >print
 } !print_person
 
-print_person >Chain
+print_person >chain
 ```
 
 **Output:**
@@ -979,27 +981,30 @@ Engineering
 
 ### 8.3 Key-Value Store Pattern
 
+**Note:** This example uses a hypothetical `>ToPath` operation that doesn't exist in SOMA v1.0. It would convert a string to a path and read from the Store. This is shown for educational purposes to demonstrate the pattern.
+
 ```soma
-"apple" !fruits.a
-"banana" !fruits.b
-"cherry" !fruits.c
+(apple) !fruits.a
+(banana) !fruits.b
+(cherry) !fruits.c
 
 {
   !_.key
-  "fruits." _.key >concat >ToPath
+  (fruits.) _.key >concat >ToPath
 } !get_fruit
 
-"b" get_fruit >Chain >print
+(b) get_fruit >chain >print
 ```
 
-**Output:**
+**Hypothetical output:**
 ```
 banana
 ```
 
 **Explanation:**
 - `_.key` is a Register variable (parameter from AL)
-- After building the path, `>ToPath` reads from Store
+- After building the path, `>ToPath` would convert string to path and read from Store
+- **This operation doesn't currently exist in SOMA v1.0**
 
 ---
 
@@ -1056,17 +1061,17 @@ node.sub        ) 99
 
 ) Block with children
 { >print } !action
-"help text" !action.description
-action >Chain           ) Executes the block
+(help text) !action.description
+action >chain           ) Executes the block
 action.description >print  ) Prints: help text
 
 ) String with children
-"root_value" !tree
-"left_value" !tree.left
-"right_value" !tree.right
-tree            ) "root_value"
-tree.left       ) "left_value"
-tree.right      ) "right_value"
+(root_value) !tree
+(left_value) !tree.left
+(right_value) !tree.right
+tree            ) (root_value)
+tree.left       ) (left_value)
+tree.right      ) (right_value)
 ```
 
 **This is unusual:** Most languages don't let you attach children to primitive values. SOMA's Cell structure makes this natural.
@@ -1124,17 +1129,17 @@ CellRefs can create circular references - graphs with cycles:
 
 ```soma
 ) Create two nodes
-"A" !nodeA.label
-"B" !nodeB.label
+(A) !nodeA.label
+(B) !nodeB.label
 
 ) Create bidirectional edges (circular!)
 nodeB. !nodeA.next              ) A → B (CellRef)
 nodeA. !nodeB.prev              ) B → A (CellRef)
 
 ) Navigate the graph
-nodeA.next.label >print         ) "B" (A → B)
-nodeB.prev.label >print         ) "A" (B → A)
-nodeA.next.prev.label >print    ) "A" (A → B → A, cyclic!)
+nodeA.next.label >print         ) (B) (A → B)
+nodeB.prev.label >print         ) (A) (B → A)
+nodeA.next.prev.label >print    ) (A) (A → B → A, cyclic!)
 ```
 
 **What's happening:**
@@ -1169,9 +1174,9 @@ Let's build a graph and traverse it:
 
 ```soma
 ) Create a directed graph: A → B → C → A (cycle)
-"Node A" !graph.a.label
-"Node B" !graph.b.label
-"Node C" !graph.c.label
+(Node A) !graph.a.label
+(Node B) !graph.b.label
+(Node C) !graph.c.label
 
 ) Create edges
 graph.b. !graph.a.next          ) A → B
@@ -1217,8 +1222,8 @@ b.next = a;  // Cycle
 **SOMA approach:**
 ```soma
 ) No class definition needed
-"A" !a.label
-"B" !b.label
+(A) !a.label
+(B) !b.label
 b. !a.next
 a. !b.next
 ```
@@ -1304,10 +1309,10 @@ Represent a graph as adjacency lists using CellRefs:
 
 ```soma
 ) Create vertices
-"Vertex A" !graph.a.label
-"Vertex B" !graph.b.label
-"Vertex C" !graph.c.label
-"Vertex D" !graph.d.label
+(Vertex A) !graph.a.label
+(Vertex B) !graph.b.label
+(Vertex C) !graph.c.label
+(Vertex D) !graph.d.label
 
 ) Create adjacency lists (edges)
 graph.b. !graph.a.edges.0    ) A → B
@@ -1532,7 +1537,7 @@ Build a linked list in a Register, return a CellRef - the list persists even aft
   Nil !_.head.next.next
 
   _.head.       ) Return CellRef to list head
-} >Chain !list
+} >chain !list
 
 ) Block destroyed, Register destroyed, but list persists!
 list.value >print              ) 1
@@ -1565,15 +1570,15 @@ Create a structure locally, return a CellRef - like `new` in other languages:
 
 ```soma
 {
-  "initial data" !_.obj.data
+  (initial data) !_.obj.data
   0 !_.obj.counter
   { _.obj.counter 1 >+ !_.obj.counter } !_.obj.increment
 
   _.obj.        ) Return handle to object
-} >Chain !myObj
+} >chain !myObj
 
 ) Object persists and is usable
-myObj.data >print              ) "initial data"
+myObj.data >print              ) (initial data)
 myObj.counter >print           ) 0
 >myObj.increment               ) Execute increment method
 myObj.counter >print           ) 1
@@ -1607,11 +1612,11 @@ initial data
 Store a CellRef to a built-in at a different path - create aliases:
 
 ```soma
-Chain !kette            ) German name for Chain
+chain !kette            ) German name for chain
 print !drucken          ) German name for print
 
 ) Use German names
-"Hallo Welt" >drucken
+(Hallo Welt) >drucken
 
 { result >drucken } !print_result
 1 2 >+ !result
@@ -1626,9 +1631,9 @@ Hallo Welt
 
 **Explanation:**
 
-1. `Chain !kette` - Get built-in Chain block, store CellRef at path `kette`
+1. `chain !kette` - Get built-in chain block, store CellRef at path `kette`
 2. `print !drucken` - Get built-in print block, store CellRef at path `drucken`
-3. Now `>kette` and `>drucken` work exactly like `>Chain` and `>print`
+3. Now `>kette` and `>drucken` work exactly like `>chain` and `>print`
 
 **Use cases:**
 - Creating domain-specific names for built-ins
@@ -1642,8 +1647,8 @@ Comprehensive example showing Cell lifetime independence:
 
 ```soma
 ) Create Cell with data
-"Original Value" !cell
-cell >print                 ) "Original Value"
+(Original Value) !cell
+cell >print                 ) (Original Value)
 
 ) Create multiple CellRefs
 cell. !ref1
@@ -1654,23 +1659,23 @@ cell. !ref3
 Void !cell.
 
 ) Cell still accessible via CellRefs
-ref1 >print                 ) "Original Value"
-ref2 >print                 ) "Original Value"
+ref1 >print                 ) (Original Value)
+ref2 >print                 ) (Original Value)
 
 ) Can modify Cell through CellRef
-"Updated Value" !ref1
-ref2 >print                 ) "Updated Value" (same Cell!)
-ref3 >print                 ) "Updated Value"
+(Updated Value) !ref1
+ref2 >print                 ) (Updated Value) (same Cell!)
+ref3 >print                 ) (Updated Value)
 
 ) Create new path to same Cell
 ref1. !newpath
-newpath >print              ) "Updated Value"
+newpath >print              ) (Updated Value)
 
 ) All paths point to same Cell
-"Final Value" !newpath
-ref1 >print                 ) "Final Value"
-ref2 >print                 ) "Final Value"
-ref3 >print                 ) "Final Value"
+(Final Value) !newpath
+ref1 >print                 ) (Final Value)
+ref2 >print                 ) (Final Value)
+ref3 >print                 ) (Final Value)
 ```
 
 **Output:**
@@ -1704,7 +1709,7 @@ Build a complex tree structure locally, return a CellRef:
   9 !_.root.right.right.value
 
   _.root.       ) Return CellRef to root
-} >Chain !tree
+} >chain !tree
 
 ) Tree persists, accessible via CellRef
 tree.value >print                     ) 5
@@ -1886,7 +1891,7 @@ You can delete Register cells using `Void !_.path.` (note the trailing dot):
 
   Void !_.temp.     ) Delete Register cell
   _.temp            ) Returns Void (Cell no longer accessible)
-} >Chain
+} >chain
 ```
 
 **Output:**
@@ -1914,7 +1919,7 @@ Deleting a path doesn't delete the Cell if a CellRef still references it:
 
   Void !_.data.     ) Delete path _.data
   _.ref >print      ) Still works! Cell persists via CellRef
-} >Chain
+} >chain
 ```
 
 **Output:**
@@ -1948,7 +1953,7 @@ Use Register as temporary workspace, then clean up:
   Void !_.b.
 
   ) Return result (AL = [3])
-} >Chain >print
+} >chain >print
 ```
 
 **Output:**
@@ -1981,7 +1986,7 @@ Delete entire subtrees while preserving other parts:
   _.tree.value >print        ) Root value still exists: 3
   _.tree.right.value >print  ) Right subtree still exists: 2
   _.tree.left                ) Left subtree gone: Void
-} >Chain
+} >chain
 ```
 
 **Output:**
@@ -2016,7 +2021,7 @@ a.b             ) Void (Cell no longer accessible via this path)
   42 !_.x
   Void !_.x.      ) Delete path _.x from Register tree
   _.x             ) Void (Cell no longer accessible via this path)
-} >Chain
+} >chain
 ```
 
 **Key principle:** Store and Register have identical Cell structure, so all Cell operations (read, write, delete) work the same way in both.
@@ -2028,7 +2033,7 @@ Build object in Register, extract what you need, clean up:
 ```soma
 {
   ) Build temporary object structure
-  "input.txt" !_.config.filename
+  (input.txt) !_.config.filename
   100 !_.config.buffer_size
   True !_.config.verbose
 
@@ -2040,7 +2045,7 @@ Build object in Register, extract what you need, clean up:
   Void !_.config.
 
   ) Register now clean, Store has extracted values
-} >Chain
+} >chain
 
 output_file >print
 buffer >print
@@ -2060,19 +2065,19 @@ Delete paths based on conditions:
 
 ```soma
 {
-  "data" !_.cache
+  (data) !_.cache
   True !_.should_clear
 
   _.should_clear
-    { Void !_.cache. "Cache cleared" >print }
-    { "Cache retained" >print }
-  >Choose
+    { Void !_.cache. (Cache cleared) >print }
+    { (Cache retained) >print }
+  >choose
 
-  _.cache >IsVoid
-    { "Cache is empty" >print }
-    { "Cache has data" >print }
-  >Choose
-} >Chain
+  _.cache >isVoid
+    { (Cache is empty) >print }
+    { (Cache has data) >print }
+  >choose
+} >chain
 ```
 
 **Output:**
@@ -2103,7 +2108,7 @@ Cache is empty
 
   ) Later in block...
   _.temp >print         ) Would catch bug: prints Void
-} >Chain
+} >chain
 ```
 
 **Output:**
@@ -2151,7 +2156,7 @@ Increment only if value is below threshold:
 value threshold ><
   { value 1 >+ !value }
   { }
->Choose
+>choose
 
 value >print
 ```
@@ -2169,10 +2174,10 @@ value >print
   _.a _.b >>
     { _.a }
     { _.b }
-  >Choose
+  >choose
 } !max
 
-15 23 max >Chain >print
+15 23 max >chain >print
 ```
 
 **Output:**
@@ -2190,11 +2195,11 @@ value >print
   _.n 0 >>
     { _.n }
     { 0 _.n >- }
-  >Choose
+  >choose
 } !abs
 
--5 abs >Chain >print
-10 abs >Chain >print
+-5 abs >chain >print
+10 abs >chain >print
 ```
 
 **Output:**
@@ -2220,15 +2225,15 @@ value >print
     factorial_i _.n >>
       { }
       { >block }
-    >Choose
-  } >Chain
+    >choose
+  } >chain
 
   ) Clean up and return
   factorial_result !_.result
   factorial_result
 } !factorial
 
-5 factorial >Chain >print
+5 factorial >chain >print
 ```
 
 **Output:**
@@ -2249,16 +2254,16 @@ value >print
       _.value _.high ><
         { True }
         { False }
-      >Choose
+      >choose
     }
     { False }
-  >Choose
+  >choose
 } !in_range
 
-15 10 20 in_range >Chain
-  { "In range" >print }
-  { "Out of range" >print }
->Choose
+15 10 20 in_range >chain
+  { (In range) >print }
+  { (Out of range) >print }
+>choose
 ```
 
 **Output:**
@@ -2281,7 +2286,7 @@ In range
   _.x >_.f >_.g
 } !compose
 
-5 double increment compose >Chain >print
+5 double increment compose >chain >print
 ```
 
 **Output:**
@@ -2299,13 +2304,13 @@ In range
 ### 13.2 Conditional Block Selection
 
 ```soma
-{ "Option A" >print } !block_a
-{ "Option B" >print } !block_b
+{ (Option A) >print } !block_a
+{ (Option B) >print } !block_b
 
 True
-  { block_a >Chain }
-  { block_b >Chain }
->Choose
+  { block_a >chain }
+  { block_b >chain }
+>choose
 ```
 
 **Output:**
@@ -2321,13 +2326,13 @@ Option A
 {
   !_.x
   _.x 0 >>
-    { { "positive" >print } }
-    { { "non-positive" >print } }
-  >Choose
+    { { (positive) >print } }
+    { { (non-positive) >print } }
+  >choose
 } !classify
 
-5 classify >Chain >Chain
--3 classify >Chain >Chain
+5 classify >chain >chain
+-3 classify >chain >chain
 ```
 
 **Output:**
@@ -2399,6 +2404,8 @@ The `>^` pattern lets you treat blocks as first-class values that can be selecte
 
 Dispatch tables select and execute blocks based on a key:
 
+**Note:** This example uses hypothetical `>ToPath` operation for demonstration.
+
 ```soma
 { (Handling add) >print } !handlers.add
 { (Handling subtract) >print } !handlers.sub
@@ -2406,14 +2413,14 @@ Dispatch tables select and execute blocks based on a key:
 
 {
   !_.operation
-  "handlers." _.operation >concat >ToPath >^
+  (handlers.) _.operation >concat >ToPath >^
 } !dispatch
 
-(add) dispatch >Chain
-(mul) dispatch >Chain
+(add) dispatch >chain
+(mul) dispatch >chain
 ```
 
-**Output:**
+**Hypothetical output:**
 ```
 Handling add
 Handling multiply
@@ -2422,8 +2429,8 @@ Handling multiply
 **Explanation:**
 
 1. `dispatch` takes operation name from AL, stores in Register
-2. Builds path string: `"handlers." + operation`
-3. `>ToPath` converts string to path and reads the block from Store
+2. Builds path string: `(handlers.) + operation`
+3. `>ToPath` would convert string to path and read the block from Store (hypothetical)
 4. `>^` executes the block
 
 ### 14.3 Higher-Order Blocks
@@ -2487,9 +2494,9 @@ tick
   _.n 2 >*
 } !double
 
-1 double >Chain >print
-2 double >Chain >print
-3 double >Chain >print
+1 double >chain >print
+2 double >chain >print
+3 double >chain >print
 ```
 
 **Output:**
@@ -2508,10 +2515,10 @@ tick
 { !_.b !_.a _.a _.b >* } !ops.mul
 
 ) Use a stored operation
-5 3 ops.add >Chain >print
+5 3 ops.add >chain >print
 
 ) Change the operation
-5 3 ops.mul >Chain >print
+5 3 ops.mul >chain >print
 ```
 
 **Output:**
@@ -2533,25 +2540,25 @@ tick
   n 3 >/ 3 >* n >==
     {
       n 5 >/ 5 >* n >==
-        { "FizzBuzz" >print }
-        { "Fizz" >print }
-      >Choose
+        { (FizzBuzz) >print }
+        { (Fizz) >print }
+      >choose
     }
     {
       n 5 >/ 5 >* n >==
-        { "Buzz" >print }
+        { (Buzz) >print }
         { n >print }
-      >Choose
+      >choose
     }
-  >Choose
+  >choose
 
   n 1 >+ !n
 
   n 16 ><
     { >block }
     { }
-  >Choose
-} >Chain
+  >choose
+} >chain
 ```
 
 **Output:**
@@ -2591,11 +2598,11 @@ FizzBuzz
       n 2 >/ 2 >* n >==
         { n 2 >/ !n }
         { n 3 >* 1 >+ !n }
-      >Choose
+      >choose
       >block
     }
-  >Choose
-} >Chain
+  >choose
+} >chain
 ```
 
 **Output:**
@@ -2624,11 +2631,11 @@ FizzBuzz
   output _.str >concat !output
 } !append
 
-"Hello" append >Chain
-" " append >Chain
-"SOMA" append >Chain
-" " append >Chain
-"world" append >Chain
+(Hello) append >chain
+( ) append >chain
+(SOMA) append >chain
+( ) append >chain
+(world) append >chain
 
 output >print
 ```
@@ -2650,13 +2657,13 @@ Hello SOMA world
     {
       _.n >print
       _.n 1 >-
-      >block >Chain
+      >block >chain
     }
     { }
-  >Choose
+  >choose
 } !countdown
 
-5 countdown >Chain
+5 countdown >chain
 ```
 
 **Output:**
@@ -2671,10 +2678,10 @@ Hello SOMA world
 **Explanation:**
 
 - `countdown` takes `_.n` from AL (stored in Register)
-- Each recursive call via `>block >Chain` creates fresh Register
+- Each recursive call via `>block >chain` creates fresh Register
 - Must pass decremented value via AL for next call
 - `_.n 1 >-` leaves decremented value on AL
-- `>block >Chain` executes with that value
+- `>block >chain` executes with that value
 
 ---
 
@@ -2701,8 +2708,8 @@ Hello SOMA world
   1 !_.x
   {
     _.x >print  ) ERROR: _.x is Void in inner Register
-  } >Chain
-} >Chain
+  } >chain
+} >chain
 ```
 
 ✅ **RIGHT (pass via AL):**
@@ -2713,8 +2720,8 @@ Hello SOMA world
   {
     !_.inner_x
     _.inner_x >print
-  } >Chain
-} >Chain
+  } >chain
+} >chain
 ```
 
 ✅ **RIGHT (use Store):**
@@ -2723,8 +2730,8 @@ Hello SOMA world
   1 !shared_x
   {
     shared_x >print
-  } >Chain
-} >Chain
+  } >chain
+} >chain
 ```
 
 #### Mistake 2: Expecting Register to persist after block completes
@@ -2755,9 +2762,9 @@ _.x >print  ) ERROR: _.x doesn't exist in outer context
   {
     _.i >print  ) ERROR: _.i resets each iteration
     _.i 1 >+ !_.i
-    _.i 3 >< { >block } { } >Choose
-  } >Chain
-} >Chain
+    _.i 3 >< { >block } { } >choose
+  } >chain
+} >chain
 ```
 
 ✅ **RIGHT (counter in Store):**
@@ -2766,8 +2773,8 @@ _.x >print  ) ERROR: _.x doesn't exist in outer context
 {
   i >print
   i 1 >+ !i
-  i 3 >< { >block } { } >Choose
-} >Chain
+  i 3 >< { >block } { } >choose
+} >chain
 ```
 
 #### Mistake 4: Storing helpers in Register
@@ -2778,8 +2785,8 @@ _.x >print  ) ERROR: _.x doesn't exist in outer context
   { !_.x _.x 2 >* } !_.double
   {
     5 >_.double >print  ) ERROR: _.double not in inner Register
-  } >Chain
-} >Chain
+  } >chain
+} >chain
 ```
 
 ✅ **RIGHT (helper in Store):**
@@ -2788,8 +2795,8 @@ _.x >print  ) ERROR: _.x doesn't exist in outer context
   { !_.x _.x 2 >* } !double
   {
     5 >double >print
-  } >Chain
-} >Chain
+  } >chain
+} >chain
 ```
 
 ### 16.3 Best Practices
@@ -2882,26 +2889,26 @@ a → Cell(payload: Void, children: {...})
 
 ### 17.2 Void vs Nil Detection
 
-You can detect whether a cell has been set using hypothetical `>IsVoid`:
+You can detect whether a cell has been set using hypothetical `>isVoid`:
 
 ```soma
 ) Auto-vivify intermediate cells
 42 !config.deep.value
 
 ) Check if intermediate cell was set
-config.deep >IsVoid
-  { "Never set" >print }
-  { "Has been set" >print }
->Choose
+config.deep >isVoid
+  { (Never set) >print }
+  { (Has been set) >print }
+>choose
 
 ) Now explicitly set to Nil
 Nil !config.deep
 
 ) Check again
-config.deep >IsVoid
-  { "Never set" >print }
-  { "Has been set" >print }
->Choose
+config.deep >isVoid
+  { (Never set) >print }
+  { (Has been set) >print }
+>choose
 ```
 
 **Output:**
@@ -2913,9 +2920,9 @@ Has been set
 **Explanation:**
 
 1. After auto-vivification, `config.deep` has **Void** payload
-2. `>IsVoid` returns True → prints "Never set"
+2. `>isVoid` returns True → prints "Never set"
 3. After `Nil !config.deep`, the cell has **Nil** payload
-4. `>IsVoid` returns False → prints "Has been set"
+4. `>isVoid` returns False → prints "Has been set"
 
 **Key distinction:** Void means "uninitialized", Nil means "initialized to empty"
 
@@ -2935,18 +2942,18 @@ array.2             ) Returns Void (never set)
 array.50            ) Returns Void (never set)
 
 ) Detect unset vs set-to-empty
-array.1 >IsVoid
-  { "Index 1 is uninitialized" >print }
+array.1 >isVoid
+  { (Index 1 is uninitialized) >print }
   { array.1 >print }
->Choose
+>choose
 
 ) Now explicitly set an index to Nil
 Nil !array.2
 
-array.2 >IsVoid
-  { "Index 2 is uninitialized" >print }
-  { "Index 2 is explicitly Nil" >print }
->Choose
+array.2 >isVoid
+  { (Index 2 is uninitialized) >print }
+  { (Index 2 is explicitly Nil) >print }
+>choose
 ```
 
 **Output:**
@@ -2962,35 +2969,35 @@ Index 2 is explicitly Nil
 Void vs Nil creates a three-way distinction for data:
 
 ```soma
-"John" !person.name
+(John) !person.name
 42 !person.age
 Nil !person.middle_name     ) Explicitly no middle name
 
 ) Check fields
-person.name                 ) "John" - has value
+person.name                 ) (John) - has value
 person.middle_name          ) Nil - explicitly empty
 person.spouse               ) Void - never set (different meaning!)
 
 ) You can use this for validation
-person.middle_name >IsVoid
-  { "Middle name not provided" >print }
+person.middle_name >isVoid
+  { (Middle name not provided) >print }
   {
-    person.middle_name >IsNil
-      { "No middle name" >print }
+    person.middle_name >isNil
+      { (No middle name) >print }
       { person.middle_name >print }
-    >Choose
+    >choose
   }
->Choose
+>choose
 
-person.spouse >IsVoid
-  { "Spouse information not provided" >print }
+person.spouse >isVoid
+  { (Spouse information not provided) >print }
   {
-    person.spouse >IsNil
-      { "No spouse" >print }
+    person.spouse >isNil
+      { (No spouse) >print }
       { person.spouse >print }
-    >Choose
+    >choose
   }
->Choose
+>choose
 ```
 
 **Output:**
@@ -3009,13 +3016,13 @@ Spouse information not provided
 Void intermediate cells allow path traversal - you can read through them:
 
 ```soma
-"value" !deep.nested.path.data
+(value) !deep.nested.path.data
 
 ) All these reads succeed:
 deep                          ) Void - but you can traverse through it
 deep.nested                   ) Void - traversal continues
 deep.nested.path              ) Void - traversal continues
-deep.nested.path.data         ) "value" - final value
+deep.nested.path.data         ) (value) - final value
 ```
 
 **Key behavior:** Reading Void is not an error. You can traverse through Void cells to reach deeper values.
@@ -3033,7 +3040,7 @@ Void !bad_path      ) FATAL ERROR - cannot write Void as payload
 ```soma
 Nil !good_path      ) Legal - explicitly set to Nil
 good_path           ) Returns Nil ✓
-good_path >IsVoid   ) Returns False (it was set)
+good_path >isVoid   ) Returns False (it was set)
 ```
 
 **You CAN use Void for structural deletion:**
@@ -3059,19 +3066,19 @@ Auto-vivification with Void makes building deep structures natural:
 ) Build a configuration tree
 8080 !server.http.port
 443 !server.https.port
-"localhost" !server.http.host
-"0.0.0.0" !server.https.host
+(localhost) !server.http.host
+(0.0.0.0) !server.https.host
 
 ) Check what was auto-vivified
-server >IsVoid                  ) True - never explicitly set
-server.http >IsVoid             ) True - never explicitly set
-server.http.port >IsVoid        ) False - was set to 8080
+server >isVoid                  ) True - never explicitly set
+server.http >isVoid             ) True - never explicitly set
+server.http.port >isVoid        ) False - was set to 8080
 
 ) Explicitly set a parent
 {} !server.http.config          ) Now server.http has structural meaning
 
-server.http >IsVoid             ) Still True! (payload is still Void)
-server.http.config >IsVoid      ) False - was set to {}
+server.http >isVoid             ) Still True! (payload is still Void)
+server.http.config >isVoid      ) False - was set to {}
 ```
 
 **Key insight:** Auto-vivified cells have **Void** payload even if they have children. Setting a child doesn't change the parent's payload.
@@ -3084,39 +3091,39 @@ Common pattern: distinguish between "field not provided" and "field explicitly e
 {
   !_.field
 
-  _.field >IsVoid
+  _.field >isVoid
     {
-      "Field not provided - using default" >print
-      "default_value"
+      (Field not provided - using default) >print
+      (default_value)
     }
     {
-      _.field >IsNil
-        { "Field explicitly empty - no default" >print Nil }
+      _.field >isNil
+        { (Field explicitly empty - no default) >print Nil }
         { _.field }
-      >Choose
+      >choose
     }
-  >Choose
+  >choose
 } !get_or_default
 
-) Test with Void (not provided)
-"unset_field" >ToPath get_or_default >Chain >print
+) Test with hypothetical ToPath (would need implementation)
+) (unset_field) >ToPath get_or_default >chain >print
 
 ) Test with Nil (explicitly empty)
 Nil !explicit_field
-explicit_field get_or_default >Chain
+explicit_field get_or_default >chain
 
 ) Test with value
-"actual_value" !value_field
-value_field get_or_default >Chain >print
+(actual_value) !value_field
+value_field get_or_default >chain >print
 ```
 
-**Output:**
+**Hypothetical output:**
 ```
-Field not provided - using default
-default_value
 Field explicitly empty - no default
 actual_value
 ```
+
+**Note:** The first test using `>ToPath` is commented out as this operation doesn't exist in SOMA v1.0.
 
 ### 17.9 Reading Void is Not an Error
 
@@ -3128,10 +3135,10 @@ Unlike some operations, reading Void is perfectly legal:
 
 ) Reading Void is fine
 data !_.intermediate
-_.intermediate >IsVoid
-  { "Yes, it's Void" >print }
-  { "No, it was set" >print }
->Choose
+_.intermediate >isVoid
+  { (Yes, it's Void) >print }
+  { (No, it was set) >print }
+>choose
 ```
 
 **Output:**
@@ -3142,7 +3149,7 @@ Yes, it's Void
 **Legal operations with Void:**
 - Reading Void from Store: ✓ Legal
 - Having Void on AL: ✓ Legal (result of reading)
-- Passing Void to `>IsVoid`: ✓ Legal
+- Passing Void to `>isVoid`: ✓ Legal
 - Traversing through Void cells: ✓ Legal
 
 **Illegal operations with Void:**
@@ -3157,8 +3164,8 @@ Yes, it's Void
 | **Created by** | Auto-vivification | Explicit write |
 | **Can write?** | No (FATAL ERROR) | Yes |
 | **Can read?** | Yes (returns Void) | Yes (returns Nil) |
-| **>IsVoid** | True | False |
-| **>IsNil** | False | True |
+| **>isVoid** | True | False |
+| **>isNil** | False | True |
 | **Use case** | Sparse structures, uninitialized | Optional fields, explicit empty |
 | **Traversable?** | Yes | Yes |
 
@@ -3171,8 +3178,8 @@ Yes, it's Void
 ## 18. Conclusion
 
 SOMA's minimalist design means all control flow and execution emerges from just a few primitives:
-- **>Choose** for branching
-- **>Chain** for continuation
+- **>choose** for branching
+- **>chain** for continuation
 - **>path** for execution
 - **>block** for self-reference
 - **Register isolation** for clean scoping
@@ -3245,7 +3252,7 @@ The `>block` built-in works at any level, including the top level:
 
 ```soma
 ) Top-level
->block              ) Returns the outermost block (the "program")
+>block              ) Returns the outermost block (the (program))
 
 ) Inside explicit block
 { >block }          ) Returns this block
@@ -3255,7 +3262,8 @@ The `>block` built-in works at any level, including the top level:
   >block !outer
   {
     >block !inner
-    outer inner >Equal    ) False - different blocks
+    ) Note: Comparing blocks would require equality operator
+    ) outer inner >== would compare Block₁ and Block₂
   }
 }
 ```
@@ -3268,7 +3276,7 @@ The `>block` built-in works at any level, including the top level:
 4. Inner block executes, gets Block₂
 5. `>block` pushes Block₂ onto AL
 6. `!inner` stores Block₂ in Store
-7. `outer inner >Equal` compares Block₁ and Block₂ → False
+7. Block₁ and Block₂ are different blocks
 
 **Key insight:** Each block is a distinct value. `>block` always returns the currently executing block, whether it's the top-level program, an explicit block, or a deeply nested block.
 
@@ -3279,8 +3287,8 @@ Every construct in SOMA that "does something" is a block:
 ```soma
 ) This is a block (the top-level program)
 { 1 2 >+ }          ) This is a block (explicit)
->Choose             ) This executes a block (built-in that consumes blocks)
->Chain              ) This executes blocks in sequence
+>choose             ) This executes a block (built-in that consumes blocks)
+>chain              ) This executes blocks in sequence
 >block              ) This returns the block being executed
 ```
 
@@ -3297,9 +3305,9 @@ One of SOMA's design goals is to be **language-agnostic**. All built-ins can be 
 Built-ins are just blocks stored in the Store. You can create aliases by storing them at different paths:
 
 ```soma
-Chain !MyChain          ) Alias for Chain
+chain !MyChain          ) Alias for chain
 print !log              ) Alias for print
-Choose !select          ) Alias for Choose
+choose !select          ) Alias for choose
 ```
 
 Now you can use `>MyChain`, `>log`, and `>select` exactly like the originals.
@@ -3311,17 +3319,17 @@ A complete German-language SOMA program:
 ```soma
 ) German aliases for built-ins
 block !Block
-Chain !Kette
+chain !Kette
 print !drucken
 
 ) Infinite loop in German
-{ "tick" >drucken >Block } >Kette
+{ (tick) >drucken >Block } >Kette
 ```
 
 **What this demonstrates:**
 
 - `block !Block` - Alias `block` to German "Block" (capitalized)
-- `Chain !Kette` - Alias `Chain` to German "Kette" (chain)
+- `chain !Kette` - Alias `chain` to German "Kette" (chain)
 - `print !drucken` - Alias `print` to German "drucken" (to print)
 - The code is now pure German!
 
@@ -3377,10 +3385,10 @@ You can even mix languages in the same program:
 ```soma
 ) English built-ins
 block !Block
-Chain !Kette
+chain !Kette
 
 ) Use both
-{ "Hello" >print >Block } >Kette     ) English print, German loop
+{ (Hello) >print >Block } >Kette     ) English print, German loop
 ```
 
 This flexibility makes SOMA accessible to programmers worldwide.
@@ -3390,16 +3398,16 @@ This flexibility makes SOMA accessible to programmers worldwide.
 **The old way with `_.self`:**
 
 ```soma
-Chain !Kette            ) Can alias Chain
+chain !Kette            ) Can alias chain
 print !drucken          ) Can alias print
 
-{ >drucken _.self } >Kette    ) Must use English "self" - CAN'T ALIAS
+{ >drucken _.self } >Kette    ) Must use English (self) - CAN'T ALIAS
 ```
 
 **The new way with `>block`:**
 
 ```soma
-Chain !Kette            ) Can alias Chain
+chain !Kette            ) Can alias chain
 print !drucken          ) Can alias print
 block !Block            ) Can alias block!
 
@@ -3414,7 +3422,7 @@ Aliasing isn't just for human languages. You can create domain-specific vocabula
 
 ```soma
 ) Web server DSL
-Chain !serve_forever
+chain !serve_forever
 print !log_message
 block !restart
 

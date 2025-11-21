@@ -629,7 +629,7 @@ class TestCompletePrograms(unittest.TestCase):
             0 !_.counter
             _.counter 10 ><
             { _.counter 1 >+ !_.counter }
-            >Choose
+            >choose
         }
         """
         ast = parse(source)

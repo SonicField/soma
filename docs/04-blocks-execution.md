@@ -33,7 +33,7 @@ Blocks behave like any other SOMA value. They may be:
 - Pushed onto the AL
 - Stored in a Cell
 - Passed between Blocks
-- Used in control flow (`>Choose`, `>Chain`)
+- Used in control flow (`>choose`, `>chain`)
 - Executed via built-ins or path execution
 
 ### Example: Storing and Reusing a Block
@@ -41,7 +41,7 @@ Blocks behave like any other SOMA value. They may be:
 ```soma
 { >dup >* } !square
 
-7 square >Chain >print
+7 square >chain >print
 ```
 
 **Output:** `49`
@@ -49,7 +49,7 @@ Blocks behave like any other SOMA value. They may be:
 Here:
 1. A block is created and stored in the Cell `square`
 2. The integer `7` is pushed onto the AL
-3. The block stored at `square` is retrieved and executed via `>Chain`
+3. The block stored at `square` is retrieved and executed via `>chain`
 4. The block duplicates `7` and multiplies it by itself
 5. The result `49` is printed
 
@@ -70,7 +70,7 @@ There is no signature like `f(x, y) -> z`. Instead:
 ```soma
 { >+ } !add_two_numbers
 
-3 4 add_two_numbers >Chain
+3 4 add_two_numbers >chain
 ; AL now contains [7]
 ```
 
@@ -81,7 +81,7 @@ The block `add_two_numbers` doesn't declare "I take two integers." It simply exe
 ```soma
 { 1 2 3 } !push_three
 
-push_three >Chain
+push_three >chain
 ; AL now contains [1, 2, 3]
 ```
 
@@ -167,7 +167,7 @@ Here:
 **SOMA block execution:**
 ```soma
 { >dup >* } !square
-7 square >Chain
+7 square >chain
 ```
 
 Here:
@@ -236,13 +236,13 @@ We don't need to ask "what executes the top-level block?" The top-level code IS 
 ### Example: Infinite Loop
 
 ```soma
-{ >block >Chain }
+{ >block >chain }
 ```
 
 **How it works:**
 1. Block begins execution
 2. `>block` pushes this block onto the AL
-3. `>Chain` executes the block (which is on top of AL)
+3. `>chain` executes the block (which is on top of AL)
 4. The cycle repeats indefinitely
 
 This creates an infinite loop without any external naming or storage.
@@ -257,7 +257,7 @@ This creates an infinite loop without any external naming or storage.
   {
     "Inner block executing" >print
     >block !inner_self_reg         ; Store in inner's Register
-  } >Chain
+  } >chain
 
   ; After inner block completes, inner's Register is destroyed
   ; outer_self_reg still exists in outer's Register
@@ -266,7 +266,7 @@ This creates an infinite loop without any external naming or storage.
   >block outer_self_reg >==        ; Compare current block with saved value
   { "Same block (correct)" }
   { "Different blocks (impossible)" }
-  >Choose >Chain >print
+  >choose >chain >print
 }
 ```
 
@@ -306,12 +306,12 @@ If you want to actually compare the inner and outer blocks, you must use the Sto
   {
     "Inner block executing" >print
     >block !inner_block            ; Store in Store (global)
-  } >Chain
+  } >chain
 
   outer_block inner_block >==
   { "SAME block (impossible)" }
   { "DIFFERENT blocks (correct)" }
-  >Choose >Chain >print
+  >choose >chain >print
 }
 ```
 
@@ -439,7 +439,7 @@ Consider these two patterns:
 
 ```soma
 ; Pattern 1: Push value, then execute
-square >Chain       ; Two operations: push, then execute
+square >chain       ; Two operations: push, then execute
 
 ; Pattern 2: Execute directly
 >square             ; One atomic operation: read-and-execute
@@ -461,14 +461,14 @@ The `>block` built-in can be combined with `>` prefix to execute the current blo
 ```soma
 {
   (Loop iteration) >print
-  >block >Chain         ; Execute this block again (infinite loop)
+  >block >chain         ; Execute this block again (infinite loop)
 }
 ```
 
 **How it works:**
 1. The Block prints a message
 2. `>block` pushes the current block onto the AL
-3. `>Chain` executes it again
+3. `>chain` executes it again
 4. This creates an infinite loop
 
 **More practical: Conditional self-execution:**
@@ -478,9 +478,9 @@ The `>block` built-in can be combined with `>` prefix to execute the current blo
   counter 1 >+ !counter
   counter >print
   counter 10 ><
-    { >block >Chain }     ; Continue if counter < 10
+    { >block >chain }     ; Continue if counter < 10
     { }                   ; Stop otherwise
-  >Choose >Chain
+  >choose >chain
 } !count_to_ten
 
 0 !counter
@@ -550,7 +550,7 @@ The `>` modifier is what makes SOMA's execution model explicit and first-class. 
 ```soma
 { "Hello" >print } !greet
 
-greet >Chain
+greet >chain
 ```
 
 **Output:** `Hello`
@@ -564,7 +564,7 @@ The block is stored, then retrieved and executed.
 ```soma
 { !_.x !_.y _.x _.y >+ } !add_named
 
-3 7 add_named >Chain
+3 7 add_named >chain
 ; AL = [10]
 ```
 
@@ -585,9 +585,9 @@ The block is stored, then retrieved and executed.
 ### Example 3: Block Passed as an Argument
 
 ```soma
-{ !_.action _.action >Chain } !do_it
+{ !_.action _.action >chain } !do_it
 
-{ "Action executed" >print } do_it >Chain
+{ "Action executed" >print } do_it >chain
 ```
 
 **Output:** `Action executed`
@@ -606,13 +606,13 @@ The block is stored, then retrieved and executed.
   _.counter 1 >+ !_.counter
   _.counter >print
   _.counter 10 ><
-    { >block >Chain }
+    { >block >chain }
     { }
-  >Choose >Chain
+  >choose >chain
 } !count_to_ten
 
 0 !_.counter
-count_to_ten >Chain
+count_to_ten >chain
 ```
 
 **Output:** `1 2 3 4 5 6 7 8 9 10`
@@ -620,9 +620,9 @@ count_to_ten >Chain
 **How it works:**
 1. Block increments and prints `_.counter` (from the **Register**)
 2. Checks if `_.counter < 10`
-3. If true, executes a block containing `>block >Chain` (recursive call)
+3. If true, executes a block containing `>block >chain` (recursive call)
 4. If false, executes an empty block `{}`
-5. `>Chain` continues execution as long as a Block is on top of AL
+5. `>chain` continues execution as long as a Block is on top of AL
 6. When `_.counter` reaches 10, the empty block is executed and the loop terminates
 
 **Important Register note:**
@@ -637,9 +637,9 @@ count_to_ten >Chain
   counter 1 >+ !counter      ; Use Store, not Register
   counter >print
   counter 10 ><
-    { >block >Chain }
+    { >block >chain }
     { }
-  >Choose >Chain
+  >choose >chain
 } !count_to_ten
 
 0 !counter                   ; Initialize in Store
@@ -657,9 +657,9 @@ True !state
 
 {
   state
-  { False !state "Switched to OFF" >print >block >Chain }
-  { True !state "Switched to ON" >print >block >Chain }
-  >Choose >Chain
+  { False !state "Switched to OFF" >print >block >chain }
+  { True !state "Switched to ON" >print >block >chain }
+  >choose >chain
 } !toggle
 
 >toggle
@@ -669,9 +669,9 @@ True !state
 
 **How it works:**
 1. The block reads `state` from the **Store** (not Register!)
-2. Uses `>Choose` to select between two blocks
-3. Each block updates `state` in the **Store** and recursively calls `>block >Chain`
-4. `>Chain` continues execution indefinitely
+2. Uses `>choose` to select between two blocks
+3. Each block updates `state` in the **Store** and recursively calls `>block >chain`
+4. `>chain` continues execution indefinitely
 
 **Key insight:** The `state` variable must be in the Store (global) for it to persist across recursive calls. If it were in the Register (`_.state`), each recursive call would get a fresh Register and lose the state.
 
@@ -682,17 +682,17 @@ True !state
 ```soma
 {
   condition                ; Read from Store (must be global!)
-  { >block >Chain }        ; Recurse if true
+  { >block >chain }        ; Recurse if true
   { }                      ; Terminate if false
-  >Choose >Chain
+  >choose >chain
 } !loop_while_true
 ```
 
 This is the fundamental pattern for loops in SOMA:
 - Test a condition (from Store or AL)
-- If true, execute `>block >Chain` to continue
+- If true, execute `>block >chain` to continue
 - If false, execute empty block to terminate
-- `>Chain` executes whatever's on top of the AL
+- `>chain` executes whatever's on top of the AL
 
 **Important:** The condition must come from the Store or be passed via AL. If it's in the Register (`_.condition`), each recursive call gets a fresh Register and won't see the condition.
 
@@ -703,7 +703,7 @@ This is the fundamental pattern for loops in SOMA:
 ```soma
 { !_.value !_.path _.value _.path !Store. } !store_at
 
-42 "answer" store_at >Chain
+42 "answer" store_at >chain
 ; Cell at Store path `answer` now contains 42
 ```
 
@@ -753,7 +753,7 @@ When a block begins execution:
 ```soma
 {
   1 !_.x
-  { 2 !_.x _.x >print } >Chain  ; Prints: 2
+  { 2 !_.x _.x >print } >chain  ; Prints: 2
   _.x >print                     ; Prints: 1
 }
 ```
@@ -763,7 +763,7 @@ When a block begins execution:
 1. Outer block executes → Creates **Register₁** (empty)
 2. `1 !_.x` → Store 1 in Register₁ at path `_.x`
 3. `{ 2 !_.x _.x >print }` → Creates a Block value (not executed yet)
-4. `>Chain` → Execute the inner block
+4. `>chain` → Execute the inner block
    - Inner block starts → Creates **Register₂** (empty, completely separate)
    - `2 !_.x` → Store 2 in Register₂ at path `_.x`
    - `_.x` → Read Register₂ path `_.x` (value: 2)
@@ -829,11 +829,11 @@ Let me show the correct error case:
 {
   1 !_.n                ; Outer Register: _.n = 1
 
-  { 2 !_.n } >Chain     ; Inner₁ Register: _.n = 2 (then destroyed)
+  { 2 !_.n } >chain     ; Inner₁ Register: _.n = 2 (then destroyed)
 
   _.n >print            ; Outer Register: _.n still = 1
 
-  { 3 !_.n } >Chain     ; Inner₂ Register: _.n = 3 (then destroyed)
+  { 3 !_.n } >chain     ; Inner₂ Register: _.n = 3 (then destroyed)
 
   _.n >print            ; Outer Register: _.n still = 1
 }
@@ -945,19 +945,19 @@ This **fails** because the inner block has its own empty Register.
   {
     0 !_.i                         ; Inner counter (different Register!)
     _.i 5 ><
-      { _.i 1 >+ !_.i >block >Chain }    ; Inner loop uses its own _.i
+      { _.i 1 >+ !_.i >block >chain }    ; Inner loop uses its own _.i
       { }
-    >Choose >Chain
+    >choose >chain
   } !_.inner_loop
 
   _.i 3 ><
     {
       >_.inner_loop                ; Call inner loop
       _.i 1 >+ !_.i                ; Increment outer _.i
-      >block >Chain
+      >block >chain
     }
     { }
-  >Choose >Chain
+  >choose >chain
 }
 ```
 
@@ -1026,13 +1026,13 @@ The `>block` built-in enables recursion without external state:
 {
   _.n 0 >==
   { 1 }                          ; Base case
-  { _.n 1 >- !_.n >block >Chain  ; Recursive case
+  { _.n 1 >- !_.n >block >chain  ; Recursive case
     _.n >* }
-  >Choose >Chain
+  >choose >chain
 } !factorial
 
 5 !_.n
-factorial >Chain >print  ; Prints: 120
+factorial >chain >print  ; Prints: 120
 ```
 
 **How it works:**
@@ -1041,7 +1041,7 @@ factorial >Chain >print  ; Prints: 120
 3. If false:
    - Decrement `_.n`
    - Push the current block via `>block`
-   - Execute it with `>Chain`
+   - Execute it with `>chain`
    - Multiply the result by current `_.n`
 
 **Important:** Each recursive invocation uses `>block` to reference the same Block value, but with a **completely fresh, isolated Register**.
@@ -1059,10 +1059,10 @@ If you want to use Register-local state for recursion, you need to pass state vi
   { 1 }                          ; Base case: return 1
   {
     _.n 1 >-                     ; Compute n-1
-    >block >Chain                ; Recursive call with n-1
+    >block >chain                ; Recursive call with n-1
     _.n >*                       ; Multiply result by original n
   }
-  >Choose >Chain
+  >choose >chain
 } !factorial
 
 5 >factorial >print  ; Prints: 120
@@ -1129,8 +1129,8 @@ Based on the specification and errata, the following ambiguities remain:
 
 Blocks are executed in the following ways:
 
-- `>Chain` executes blocks from the AL
-- `>Choose` executes the selected block
+- `>chain` executes blocks from the AL
+- `>choose` executes the selected block
 - **`>path` executes blocks at any path** (Store or Register) — this is now formally defined (see Section 6)
 
 ### 2. **Register Isolation (RESOLVED)**
@@ -1142,7 +1142,7 @@ Blocks are executed in the following ways:
 ```soma
 {
   >block !outer_self     ; Store in Store (not Register!)
-  { >block !inner_self } >Chain
+  { >block !inner_self } >chain
   outer_self >print      ; This works because outer_self is in Store
 }
 ```

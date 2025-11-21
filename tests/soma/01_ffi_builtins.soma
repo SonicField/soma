@@ -63,39 +63,39 @@ Void
 
 ) TEST: Integer to string
 ) EXPECT_AL: ["42"]
-42 >to_string
+42 >toString
 
 ) TEST: String to int (success)
 ) EXPECT_AL: [123]
-(123) >to_int
+(123) >toInt
 
 ) TEST: String to int (failure)
 ) EXPECT_AL: [Nil]
-(not a number) >to_int
+(not a number) >toInt
 
 ) TEST: IsVoid on Void
 ) EXPECT_AL: [True]
-Void >IsVoid
+Void >isVoid
 
 ) TEST: IsVoid on Nil
 ) EXPECT_AL: [False]
-Nil >IsVoid
+Nil >isVoid
 
 ) TEST: IsVoid on int
 ) EXPECT_AL: [False]
-42 >IsVoid
+42 >isVoid
 
 ) TEST: IsNil on Nil
 ) EXPECT_AL: [True]
-Nil >IsNil
+Nil >isNil
 
 ) TEST: IsNil on Void
 ) EXPECT_AL: [False]
-Void >IsNil
+Void >isNil
 
 ) TEST: IsVoid on undefined path
 ) EXPECT_AL: [True]
-undefined_path >IsVoid
+undefined_path >isVoid
 
 ) TEST: Print output
 ) EXPECT_OUTPUT: Hello

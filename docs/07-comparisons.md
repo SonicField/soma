@@ -35,7 +35,7 @@ differences between SOMA and these well-established models.
 This is the most critical comparison for understanding SOMA's design.
 
 Common Lisp achieves user-defined syntax through macros. SOMA achieves
-equivalent power through blocks, >Choose, and >Chain—with no special
+equivalent power through blocks, >choose, and >chain—with no special
 compile-time phase.
 
 
@@ -85,7 +85,7 @@ explicit control flow.
 Example: Implementing WHEN
 
 ```soma
-{ >dup { >drop } >swap >Choose >Chain } !when
+{ >dup { >drop } >swap >choose >chain } !when
 
 ; Usage
 x 10 >> { "large" >print "value" >print } >when
@@ -96,8 +96,8 @@ How it works:
    1. >dup duplicates the boolean condition
    2. { >drop } is the "false branch" (discard the block)
    3. >swap reorders: [block, bool, drop-block]
-   4. >Choose executes drop-block if false, else executes the body block
-   5. >Chain executes whatever block was chosen
+   4. >choose executes drop-block if false, else executes the body block
+   5. >chain executes whatever block was chosen
 
 **This is not a macro. It is a block.**
 
@@ -159,7 +159,7 @@ SOMA requires no macro system because:
 
    * Blocks are unevaluated values until explicitly executed
    * Passing a block to another block does not execute it
-   * Execution only occurs via `>Chain`, `>Choose`, or `>path`
+   * Execution only occurs via `>chain`, `>choose`, or `>path`
 
 The `>path` operator is the key. It makes execution **first-class**:
 
@@ -173,7 +173,7 @@ to execute their arguments:
 
 ```soma
 ) Define IF/ELSE
-{ >swap >Choose } !if_else
+{ >swap >choose } !if_else
 
 ) Use it exactly like a built-in
 x 0 >== { "zero" >print } { "non-zero" >print } >if_else
@@ -200,7 +200,7 @@ Common Lisp:
 SOMA:
 
 ```soma
-{ >swap >Choose } !my-if
+{ >swap >choose } !my-if
 
 x 0 >== { "zero" >print } { "non-zero" >print } >my-if
 ```
@@ -228,7 +228,7 @@ Common Lisp:
 SOMA:
 
 ```soma
-{ >swap {} >swap >Choose >Chain } !unless
+{ >swap {} >swap >choose >chain } !unless
 
 config.exists False >== { >create-default-config } >unless
 ```
@@ -238,8 +238,8 @@ Decomposition:
    * >swap: reorder [block, bool] → [bool, block]
    * {}: push empty block (the "do nothing" branch)
    * >swap: reorder [bool, block, {}] → [bool, {}, block]
-   * >Choose: if bool is True, execute {}; else execute block
-   * >Chain: execute the chosen block
+   * >choose: if bool is True, execute {}; else execute block
+   * >chain: execute the chosen block
 
 
 2.7  WHILE: Looping Constructs
@@ -268,13 +268,13 @@ SOMA:
 {
   !_.body
   !_.test
-  _.test _.body { !_.b !_.t _.t >Chain { _.b >Chain _.self } {} >Choose } !_.loop
+  _.test _.body { !_.b !_.t _.t >chain { _.b >chain _.self } {} >choose } !_.loop
   _.loop
 } !while
 
 { counter 10 >< } !cond
 { counter >print counter 1 >+ !counter } !body
-cond body >while >Chain
+cond body >while >chain
 ```
 
 Here, the while block:
@@ -282,7 +282,7 @@ Here, the while block:
    1. Stores the test and body blocks in its own Register
    2. Constructs a loop block that captures test/body via AL
    3. The loop block stores them in its own Register and recurses via _.self
-   4. Returns the loop block for >Chain to execute
+   4. Returns the loop block for >chain to execute
 
 Note: Each nested block execution gets a fresh Register. The loop block must
 receive test and body via the AL, then store them in its own Register before
@@ -371,7 +371,7 @@ structures are indistinguishable from built-ins:
 ```soma
 ) Define control primitives
 { !_ >_ } !^                              ) Execute AL top
-{ !_.else !_.then !_.cond _.cond _.then _.else >swap >Choose >Chain } !ifelse
+{ !_.else !_.then !_.cond _.cond _.then _.else >swap >choose >chain } !ifelse
 
 ) Use them exactly like language features
 0 !counter
@@ -418,7 +418,7 @@ Example:
 ```soma
 {
   !_.it
-  _.it { >print } {} >Choose
+  _.it { >print } {} >choose
 } !my-when
 
 5 !it
@@ -442,7 +442,7 @@ SOMA Blocks:
 
    * Execute at runtime
    * Select blocks dynamically
-   * Overhead = block selection + >Chain dispatch
+   * Overhead = block selection + >chain dispatch
    * No separate compilation phase needed
 
 SOMA trades macro expansion overhead for simplicity. Blocks are not "faster"
@@ -480,7 +480,7 @@ Common Lisp:
    * Requires multi-phase execution model
 
 SOMA:
-   * Requires only blocks, >Choose, >Chain, and `>path`
+   * Requires only blocks, >choose, >chain, and `>path`
    * Operates at the value level (blocks selecting blocks)
    * Single-phase execution model
 
@@ -545,7 +545,7 @@ SOMA:
 
    * Tokens push values or transform state
    * Blocks are not executed when read
-   * Control = block selection via >Choose / >Chain
+   * Control = block selection via >choose / >chain
    * Execution = state transformation, no jumps
 
 
@@ -575,13 +575,13 @@ SOMA:
   _.n 10 >>
   { "Greater than 10" >print }
   { "Not greater" >print }
-  >Choose
+  >choose
 } !test-value
 
 15 >test-value
 ```
 
-No jumps are compiled. >Choose selects which block executes.
+No jumps are compiled. >choose selects which block executes.
 
 
 3.5  Example: Looping
@@ -604,11 +604,11 @@ SOMA:
 ```soma
 {
   !_.max
-  0 _.max { !_.m !_.i _.i _.m >< { _.i >print _.i 1 >+ _.m _.self } {} >Choose } !_.loop
+  0 _.max { !_.m !_.i _.i _.m >< { _.i >print _.i 1 >+ _.m _.self } {} >choose } !_.loop
   _.loop
 } !count-up
 
-10 >count-up >Chain
+10 >count-up >chain
 ```
 
 The loop block receives both the counter and max via AL, stores them in its own
@@ -874,7 +874,7 @@ Haskell:
 
 SOMA:
    * Exposes state as the computational foundation
-   * Uses >Chain to sequence blocks
+   * Uses >chain to sequence blocks
    * Makes no purity distinction
 
 Haskell models mutation. SOMA is mutation.
@@ -961,7 +961,7 @@ Lambda Calculus:
 
 SOMA:
    * Programs execute token by token
-   * Execution may not terminate (infinite >Chain)
+   * Execution may not terminate (infinite >chain)
    * Result = final AL and Store state
 
 
@@ -984,11 +984,11 @@ SOMA:
   !_.n
   _.n 0 >==
   { 1 }
-  { _.n 1 >- >fact >Chain _.n >* }
-  >Choose
+  { _.n 1 >- >fact >chain _.n >* }
+  >choose
 } !fact
 
-5 >fact >Chain >print
+5 >fact >chain >print
 ```
 
 The recursive call passes `n-1` via AL to the inner fact execution. When it

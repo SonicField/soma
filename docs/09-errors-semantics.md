@@ -4,7 +4,7 @@
 
 SOMA defines a minimal, explicit error model that reflects its operational philosophy: computation is state transformation, and errors are either machine violations (fatal) or logical conditions representable in state (non-fatal). This document clarifies the critical distinctions between Nil and Void, the nature of fatal versus non-fatal conditions, the semantics of the `!` operator, and the formal rules governing Store mutation and error handling.
 
-SOMA does not provide exceptions, stack unwinding, try/catch blocks, or recovery mechanisms. Errors are either terminal (causing thread halt) or expressible as values that program logic handles via `>Choose` and explicit branching.
+SOMA does not provide exceptions, stack unwinding, try/catch blocks, or recovery mechanisms. Errors are either terminal (causing thread halt) or expressible as values that program logic handles via `>choose` and explicit branching.
 
 ## 1. Nil vs Void: The Fundamental Distinction
 
@@ -40,7 +40,7 @@ Example (basic usage):
 ```soma
 Nil !config.middle_name        ; Explicitly set to empty
 config.middle_name             ; AL = [Nil] — was set, but to nothing
-config.middle_name >IsVoid     ; False — has been set
+config.middle_name >isVoid     ; False — has been set
 ```
 
 Example (Nil with children):
@@ -76,7 +76,7 @@ a.b.c             ; Returns 42 (explicitly set)
 a.b               ; Returns Void (auto-vivified, never set)
 a                 ; Returns Void (auto-vivified, never set)
 
-a.b >IsVoid       ; True — never explicitly set
+a.b >isVoid       ; True — never explicitly set
 ```
 
 Example (Void with children):
@@ -164,15 +164,15 @@ Store:
 ```soma
 42 !data.b.c           ; Auto-vivifies data and data.b with Void
 
-data.b >IsVoid         ; True — never explicitly set
+data.b >isVoid         ; True — never explicitly set
 data.b                 ; Returns Void
-(Never set) (Has been set) >Choose >print    ; Prints "Never set"
+(Never set) (Has been set) >choose >print    ; Prints "Never set"
 
 Nil !data.b            ; Explicitly set to Nil
 
-data.b >IsVoid         ; False — now has been set (to Nil)
+data.b >isVoid         ; False — now has been set (to Nil)
 data.b                 ; Returns Nil (not Void!)
-(Never set) (Has been set) >Choose >print    ; Prints "Has been set"
+(Never set) (Has been set) >choose >print    ; Prints "Has been set"
 ```
 
 **Example 3: Sparse Data Structures**
@@ -188,7 +188,7 @@ array.3         ; Void — index 3 was never set
 array.4         ; Void — index 4 was never set
 
 ; We can detect unset vs set-to-empty
-array.1 >IsVoid { (uninitialized) } { array.1 } >Choose >print
+array.1 >isVoid { (uninitialized) } { array.1 } >choose >print
 ```
 
 **Example 4: Distinguishing Nil from Void**
@@ -198,10 +198,10 @@ Nil !person.middle_name         ; Explicitly no middle name
 42 !person.age
 
 person.middle_name              ; Nil — explicitly set to empty
-person.middle_name >IsVoid      ; False — has been set
+person.middle_name >isVoid      ; False — has been set
 
 person.spouse                   ; Void — never set
-person.spouse >IsVoid           ; True — never initialized
+person.spouse >isVoid           ; True — never initialized
 ```
 
 **Key insight:** Auto-vivification creates **structural scaffolding** with Void payload. You can later set these cells explicitly if needed, changing them from Void to whatever value you choose.
@@ -257,7 +257,7 @@ Performing an operation on a value of the wrong type.
 ```
 
 ```soma
-42 { >dup } >Choose   ; Fatal: >Choose requires Boolean + 2 Blocks
+42 { >dup } >choose   ; Fatal: >choose requires Boolean + 2 Blocks
 ```
 
 #### 2.1.3 Void !path (Illegal Payload Write)
@@ -321,7 +321,7 @@ Calling a built-in without satisfying its AL contract.
 ```
 
 ```soma
-True { 1 } >Choose    ; Fatal: >Choose requires 3 values (Boolean + 2 Blocks)
+True { 1 } >choose    ; Fatal: >choose requires 3 values (Boolean + 2 Blocks)
 ```
 
 #### 2.1.6 Execution of Non-Block Values
@@ -370,7 +370,7 @@ user.action
 Void >==
   { "No action defined" >print }
   { >user.action }
->Choose
+>choose
 ```
 
 #### 2.1.8 Register Isolation Violation
@@ -477,7 +477,7 @@ config.user.name
 Void >==
   { "No user configured" >print }
   { config.user.name >print }
->Choose
+>choose
 ```
 
 **Key distinction:**
@@ -498,14 +498,14 @@ settings.theme    ; AL = [Nil] — perfectly valid
 ```
 
 ### 3.3 Logical Errors
-Conditions like "file not found", "invalid input", or "operation failed" are **not runtime errors**. They are represented as values (Booleans, symbols, error records) on the AL and handled via `>Choose`.
+Conditions like "file not found", "invalid input", or "operation failed" are **not runtime errors**. They are represented as values (Booleans, symbols, error records) on the AL and handled via `>choose`.
 
 ```soma
 ; Hypothetical file operation that pushes success/failure
 "data.txt" >file_exists
   { "data.txt" >load }
   { "File not found" >print }
->Choose
+>choose
 ```
 
 ## 4. The ! Operator: Store Mutation Semantics
@@ -785,7 +785,7 @@ ref               ; AL = [42] — NOT dangling, Cell still exists!
   { _.obj.counter 1 >+ !_.obj.counter } !_.obj.increment
 
   _.obj.        ; Return CellRef to object
-} >Chain !myObj
+} >chain !myObj
 
 ; Block destroyed, Register destroyed, but object persists!
 myObj.data              ; "initial data"
@@ -1072,7 +1072,7 @@ Nil !config.language
 config.theme Nil >==
   { "default" !config.theme }
   { }
->Choose
+>choose
 ```
 
 ### 6.2 Correct: Using Void for Existence Testing
@@ -1083,7 +1083,7 @@ user.profile.avatar
 Void >==
   { "No avatar set" >print }
   { user.profile.avatar >display }
->Choose
+>choose
 ```
 
 ### 6.3 Correct: Structural Deletion
@@ -1148,7 +1148,7 @@ user.status       ; AL = [Void] — Cell no longer exists
 ; Handle it:
   { "Error: " >concat >print }
   { >print }
->Choose
+>choose
 ```
 
 ### 6.8 Register Examples: Correct Usage
@@ -1228,7 +1228,7 @@ handlers.custom
 Void >==
   { >handlers.default }    ; Use default if custom doesn't exist
   { >handlers.custom }     ; Use custom if it exists
->Choose
+>choose
 ```
 
 ```soma
@@ -1240,9 +1240,9 @@ Void >==
     config.startup >IsBlock
       { >config.startup }
       { "Startup value is not executable" >print }
-    >Choose
+    >choose
   }
->Choose
+>choose
 ```
 
 ### 6.13 Correct: Executable vs Non-Executable Values
@@ -1387,7 +1387,7 @@ print !my_print       ; Store the print block elsewhere
     _.i 5 ><
       { _.i 1 >+ !_.i >block }     ; Inner loop uses its own _.i
       { }
-    >Choose >Chain
+    >choose >chain
   } !_.inner_loop
 
   _.i 3 ><
@@ -1397,7 +1397,7 @@ print !my_print       ; Store the print block elsewhere
       >block
     }
     { }
-  >Choose >Chain
+  >choose >chain
 }
 
 ; Key points:

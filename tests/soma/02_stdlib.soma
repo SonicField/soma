@@ -171,7 +171,7 @@ False { (true branch) >print } { (false branch) >print } >ifelse
 ) EXPECT_AL: []
 0 !count
 { count 3 >< }
-{ count >to_string >print  count >inc !count }
+{ count >toString >print  count >inc !count }
 >while
 
 ) TEST: do loop
@@ -180,6 +180,6 @@ False { (true branch) >print } { (false branch) >print } >ifelse
 ) EXPECT_OUTPUT: 2
 ) EXPECT_AL: []
 0 !count
-{ count >to_string >print  count >inc !count }
+{ count >toString >print  count >inc !count }
 { count 3 >< }
 >do

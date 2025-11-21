@@ -94,12 +94,6 @@
 ) Usage: x 0 >< { (positive) } { (not positive) } >ifelse
 {>choose} !ifelse
 
-) chainIf: Conditional chain - very common pattern
-) AL: [condition, true_block, false_block, ...] -> [...]
-) If true: executes true_block, then chains whatever it left on AL
-) If false: executes false_block, stops chain (typically pushes Nil)
-{>choose >chain} !chainIf
-
 ) Execute from AL (like Forth's EXECUTE)
 {!_ >_} !^
 

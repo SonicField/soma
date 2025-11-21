@@ -10,20 +10,20 @@
 
 SOMA takes a radical approach to control flow. Unlike traditional languages that provide built-in keywords like `if`, `while`, `for`, or `switch`, SOMA defines **only two control primitives**:
 
-- **`>Choose`** — Select between two blocks based on a boolean
-- **`>Chain`** — Execute blocks until no block remains on the AL
+- **`>choose`** — Select between two blocks based on a boolean
+- **`>chain`** — Execute blocks until no block remains on the AL
 
 From these two primitives, something remarkable emerges: control structures that look and behave exactly like built-in language features, but are actually **user-defined patterns**. This is SOMA's emergent macro system — a mechanism similar to Lisp's `defmacro`, but arising naturally from the language's semantics without requiring a separate macro facility.
 
-This section demonstrates how `if`, `ifelse`, `while`, `do`, and finite state machines all emerge from `>Choose` and `>Chain`. Understanding this mechanism is key to grasping SOMA's power as a language that reveals rather than obscures computation.
+This section demonstrates how `if`, `ifelse`, `while`, `do`, and finite state machines all emerge from `>choose` and `>chain`. Understanding this mechanism is key to grasping SOMA's power as a language that reveals rather than obscures computation.
 
 ---
 
 ## 1. The Two Primitives
 
-### 1.1 `>Choose` — Conditional Selection
+### 1.1 `>choose` — Conditional Selection
 
-`>Choose` is SOMA's only branching primitive. It selects between two blocks based on a boolean value.
+`>choose` is SOMA's only branching primitive. It selects between two blocks based on a boolean value.
 
 **AL Contract (pre-execution):**
 ```
@@ -34,7 +34,7 @@ Top → C (false branch block)
 
 **Program syntax:**
 ```soma
-A B C >Choose
+A B C >choose
 ```
 
 **Semantics:**
@@ -50,7 +50,7 @@ A B C >Choose
 True
   { "Path taken" >print }
   { "Path not taken" >print }
->Choose
+>choose
 ```
 
 Output: `Path taken`
@@ -59,52 +59,52 @@ The false branch block is never executed and leaves no trace. This is **eager ev
 
 ---
 
-### 1.2 `>Chain` — Block Continuation Loop
+### 1.2 `>chain` — Block Continuation Loop
 
-`>Chain` is SOMA's only looping primitive. It repeatedly executes blocks until the AL top is no longer a block.
+`>chain` is SOMA's only looping primitive. It repeatedly executes blocks until the AL top is no longer a block.
 
 **Semantics:**
 1. Pop the top value from the AL
-2. If it is **not** a Block: push it back and stop (`>Chain` terminates)
+2. If it is **not** a Block: push it back and stop (`>chain` terminates)
 3. If it **is** a Block: execute it
 4. After execution, examine the new AL top
 5. If the new top is a Block, repeat from step 3
 6. Otherwise, stop
 
-**Key insight:** `>Chain` does not recurse and does not grow a call stack. It is a **flat iteration** over a sequence of blocks left on the AL by each previous block.
+**Key insight:** `>chain` does not recurse and does not grow a call stack. It is a **flat iteration** over a sequence of blocks left on the AL by each previous block.
 
 **Example 1: Single block execution**
 ```soma
-{ 5 5 >* } >Chain
+{ 5 5 >* } >chain
 ```
-Result: AL contains `[25]`. The block executes once, leaves `25` on the AL, and `>Chain` terminates because `25` is not a block.
+Result: AL contains `[25]`. The block executes once, leaves `25` on the AL, and `>chain` terminates because `25` is not a block.
 
 **Example 2: Self-perpetuating block**
 ```soma
-{ "tick" >print >block } >Chain
+{ "tick" >print >block } >chain
 ```
 
 This prints `tick` forever. Why?
 - The block executes, prints `tick`, then pushes `>block` (the currently executing block) onto the AL
-- `>Chain` sees a block on top and executes it again
+- `>chain` sees a block on top and executes it again
 - This repeats infinitely
 
 **IMPORTANT ERRATA CORRECTION:**
 
-The original specification contained examples that incorrectly used **CellRefs** (trailing-dot paths) with `>Chain`. For example:
+The original specification contained examples that incorrectly used **CellRefs** (trailing-dot paths) with `>chain`. For example:
 
 ```soma
-7 square. >Chain >print  ; WRONG!
+7 square. >chain >print  ; WRONG!
 ```
 
 Under SOMA semantics:
 - `square.` resolves to a **CellRef** (not the block itself)
-- `>Chain` sees a non-Block value and immediately terminates
+- `>chain` sees a non-Block value and immediately terminates
 - This is a silent logic error
 
 **Correct form:**
 ```soma
-7 square >Chain >print  ; CORRECT
+7 square >chain >print  ; CORRECT
 ```
 
 This retrieves the **block value** stored at `square`, not a reference to the cell. All examples in this document use the corrected form.
@@ -238,7 +238,7 @@ inc !commands.next
 
 ## 3. Building Emergent Control Structures
 
-The power of `>Choose` and `>Chain` lies not in what they do individually, but in **what emerges when you combine them**. Let's build traditional control structures from scratch.
+The power of `>choose` and `>chain` lies not in what they do individually, but in **what emerges when you combine them**. Let's build traditional control structures from scratch.
 
 ### 3.1 IF (Single Branch)
 
@@ -254,7 +254,7 @@ if (condition) {
 condition
   { body }
   { }
->Choose
+>choose
 ```
 
 **How it works:**
@@ -267,7 +267,7 @@ condition
 x 10 >>
   { "x is greater than 10" >print }
   { }
->Choose
+>choose
 ```
 
 ---
@@ -288,20 +288,20 @@ if (condition) {
 condition
   { true_body }
   { false_body }
->Choose
+>choose
 ```
 
 **How it works:**
-- This is the **natural form** of `>Choose`
+- This is the **natural form** of `>choose`
 - One branch always executes
-- No special syntax needed — it's just `>Choose`
+- No special syntax needed — it's just `>choose`
 
 **Example:**
 ```soma
 user.authenticated
   { dashboard_page >render }
   { login_page >render }
->Choose
+>choose
 ```
 
 ---
@@ -324,8 +324,8 @@ while (condition) {
     >block
   }
   { }
-  >Choose
-} >Chain
+  >choose
+} >chain
 ```
 
 **How it works:**
@@ -333,22 +333,22 @@ while (condition) {
 Let's trace execution step by step:
 
 1. The outer block is pushed onto the AL
-2. `>Chain` pops and executes it
+2. `>chain` pops and executes it
 3. Inside the block:
    - `condition` is evaluated (pushes a boolean)
    - Two blocks are pushed (true branch and false branch)
-   - `>Choose` executes
+   - `>choose` executes
 4. If `condition` is `True`:
    - The true branch executes
    - `body` runs
    - `>block` pushes the outer block back onto the AL
    - Block ends
-   - `>Chain` sees a block on top and repeats
+   - `>chain` sees a block on top and repeats
 5. If `condition` is `False`:
    - The false branch (empty `{}`) executes
    - Nothing is left on the AL
    - Block ends
-   - `>Chain` sees no block and terminates
+   - `>chain` sees no block and terminates
 
 **Complete example: Count to 5**
 ```soma
@@ -362,8 +362,8 @@ Let's trace execution step by step:
     >block
   }
   { }
-  >Choose
-} >Chain
+  >choose
+} >chain
 ```
 
 Output:
@@ -377,7 +377,7 @@ Output:
 
 **Note:** This example uses `counter` (Store path) rather than `_.counter` (Register path) because the inner blocks cannot access the outer block's Register. The Store is globally accessible to all blocks.
 
-This is a **while loop** built from `>Choose` and `>Chain`. No special syntax. No hidden control structures. Just blocks and state.
+This is a **while loop** built from `>choose` and `>chain`. No special syntax. No hidden control structures. Just blocks and state.
 
 ---
 
@@ -397,8 +397,8 @@ do {
   condition
   { >block }
   { }
-  >Choose
-} >Chain
+  >choose
+} >chain
 ```
 
 **How it works:**
@@ -414,8 +414,8 @@ do {
   input "quit" >== >not
   { >block }
   { }
-  >Choose
-} >Chain
+  >choose
+} >chain
 ```
 
 This reads input until the user types "quit". The body (read operation) always executes at least once.
@@ -435,12 +435,12 @@ while (true) {
 
 **SOMA pattern:**
 ```soma
-{ body >block } >Chain
+{ body >block } >chain
 ```
 
 **How it works:**
 - The block always pushes itself onto the AL via `>block`
-- `>Chain` always sees a block and continues forever
+- `>chain` always sees a block and continues forever
 
 **Example: Server loop**
 ```soma
@@ -449,7 +449,7 @@ while (true) {
   request >handle
   response >send
   >block
-} >Chain
+} >chain
 ```
 
 This is the simplest possible infinite loop in SOMA. One block. One continuation. No condition needed.
@@ -467,7 +467,7 @@ Chain !Kette
 block !Block
 
 ) Infinite loop in pure German
-{ "tick" >print >Block } >Kette
+{ "tick" >print >block } >Kette
 ```
 
 **Example: Swedish programmer**
@@ -499,7 +499,7 @@ Equal !Gleich
 
 ) Pure German control flow
 bedingung
-  { "wahr" >print >Block }
+  { "wahr" >print >block }
   { "falsch" >print }
 >Wählen >Kette
 ```
@@ -526,13 +526,13 @@ After defining this macro, `while` looks exactly like a built-in language featur
 SOMA achieves the same effect **without macros**:
 
 ```soma
-{ condition { body >block } { } >Choose } !while
+{ condition { body >block } { } >choose } !while
 ```
 
 Now you can use `while` like this:
 
 ```soma
-{ loop_counter 10 >< } { loop_body } while >Chain
+{ loop_counter 10 >< } { loop_body } while >chain
 ```
 
 To the user, `while` behaves like a built-in control structure. But it's not. It's just a **stored block**.
@@ -548,7 +548,7 @@ To the user, `while` behaves like a built-in control structure. But it's not. It
 
 **In SOMA:**
 - Control structures are **values** (blocks)
-- You can define new ones using only `>Choose` and `>Chain`
+- You can define new ones using only `>choose` and `>chain`
 - The boundary between "language" and "library" disappears
 
 This is **emergent abstraction**. SOMA doesn't provide `if` or `while` because it doesn't need to. They emerge naturally from the semantics.
@@ -673,7 +673,7 @@ Hello
 
 ```soma
 { !if_exec_block !if_exec_cond
-  if_exec_cond { if_exec_block >^ } { } >Choose >Chain
+  if_exec_cond { if_exec_block >^ } { } >choose >chain
 } !if_exec
 
 True { (Condition met) >print } >if_exec     ) Prints: Condition met
@@ -682,7 +682,7 @@ False { (Won't print) >print } >if_exec      ) Prints nothing
 
 **This is conditional execution of AL-passed blocks** — a higher-order control structure.
 
-**Note on Register isolation:** The original attempt `{ !_.block !_.cond _.cond { >_.block } { } >Choose >Chain }` would fail because the inner block `{ >_.block }` cannot access the outer block's Register path `_.block`. The corrected version stores the block and condition in the Store (`if_exec_block`, `if_exec_cond`), then uses `>^` to execute the block from the AL.
+**Note on Register isolation:** The original attempt `{ !_.block !_.cond _.cond { >_.block } { } >choose >chain }` would fail because the inner block `{ >_.block }` cannot access the outer block's Register path `_.block`. The corrected version stores the block and condition in the Store (`if_exec_block`, `if_exec_cond`), then uses `>^` to execute the block from the AL.
 
 ### 6.3 Execute With Argument
 
@@ -721,8 +721,8 @@ False { (Won't print) >print } >if_exec      ) Prints nothing
       >block
     }
     { }
-    >Choose
-  } >Chain
+    >choose
+  } >chain
 } !map
 ```
 
@@ -742,8 +742,8 @@ The above example **violates Register isolation** — the inner blocks try to ac
       >block
     }
     { }
-    >Choose
-  } >Chain
+    >choose
+  } >chain
 } !map
 
 ) Usage: Increment three numbers
@@ -785,8 +785,8 @@ All of these **look** like built-in language features:
 But **none of them are primitives**. They're all user-defined using:
 - `!` (store at path)
 - `>` (execute from path)
-- `>Choose` (branching)
-- `>Chain` (looping)
+- `>choose` (branching)
+- `>chain` (looping)
 
 ### 7.2 Why This Is Revolutionary
 
@@ -796,7 +796,7 @@ But **none of them are primitives**. They're all user-defined using:
 - Adding new control flow requires language changes
 
 **SOMA approach:**
-- Language provides primitives: `>Choose`, `>Chain`, `!`, `>`
+- Language provides primitives: `>choose`, `>chain`, `!`, `>`
 - Everything else is **user-defined**
 - Adding new control flow is just defining a new block
 
@@ -843,14 +843,14 @@ State machines are a natural fit for SOMA. Each state is a block that transition
 { "GREEN" >print yellow } !green
 { "YELLOW" >print red } !yellow
 
-red >Chain
+red >chain
 ```
 
 Execution trace:
 1. `red` block executes → prints "RED", pushes `green` (the green block)
-2. `>Chain` sees a block, executes it
+2. `>chain` sees a block, executes it
 3. `green` block executes → prints "GREEN", pushes `yellow`
-4. `>Chain` sees a block, executes it
+4. `>chain` sees a block, executes it
 5. `yellow` block executes → prints "YELLOW", pushes `red`
 6. Loop continues forever
 
@@ -873,7 +873,7 @@ Execution trace:
     "Normal" >print
     >block
   }
-  >Choose
+  >choose
 } !alarm_on
 
 {
@@ -887,11 +887,11 @@ Execution trace:
     "Normal" >print
     >block
   }
-  >Choose
+  >choose
 } !alarm_off
 
 True !alarm.state
-alarm_off >Chain
+alarm_off >chain
 ```
 
 This is a **conditional state machine**:
@@ -928,15 +928,15 @@ for i in 0..3 {
         >block
       }
       { }
-      >Choose
-    } >Chain
+      >choose
+    } >chain
 
     outer_i 1 >+ !outer_i
     >block
   }
   { }
-  >Choose
-} >Chain
+  >choose
+} >chain
 ```
 
 **CRITICAL: Register Isolation**
@@ -989,13 +989,13 @@ This makes blocks **more powerful** than macros in most languages, because macro
 You can build complex control flow by **composing blocks**:
 
 ```soma
-{ condition_a { body_a >block } { } >Choose } !loop_a
-{ condition_b { body_b >block } { } >Choose } !loop_b
+{ condition_a { body_a >block } { } >choose } !loop_a
+{ condition_b { body_b >block } { } >choose } !loop_b
 
 condition_top
-  { loop_a >Chain }
-  { loop_b >Chain }
->Choose
+  { loop_a >chain }
+  { loop_b >chain }
+>choose
 ```
 
 This selects between two different loop behaviors based on `condition_top`. Try doing that with traditional `while` statements!
@@ -1010,7 +1010,7 @@ Traditional macro systems require:
 - Special syntax for quoting and unquoting
 - Distinction between "macro time" and "runtime"
 
-SOMA has none of this. Blocks are just values. `>Choose` and `>Chain` are just operations on values. The emergent behavior is a **consequence of the semantics**, not a special feature.
+SOMA has none of this. Blocks are just values. `>choose` and `>chain` are just operations on values. The emergent behavior is a **consequence of the semantics**, not a special feature.
 
 ---
 
@@ -1022,7 +1022,7 @@ Let's build a small library of reusable control structures:
 
 ```soma
 [IF - single branch]
-{ >swap { } >Choose } !if
+{ >swap { } >choose } !if
 
 [WHILE - loop with precondition]
 { !while_body !while_cond
@@ -1030,7 +1030,7 @@ Let's build a small library of reusable control structures:
     while_cond                ) Read condition from Store
     { while_body >block }     ) Read body from Store, continue loop
     { }
-    >Choose
+    >choose
   }
 } !while
 
@@ -1041,7 +1041,7 @@ Let's build a small library of reusable control structures:
     do_cond                   ) Read condition from Store
     { >block }
     { }
-    >Choose
+    >choose
   }
 } !do
 
@@ -1055,7 +1055,7 @@ Let's build a small library of reusable control structures:
       >block
     }
     { }
-    >Choose
+    >choose
   }
 } !repeat
 ```
@@ -1073,21 +1073,21 @@ These control structure definitions store their parameters in the **Store** (e.g
 ```soma
 x 0 >>
   { "positive" >print }
-if >Chain
+if >chain
 ```
 
 **Using `while`:**
 ```soma
 { outer_counter 10 >< }      ) condition block (reads from Store)
 { outer_counter >print outer_counter 1 >+ !outer_counter }  ) body block (uses Store)
-while >Chain
+while >chain
 ```
 
 **Using `repeat`:**
 ```soma
 { "hello" >print }  ) body
 5  ) count
-repeat >Chain
+repeat >chain
 ```
 
 Output:
@@ -1120,15 +1120,15 @@ SOMA does not need:
 - `break` / `continue` statements
 - `switch` / `case` statements
 
-All of these can be **user-defined** using `>Choose` and `>Chain`.
+All of these can be **user-defined** using `>choose` and `>chain`.
 
 ### 11.3 The Emergent Macro Property
 
 The macro-like behavior emerges from three properties:
 
 1. **Blocks are first-class** → can be stored and named
-2. **`>Choose` selects blocks** → branching without syntax
-3. **`>Chain` executes blocks** → looping without syntax
+2. **`>choose` selects blocks** → branching without syntax
+3. **`>chain` executes blocks** → looping without syntax
 
 Together, these create a **compositional control flow algebra** where complex patterns emerge from simple primitives.
 
@@ -1174,7 +1174,7 @@ Lambda calculus encodes control flow using:
 - Church encodings
 - Combinators (Y combinator for recursion)
 
-But these are **encodings**, not native operations. SOMA's `>Choose` and `>Chain` are **direct semantic primitives**.
+But these are **encodings**, not native operations. SOMA's `>choose` and `>chain` are **direct semantic primitives**.
 
 And unlike Lambda Calculus, SOMA makes **execution explicit** with the `>` prefix, making computation observable.
 
@@ -1182,14 +1182,14 @@ And unlike Lambda Calculus, SOMA makes **execution explicit** with the `>` prefi
 
 ## 13. Practical Considerations
 
-### 13.1 When To Use `>Choose` vs `>Chain`
+### 13.1 When To Use `>choose` vs `>chain`
 
-**Use `>Choose` when:**
+**Use `>choose` when:**
 - You need to select between exactly two alternatives
 - The decision is based on a boolean
 - Both branches should be fully defined (even if one is empty)
 
-**Use `>Chain` when:**
+**Use `>chain` when:**
 - You need to execute a sequence of blocks
 - The sequence length is determined at runtime
 - You want loops or state machines
@@ -1199,8 +1199,8 @@ And unlike Lambda Calculus, SOMA makes **execution explicit** with the `>` prefi
 
 ### 13.2 Performance Implications
 
-- `>Choose`: **No overhead** beyond evaluating the condition and selecting a branch
-- `>Chain`: **No call stack growth** — each iteration is flat
+- `>choose`: **No overhead** beyond evaluating the condition and selecting a branch
+- `>chain`: **No call stack growth** — each iteration is flat
 - Self-referential blocks: **No recursion** — just iteration
 
 SOMA's control flow is **as efficient as native control structures** in traditional languages.
@@ -1208,7 +1208,7 @@ SOMA's control flow is **as efficient as native control structures** in traditio
 ### 13.3 Debugging
 
 To debug SOMA control flow:
-- Inspect the AL before `>Choose` to see the condition and blocks
+- Inspect the AL before `>choose` to see the condition and blocks
 - Insert `>dump` inside blocks to trace execution
 - Use `>print` to mark state transitions in FSMs
 
@@ -1220,12 +1220,12 @@ Because everything is explicit, debugging is often **easier** than in languages 
 
 ### 14.1 CellRef vs Block Values
 
-**Problem:** Original examples used `square.` (CellRef) with `>Chain`
+**Problem:** Original examples used `square.` (CellRef) with `>chain`
 
 **Why this fails:**
 - `square.` is a **CellRef** (a reference to a cell)
-- `>Chain` requires a **Block value**
-- `>Chain` would immediately terminate
+- `>chain` requires a **Block value**
+- `>chain` would immediately terminate
 
 **Correction:** All examples now use `square` (payload access) to retrieve the block value.
 
@@ -1251,7 +1251,7 @@ All control flow patterns use `>block` rather than the deprecated `_.self` magic
 
 ## Summary
 
-SOMA's control flow is **emergent** rather than **prescribed**. By providing only `>Choose` and `>Chain`, SOMA creates a foundation on which all traditional control structures can be built as **user-defined patterns**.
+SOMA's control flow is **emergent** rather than **prescribed**. By providing only `>choose` and `>chain`, SOMA creates a foundation on which all traditional control structures can be built as **user-defined patterns**.
 
 These patterns are not "library functions" in the traditional sense. They are **blocks** — first-class values that behave exactly like built-in language features.
 

@@ -116,16 +116,16 @@ SOMA has no control stack. No return path. No exception unwinding.
 
 Instead, control arises from two primitive operations:
 
-- **`>Choose`** - select and execute one of two blocks based on a boolean
-- **`>Chain`** - repeatedly execute blocks until a non-block value appears
+- **`>choose`** - select and execute one of two blocks based on a boolean
+- **`>chain`** - repeatedly execute blocks until a non-block value appears
 
 All control structures—loops, conditionals, recursion, finite state machines—emerge from these primitives acting on explicit state.
 
 ```soma
-True { "Yes" >print } { "No" >print } >Choose
+True { "Yes" >print } { "No" >print } >choose
 ```
 
-No hidden jumps. No implicit context. The boolean is on the AL. The blocks are on the AL. `>Choose` executes one and discards the other. That's it.
+No hidden jumps. No implicit context. The boolean is on the AL. The blocks are on the AL. `>choose` executes one and discards the other. That's it.
 
 ### Structure is Visible
 
@@ -236,7 +236,7 @@ This eliminates:
 Instead, you build control graphs explicitly:
 
 ```soma
-{ _.self "tick" >print _.self } >Chain
+{ _.self "tick" >print _.self } >chain
 ```
 
 This block prints "tick" and then re-executes itself. Forever. No stack growth. No tail call optimization needed. Just explicit state.
@@ -292,8 +292,8 @@ Let's implement a simple counter that prints numbers until it reaches a limit.
   counter.n counter.limit >>
   { {} }
   { _.self }
-  >Choose
-} >Chain
+  >choose
+} >chain
 ```
 
 **What happens:**
@@ -304,7 +304,7 @@ Let's implement a simple counter that prints numbers until it reaches a limit.
    - Checks if counter exceeds limit
    - If yes, push empty block (terminates Chain)
    - If no, push self (continues Chain)
-3. Execute the block with `>Chain`
+3. Execute the block with `>chain`
 
 No recursion. No stack frames. No return values. Just state evolution.
 
@@ -351,7 +351,7 @@ while counter["n"] <= counter["limit"]:
 | **Syntax** | Implicit control structures (`while`) | Explicit block selection |
 | **Stack** | Hidden call stack for functions | No call stack |
 | **State visibility** | Variables and objects | Explicit Store paths |
-| **Control flow** | Keywords (`if`, `while`, `for`) | Algebraic operations (`>Choose`, `>Chain`) |
+| **Control flow** | Keywords (`if`, `while`, `for`) | Algebraic operations (`>choose`, `>chain`) |
 
 Python hides the control machinery behind syntax. SOMA makes it explicit through state.
 
@@ -432,5 +432,5 @@ No call stack. No exceptions. No purity. Just state, blocks, and explicit flow.
 
 - **Section 2: Core Concepts** - Details on AL, Store, Registers, and Cells
 - **Section 8: Blocks and Execution** - How blocks work without being functions
-- **Section 10: Logical Control Flow** - `>Choose` and `>Chain` in depth
+- **Section 10: Logical Control Flow** - `>choose` and `>chain` in depth
 - **Section 18: SOMA in Context** - Comparisons with other computational models

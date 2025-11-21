@@ -405,7 +405,7 @@ class TestRegisterOperations(unittest.TestCase):
         """Test each block gets fresh, empty Register."""
         vm = VM()
         # Outer block: store in register, inner block: read register (should be Void)
-        compiled = compile_program(parse("{ 1 !_.x { _.x } >Chain }"))
+        compiled = compile_program(parse("{ 1 !_.x { _.x } >chain }"))
         compiled.execute(vm)
 
         # Get outer block
@@ -450,7 +450,7 @@ class TestRegisterOperations(unittest.TestCase):
         source = """
         {
             1 !_.n
-            { 2 !_.n } >Chain
+            { 2 !_.n } >chain
             _.n
         }
         """
@@ -510,7 +510,7 @@ class TestBuiltins(unittest.TestCase):
         self.assertIn("top-level", str(ctx.exception).lower())
 
     def test_builtin_choose_true_branch(self):
-        """Test >Choose executes true branch when condition is truthy."""
+        """Test >choose executes true branch when condition is truthy."""
         vm = VM()
 
         # Create blocks for branches
@@ -524,7 +524,7 @@ class TestBuiltins(unittest.TestCase):
         # AL: [condition, true_branch, false_branch]
         vm.al = [42, true_block, false_block]  # 42 is truthy
 
-        # Execute >Choose
+        # Execute >choose
         choose_builtin = vm.store.read_value(["choose"])
         choose_builtin.execute(vm)
 
@@ -532,7 +532,7 @@ class TestBuiltins(unittest.TestCase):
         self.assertEqual(vm.al, [1])
 
     def test_builtin_choose_false_branch(self):
-        """Test >Choose executes false branch when condition is Nil."""
+        """Test >choose executes false branch when condition is Nil."""
         vm = VM()
 
         true_block = Block([
@@ -552,7 +552,7 @@ class TestBuiltins(unittest.TestCase):
         self.assertEqual(vm.al, [2])
 
     def test_builtin_choose_void_is_falsy(self):
-        """Test >Choose treats Void as falsy."""
+        """Test >choose treats Void as falsy."""
         vm = VM()
 
         true_block = Block([
@@ -571,7 +571,7 @@ class TestBuiltins(unittest.TestCase):
         self.assertEqual(vm.al, [2])
 
     def test_builtin_choose_al_underflow(self):
-        """Test >Choose raises error on AL underflow."""
+        """Test >choose raises error on AL underflow."""
         vm = VM()
         vm.al = [1, 2]  # Only 2 values, need 3
 
@@ -583,7 +583,7 @@ class TestBuiltins(unittest.TestCase):
         self.assertIn("underflow", str(ctx.exception).lower())
 
     def test_builtin_chain_executes_block(self):
-        """Test >Chain pops and executes block from AL."""
+        """Test >chain pops and executes block from AL."""
         vm = VM()
 
         block = Block([
@@ -599,7 +599,7 @@ class TestBuiltins(unittest.TestCase):
         self.assertEqual(vm.al, [42])
 
     def test_builtin_chain_stops_on_non_block(self):
-        """Test >Chain stops when AL top is not a block."""
+        """Test >chain stops when AL top is not a block."""
         vm = VM()
 
         # Push a value (not a block)
@@ -612,7 +612,7 @@ class TestBuiltins(unittest.TestCase):
         self.assertEqual(vm.al, [42])
 
     def test_builtin_chain_loop_with_block(self):
-        """Test >Chain loops while block leaves block on AL."""
+        """Test >chain loops while block leaves block on AL."""
         vm = VM()
 
         # Counter in Store
@@ -714,9 +714,9 @@ class TestIntegration(unittest.TestCase):
         """Test conditional execution pattern."""
         vm = VM()
 
-        # True { 1 } { 2 } >Choose
+        # True { 1 } { 2 } >choose
         source = """
-        True { 1 } { 2 } >Choose
+        True { 1 } { 2 } >choose
         """
 
         # First, set up True as a truthy value (non-Nil, non-Void)
@@ -735,7 +735,7 @@ class TestIntegration(unittest.TestCase):
         # Counter in Store
         vm.store.write_value(["counter"], 0)
 
-        # { counter 1 >+ !counter counter 3 >< { >block } { } >Choose } >Chain
+        # { counter 1 >+ !counter counter 3 >< { >block } { } >choose } >chain
         # This is complex - let's test simpler version manually
 
         # Block that increments and loops
@@ -750,7 +750,7 @@ class TestIntegration(unittest.TestCase):
         loop_block = Block([RunNode(None, increment_and_loop)])
         vm.al = [loop_block]
 
-        # Execute with >Chain
+        # Execute with >chain
         chain = vm.store.read_value(["chain"])
         chain.execute(vm)
 
@@ -855,7 +855,7 @@ class TestErrors(unittest.TestCase):
         self.assertTrue("execute" in error_msg or "block" in error_msg)
 
     def test_choose_non_block_branch_error(self):
-        """Test >Choose with non-block branch raises error."""
+        """Test >choose with non-block branch raises error."""
         vm = VM()
 
         # AL: [True, 1, 2] - branches are ints, not blocks
@@ -869,7 +869,7 @@ class TestErrors(unittest.TestCase):
         self.assertIn("block", str(ctx.exception).lower())
 
     def test_chain_non_block_error(self):
-        """Test >Chain with non-block raises error."""
+        """Test >chain with non-block raises error."""
         vm = VM()
 
         # This should NOT error - Chain just stops if AL top is not a block

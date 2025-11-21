@@ -1,0 +1,160 @@
+) SOMA Examples Test Suite
+) Tests basic examples from 08-examples.md
+) Organized by section for documentation validation
+
+) ==================== Section 2: Hello World ====================
+
+) TEST: Minimal hello world
+) EXPECT_OUTPUT: Hello world
+) EXPECT_AL: []
+(Hello world) >print
+
+) TEST: Simple counter
+) EXPECT_OUTPUT: 1
+) EXPECT_AL: []
+0 !counter
+counter 1 >+ !counter
+counter >print
+
+) TEST: Read-modify-write pattern
+) EXPECT_OUTPUT: 30
+) EXPECT_AL: []
+10 !value
+20 !increment
+value increment >+ !value
+value >print
+
+) TEST: Multiple cell updates
+) EXPECT_OUTPUT: 2
+) EXPECT_OUTPUT: 1
+) EXPECT_AL: []
+0 !stats.hits
+0 !stats.misses
+stats.hits 1 >+ !stats.hits
+stats.hits 1 >+ !stats.hits
+stats.misses 1 >+ !stats.misses
+stats.hits >print
+stats.misses >print
+
+) ==================== Section 6: Register Isolation ====================
+
+) TEST: Inner block has its own register
+) EXPECT_OUTPUT: 1
+) EXPECT_AL: []
+{
+  1 !_.n
+  {
+    2 !_.n
+  } >chain
+  _.n >print
+} >chain
+
+) TEST: Pass via AL
+) EXPECT_OUTPUT: 1
+) EXPECT_AL: []
+{
+  1 !_.n
+  _.n
+  {
+    !_.inner_n
+    _.inner_n >print
+  } >chain
+} >chain
+
+) TEST: Use Store for sharing
+) EXPECT_OUTPUT: 1
+) EXPECT_AL: []
+{
+  1 !shared_data
+  {
+    shared_data >print
+  } >chain
+} >chain
+
+) TEST: Return via AL
+) EXPECT_OUTPUT: 49
+) EXPECT_AL: []
+{
+  { !_.n _.n _.n >* } !_.square
+  7 >_.square
+  >print
+} >chain
+
+) ==================== Section 9: CellRefs and Graphs ====================
+
+) TEST: Graph value + children coexistence
+) EXPECT_OUTPUT: Nil
+) EXPECT_OUTPUT: 23
+) EXPECT_OUTPUT: Nil
+) EXPECT_AL: []
+Nil !parent
+parent >print
+23 !parent.child
+parent.child >print
+parent >print
+
+) TEST: Linked list using CellRefs
+) EXPECT_OUTPUT: 1
+) EXPECT_OUTPUT: 2
+) EXPECT_OUTPUT: Nil
+) EXPECT_AL: []
+1 !list.value
+list.next. !list.next
+2 !list.next.value
+Nil !list.next.next
+list.value >print
+list.next.value >print
+list.next.next >print
+
+) ==================== Section 11: Register Deletion ====================
+
+) TEST: Simple register deletion
+) EXPECT_OUTPUT: 23
+) EXPECT_AL: [Void]
+{
+  23 !_.temp
+  _.temp >print
+  Void !_.temp.
+  _.temp
+} >chain
+
+) TEST: Register cleanup pattern
+) EXPECT_OUTPUT: 3
+) EXPECT_AL: []
+{
+  1 !_.a
+  2 !_.b
+  _.a _.b >+
+  Void !_.a.
+  Void !_.b.
+} >chain >print
+
+) ==================== Section 17: Void vs Nil ====================
+
+) TEST: Auto-vivification creates Void
+) EXPECT_OUTPUT: 42
+) EXPECT_AL: []
+42 !a.b.c
+a.b.c >print
+
+) TEST: Void vs Nil detection
+) EXPECT_OUTPUT: Never set
+) EXPECT_OUTPUT: Has been set
+) EXPECT_AL: []
+42 !config.deep.value
+config.deep >isVoid
+  { (Never set) >print }
+  { (Has been set) >print }
+>choose
+Nil !config.deep
+config.deep >isVoid
+  { (Never set) >print }
+  { (Has been set) >print }
+>choose
+
+) ==================== Section 19: Everything is a Block ====================
+
+) TEST: Top-level uses underscore
+) EXPECT_OUTPUT: 23
+) EXPECT_AL: []
+23 !_ _ >print

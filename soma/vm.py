@@ -270,11 +270,8 @@ class Store:
         chain_builtin = BuiltinBlock("chain", builtin_chain)
 
         self.root["block"] = Cell(value=block_builtin)
-        self.root["Block"] = Cell(value=block_builtin)
         self.root["choose"] = Cell(value=choose_builtin)
-        self.root["Choose"] = Cell(value=choose_builtin)
         self.root["chain"] = Cell(value=chain_builtin)
-        self.root["Chain"] = Cell(value=chain_builtin)
 
         # Boolean constants and special values
         self.root["True"] = Cell(value=True_)
@@ -294,18 +291,18 @@ class Store:
 
         # I/O operations
         self.root["print"] = Cell(value=BuiltinBlock("print", builtin_print))
-        self.root["read_line"] = Cell(value=BuiltinBlock("read_line", builtin_read_line))
+        self.root["readLine"] = Cell(value=BuiltinBlock("readLine", builtin_read_line))
 
         # String operations
         self.root["concat"] = Cell(value=BuiltinBlock("concat", builtin_concat))
 
         # Type conversions
-        self.root["to_string"] = Cell(value=BuiltinBlock("to_string", builtin_to_string))
-        self.root["to_int"] = Cell(value=BuiltinBlock("to_int", builtin_to_int))
+        self.root["toString"] = Cell(value=BuiltinBlock("toString", builtin_to_string))
+        self.root["toInt"] = Cell(value=BuiltinBlock("toInt", builtin_to_int))
 
         # Type predicates
-        self.root["IsVoid"] = Cell(value=BuiltinBlock("IsVoid", builtin_is_void))
-        self.root["IsNil"] = Cell(value=BuiltinBlock("IsNil", builtin_is_nil))
+        self.root["isVoid"] = Cell(value=BuiltinBlock("isVoid", builtin_is_void))
+        self.root["isNil"] = Cell(value=BuiltinBlock("isNil", builtin_is_nil))
 
     def read_value(self, components: List[str]) -> Thing:
         """
