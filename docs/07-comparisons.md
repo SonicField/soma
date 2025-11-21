@@ -85,7 +85,7 @@ explicit control flow.
 Example: Implementing WHEN
 
 ```soma
-{ {} >choose } !when
+{ {} >choose >^ } !when
 
 ; Usage
 x 10 >=> { (large) >print (value) >print } >when
@@ -95,14 +95,18 @@ How it works:
 
    1. AL starts with: [bool, block]
    2. {} pushes an empty block → AL = [bool, block, {}]
-   3. >choose consumes the boolean and selects:
-      - if bool is True, execute block (the user's code)
-      - if bool is False, execute {} (do nothing)
+   3. >choose consumes the boolean and selects one of the two blocks:
+      - if bool is True, selects block (the user's code)
+      - if bool is False, selects {} (empty block)
+   4. >^ executes the selected block
 
 **This is not a macro. It is a block.**
 
 No code is generated. No expansion occurs. The `when` block transforms
 state at runtime, selecting which block to execute based on the AL contents.
+
+Note: `>choose` selects a value but does NOT execute it. You need `>^` to
+execute the selected block, or use the stdlib `>ifelse` which combines both.
 
 
 2.3  The `^` Operator: User-Defined FUNCALL
@@ -159,7 +163,7 @@ SOMA requires no macro system because:
 
    * Blocks are unevaluated values until explicitly executed
    * Passing a block to another block does not execute it
-   * Execution only occurs via `>chain`, `>choose`, or `>path`
+   * Execution only occurs via `>chain`, `>^`, or `>path`
 
 The `>path` operator is the key. It makes execution **first-class**:
 
@@ -172,10 +176,19 @@ This means control structures can be defined as blocks that choose whether
 to execute their arguments:
 
 ```soma
-) Define IF/ELSE
-{ >choose } !if_else
+) Define IF/ELSE using stdlib >ifelse (which does choose + execute)
+{ >ifelse } !if_else
 
 ) Use it exactly like a built-in
+x 0 >== { (zero) >print } { (non-zero) >print } >if_else
+```
+
+Or implement it yourself:
+
+```soma
+) Manual implementation: choose + execute
+{ >choose >^ } !if_else
+
 x 0 >== { (zero) >print } { (non-zero) >print } >if_else
 ```
 
@@ -200,7 +213,17 @@ Common Lisp:
 SOMA:
 
 ```soma
-{ >choose } !my-if
+) Use stdlib >ifelse (choose + execute)
+{ >ifelse } !my-if
+
+x 0 >== { (zero) >print } { (non-zero) >print } >my-if
+```
+
+Or implement manually:
+
+```soma
+) Manual: choose the block, then execute it
+{ >choose >^ } !my-if
 
 x 0 >== { (zero) >print } { (non-zero) >print } >my-if
 ```
@@ -228,7 +251,7 @@ Common Lisp:
 SOMA:
 
 ```soma
-{ {} >swap >choose } !unless
+{ {} >swap >choose >^ } !unless
 
 config.exists { >create-default-config } >unless
 ```
@@ -238,10 +261,12 @@ Decomposition:
    * Start with AL = [bool, block]
    * {} pushes empty block → AL = [bool, block, {}]
    * >swap reorders → AL = [bool, {}, block]
-   * >choose: if bool is True, execute {} (do nothing); if False, execute block
+   * >choose: if bool is True, selects {} (empty); if False, selects block
+   * >^ executes the selected block
 
 The key insight: by pushing {} and swapping, we place the empty block in the "true"
 position and the user's block in the "false" position, inverting the condition.
+Then `>^` executes whichever block was selected.
 
 
 2.7  WHILE: Looping Constructs
@@ -292,8 +317,8 @@ For comparison, here's an inline loop that doesn't use the stdlib while:
 
   counter 10 ><
     { >loop }
-    { }
-  >choose
+    {}
+  >choose >^
 } !loop
 >loop
 ```
@@ -302,12 +327,14 @@ This inline pattern:
 
    1. Executes the body (print counter, increment counter)
    2. Tests the condition (counter < 10)
-   3. If true: `>choose` executes `{ >loop }`, which executes the loop block again
-   4. If false: `>choose` executes `{}`, which does nothing and terminates
+   3. Uses `>choose` to select one of two blocks:
+      - If true: `{ >loop }` - a block that executes the loop
+      - If false: `{}` - an empty block that does nothing
+   4. `>^` executes the selected block
+   5. If the `{ >loop }` block executes, it runs `>loop` which starts the cycle again
 
-The key difference from the doc's original version: `{ >loop }` executes the loop
-block (via the `>` prefix), while `{ loop }` would just push the block onto AL
-without executing it.
+The key difference: `>choose` selects which block to use, then `>^` executes it.
+Without `>^`, the blocks would just be values on the AL, not executed code.
 
 
 2.8  Higher-Order Functions Using `>path`
@@ -358,12 +385,12 @@ Dispatch tables can be implemented using conditionals:
 { (Subtracting...) >print } !handlers.sub
 { (Multiplying...) >print } !handlers.mul
 
-) Dispatch based on operation
+) Dispatch based on operation using nested choose + execute
 (add) !op
 op (add) >==
-  { handlers.add >^ }
-  { op (sub) >== { handlers.sub >^ } { handlers.mul >^ } >choose }
->choose
+  { >handlers.add }
+  { op (sub) >== { >handlers.sub } { >handlers.mul } >choose >^ }
+>choose >^
 ```
 
 More sophisticated dispatching:
@@ -375,17 +402,18 @@ More sophisticated dispatching:
   { 10 20 >* >print } !_.actions.mul
 
   _.op (add) >==
-    _.actions.add
-    _.actions.mul
-  >choose
+    { >_.actions.add }
+    { >_.actions.mul }
+  >choose >^
 } !dispatch
 
 (add) >dispatch     ) Executes add operation (prints 30)
 (mul) >dispatch     ) Executes mul operation (prints 200)
 ```
 
-These patterns use conditional execution with `>choose` to select the right
-handler, avoiding dynamic path construction which isn't supported in SOMA.
+These patterns use conditional selection with `>choose` to pick the right
+handler block, then `>^` to execute it. The key pattern is:
+`condition { >handler1 } { >handler2 } >choose >^`
 
 
 2.10  User-Defined Control That Looks Like Built-ins
@@ -395,8 +423,8 @@ structures are indistinguishable from built-ins:
 
 ```soma
 ) Define control primitives
-{ !_ >_ } !^                              ) Execute AL top
-{ !_.else !_.then !_.cond _.cond _.then _.else >choose } !ifelse
+{ !_ >_ } !^                                         ) Execute AL top
+{ !_.else !_.then !_.cond _.cond _.then _.else >choose >^ } !ifelse
 
 ) Use them exactly like language features
 0 !counter
@@ -408,7 +436,7 @@ These control structures:
    * Have no special syntax
    * Are stored as regular blocks in the Store
    * Can be redefined or removed
-   * Work via `>path` execution
+   * Work via `>choose` to select blocks and `>^` to execute them
 
 This is **macro-like power without macros**.
 
@@ -443,7 +471,7 @@ Example:
 ```soma
 {
   !_.it
-  _.it { >print } {} >choose
+  _.it { >print } {} >choose >^
 } !my-when
 
 5 !it
@@ -505,7 +533,7 @@ Common Lisp:
    * Requires multi-phase execution model
 
 SOMA:
-   * Requires only blocks, >choose, >chain, and `>path`
+   * Requires only blocks, >choose, >^, >chain, and `>path`
    * Operates at the value level (blocks selecting blocks)
    * Single-phase execution model
 
@@ -517,6 +545,9 @@ The profound insight:
 The `>` prefix modifier makes execution first-class. The `^` operator
 demonstrates that users can define execution patterns that look like
 language primitives but are just blocks using `>path` semantics.
+
+Key pattern: `>choose` selects a value (doesn't execute), then you need
+`>^` or `>ifelse` to execute the selected block.
 
 
 
@@ -600,13 +631,27 @@ SOMA:
   _.n 10 >>
   { (Greater than 10) >print }
   { (Not greater) >print }
-  >choose
+  >ifelse
 } !test-value
 
 15 >test-value
 ```
 
-No jumps are compiled. >choose selects which block executes.
+Or using manual choose + execute pattern:
+
+```soma
+{
+  !_.n
+  _.n 10 >>
+    { (Greater than 10) >print }
+    { (Not greater) >print }
+  >choose >^
+} !test-value
+
+15 >test-value
+```
+
+No jumps are compiled. >choose selects which block, >^ or >ifelse executes it.
 
 
 3.5  Example: Looping
@@ -636,8 +681,8 @@ SOMA:
 
   i max ><
     { >count-loop }
-    { }
-  >choose
+    {}
+  >choose >^
 } !count-loop
 >count-loop
 ```
@@ -646,12 +691,11 @@ This inline loop uses Store variables `i` and `max`. Each iteration:
 - Prints the current value
 - Increments the counter
 - Tests if i < max
-- If true: `{ >count-loop }` executes the count-loop block again (via `>`)
-- If false: empty block terminates the loop
+- Uses `>choose` to select: `{ >count-loop }` (continue) or `{}` (stop)
+- `>^` executes the selected block
+- If `{ >count-loop }` was selected and executed, it runs `>count-loop` to restart
 
-Note: The key is `{ >count-loop }` which executes the named block. Using
-`{ count-loop }` without `>` would just push the block onto AL instead of
-executing it.
+The key pattern: `>choose` selects the block, `>^` executes it.
 
 
 3.6  The EXECUTE Primitive vs User-Defined `^`
@@ -1028,7 +1072,7 @@ SOMA:
   fact-n 0 >==
   { 1 }
   { fact-n fact-n 1 >- fact >chain >* }
-  >choose
+  >choose >^
 } !fact
 
 5 fact >chain >print
@@ -1040,7 +1084,9 @@ Execution flow:
 3. Recursive case: fact-n (pushes 5), fact-n 1 >- (pushes 4), fact >chain
    - `fact >chain` creates a FRESH Register context with fact-n = 4
    - The inner execution has its own fact-n = 4, isolated from the outer fact-n = 5
-4. When inner execution completes with result on AL, `>*` multiplies by current fact-n
+4. `>choose` selects the recursive block: `{ fact-n fact-n 1 >- fact >chain >* }`
+5. `>^` executes that selected block
+6. When inner execution completes with result on AL, `>*` multiplies by current fact-n
 
 Each `>chain` creates a new Register context, providing isolation for recursive
 calls. Note that this example uses Store variables (fact-n) instead of Register

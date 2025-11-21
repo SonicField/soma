@@ -11,7 +11,7 @@
 ) TEST: when helper - basic definition
 ) EXPECT_AL: []
 ) FIX: Original doc version was buggy, using correct implementation from stdlib
-{ {} >choose } !when
+{ {} >choose >^ } !when
 
 ) TEST: when helper - usage with true condition
 ) EXPECT_AL: []
@@ -19,7 +19,7 @@
 ) EXPECT_OUTPUT: value
 ) FIX: Changed comparison to >= (greater-or-equal) so 10 >= 10 is True
 ) Original used >>, which is greater-than, so 10 > 10 was False
-{ {} >choose } !when
+{ {} >choose >^ } !when
 10 !x
 x 10 >=> { (large) >print (value) >print } >when
 
@@ -52,13 +52,13 @@ x 10 >=> { (large) >print (value) >print } >when
 ) EXPECT_AL: []
 ) FIX: Original had >swap which reversed the branches
 ) Correct implementation: just call choose directly
-{ >choose } !if_else
+{ >choose >^ } !if_else
 
 ) TEST: if_else usage - zero case
 ) EXPECT_AL: []
 ) EXPECT_OUTPUT: zero
 ) FIX: Removed >swap from if_else definition to fix branch reversal
-{ >choose } !if_else
+{ >choose >^ } !if_else
 0 !x
 x 0 >== { (zero) >print } { (non-zero) >print } >if_else
 
@@ -66,7 +66,7 @@ x 0 >== { (zero) >print } { (non-zero) >print } >if_else
 ) EXPECT_AL: []
 ) EXPECT_OUTPUT: non-zero
 ) FIX: Removed >swap from if_else definition to fix branch reversal
-{ >choose } !if_else
+{ >choose >^ } !if_else
 5 !x
 x 0 >== { (zero) >print } { (non-zero) >print } >if_else
 
@@ -75,13 +75,13 @@ x 0 >== { (zero) >print } { (non-zero) >print } >if_else
 ) TEST: my-if definition
 ) EXPECT_AL: []
 ) FIX: Same issue as if_else - >swap reversed the branches
-{ >choose } !my-if
+{ >choose >^ } !my-if
 
 ) TEST: my-if usage - zero case
 ) EXPECT_AL: []
 ) EXPECT_OUTPUT: zero
 ) FIX: Removed >swap from my-if definition to fix branch reversal
-{ >choose } !my-if
+{ >choose >^ } !my-if
 0 !x
 x 0 >== { (zero) >print } { (non-zero) >print } >my-if
 
@@ -91,7 +91,7 @@ x 0 >== { (zero) >print } { (non-zero) >print } >my-if
 ) EXPECT_AL: []
 ) FIX: Corrected implementation - was >swap {} >swap, should be {} >swap
 ) unless should arrange [condition, {}, block] so choose executes block when False
-{ {} >swap >choose } !unless
+{ {} >swap >choose >^ } !unless
 
 ) TEST: unless usage - condition is false (executes block) (ORIGINAL - BROKEN)
 ) SKIP: Uses config.exists False >== which will compare False with itself (False)
@@ -103,7 +103,7 @@ x 0 >== { (zero) >print } { (non-zero) >print } >my-if
 ) EXPECT_AL: []
 ) EXPECT_OUTPUT: Creating default config
 ) FIX: Corrected unless implementation to {} >swap instead of >swap {} >swap
-{ {} >swap >choose } !unless
+{ {} >swap >choose >^ } !unless
 False !config.exists
 { (Creating default config) >print } !create-default-config
 config.exists { >create-default-config } >unless
@@ -111,7 +111,7 @@ config.exists { >create-default-config } >unless
 ) TEST: unless usage - condition is true (does not execute)
 ) EXPECT_AL: []
 ) FIX: Corrected unless implementation
-{ {} >swap >choose } !unless
+{ {} >swap >choose >^ } !unless
 True !config.exists
 { (Creating default config) >print } !create-default-config
 config.exists { >create-default-config } >unless
@@ -154,7 +154,7 @@ config.exists { >create-default-config } >unless
   counter 10 ><
     { >loop }
     { }
-  >choose
+  >choose >^
 } !loop
 >loop
 
@@ -234,8 +234,8 @@ square 42 >call_with
 (add) !op
 op (add) >==
   { handlers.add >^ }
-  { op (sub) >== { handlers.sub >^ } { handlers.mul >^ } >choose }
->choose
+  { op (sub) >== { handlers.sub >^ } { handlers.mul >^ } >choose >^ }
+>choose >^
 
 ) TEST: sophisticated dispatching (ORIGINAL - BROKEN)
 ) SKIP: Uses >Register-read which doesn't exist; also >block in nested context
@@ -263,7 +263,7 @@ op (add) >==
   _.op (add) >==
     _.actions.add
     _.actions.mul
-  >choose
+  >choose >^
 } !dispatch
 
 (add) >dispatch
@@ -280,7 +280,7 @@ op (add) >==
   _.op (mul) >==
     _.actions.mul
     _.actions.add
-  >choose
+  >choose >^
 } !dispatch
 (mul) >dispatch
 
@@ -289,13 +289,13 @@ op (add) >==
 ) TEST: ifelse definition (different from if_else - stores condition in register)
 ) EXPECT_AL: []
 ) FIX: Removed >swap which reversed the branches
-{ !_.else !_.then !_.cond _.cond _.then _.else >choose } !ifelse
+{ !_.else !_.then !_.cond _.cond _.then _.else >choose >^ } !ifelse
 
 ) TEST: ifelse usage - small
 ) EXPECT_AL: []
 ) EXPECT_OUTPUT: small
 ) FIX: Removed >swap from ifelse definition
-{ !_.else !_.then !_.cond _.cond _.then _.else >choose } !ifelse
+{ !_.else !_.then !_.cond _.cond _.then _.else >choose >^ } !ifelse
 0 !counter
 counter 5 >> { (big) >print } { (small) >print } >ifelse
 
@@ -303,7 +303,7 @@ counter 5 >> { (big) >print } { (small) >print } >ifelse
 ) EXPECT_AL: []
 ) EXPECT_OUTPUT: big
 ) FIX: Removed >swap from ifelse definition
-{ !_.else !_.then !_.cond _.cond _.then _.else >choose } !ifelse
+{ !_.else !_.then !_.cond _.cond _.then _.else >choose >^ } !ifelse
 10 !counter
 counter 5 >> { (big) >print } { (small) >print } >ifelse
 
@@ -311,12 +311,12 @@ counter 5 >> { (big) >print } { (small) >print } >ifelse
 
 ) TEST: my-when with register isolation
 ) EXPECT_AL: []
-{ !_.it _.it { >print } {} >choose } !my-when
+{ !_.it _.it { >print } {} >choose >^ } !my-when
 
 ) TEST: my-when usage - Store 'it' remains unaffected
 ) EXPECT_AL: []
 ) EXPECT_OUTPUT: 5
-{ !_.it _.it { >print } {} >choose } !my-when
+{ !_.it _.it { >print } {} >choose >^ } !my-when
 5 !it
 10 !x
 x 10 >> >my-when
@@ -331,7 +331,7 @@ it >print
   _.n 10 >>
   { (Greater than 10) >print }
   { (Not greater) >print }
-  >choose
+  >choose >^
 } !test-value
 
 ) TEST: test-value usage - greater
@@ -342,7 +342,7 @@ it >print
   _.n 10 >>
   { (Greater than 10) >print }
   { (Not greater) >print }
-  >choose
+  >choose >^
 } !test-value
 15 >test-value
 
@@ -354,7 +354,7 @@ it >print
   _.n 10 >>
   { (Greater than 10) >print }
   { (Not greater) >print }
-  >choose
+  >choose >^
 } !test-value
 5 >test-value
 
@@ -397,7 +397,7 @@ it >print
   i max ><
     { >count-loop }
     { }
-  >choose
+  >choose >^
 } !count-loop
 >count-loop
 
@@ -498,7 +498,7 @@ x x >* >print
   fact-n 0 >==
   { 1 }
   { fact-n fact-n 1 >- fact >chain >* }
-  >choose
+  >choose >^
 } !fact
 5 fact >chain >print
 
@@ -544,14 +544,14 @@ total
 ) TEST: when with false condition (should not execute block)
 ) EXPECT_AL: []
 ) FIX: Updated to use correct when implementation
-{ {} >choose } !when
+{ {} >choose >^ } !when
 5 !y
 y 10 >> { (should-not-print) >print } >when
 
 ) TEST: unless with true condition (should not execute block)
 ) EXPECT_AL: []
 ) FIX: Updated to use correct unless implementation
-{ {} >swap >choose } !unless
+{ {} >swap >choose >^ } !unless
 True !flag
 flag { (should-not-print) >print } >unless
 
@@ -560,7 +560,7 @@ flag { (should-not-print) >print } >unless
 ) EXPECT_OUTPUT: outer
 ) EXPECT_OUTPUT: inner
 ) FIX: Updated to use correct when implementation
-{ {} >choose } !when
+{ {} >choose >^ } !when
 15 !z
 z 10 >> {
   (outer) >print

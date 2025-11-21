@@ -1,0 +1,166 @@
+) Advanced >chain patterns - tail calls and complex control flow
+
+) TEST: Fibonacci with tail-call optimization via chain
+) EXPECT_OUTPUT: 0
+) EXPECT_OUTPUT: 1
+) EXPECT_OUTPUT: 1
+) EXPECT_OUTPUT: 2
+) EXPECT_OUTPUT: 3
+) EXPECT_OUTPUT: 5
+) EXPECT_OUTPUT: 8
+) EXPECT_AL: [Nil]
+0 !fib.a
+1 !fib.b
+7 !fib.count
+
+{
+  fib.a >toString >print
+
+  fib.count 1 >=<
+    Nil
+    {
+      fib.count 1 >- !fib.count
+      fib.a fib.b >+ !fib.next
+      fib.b !fib.a
+      fib.next !fib.b
+      fib-step
+    }
+  >choose
+} !fib-step
+
+fib-step >chain
+
+) TEST: Factorial with tail-call via chain (accumulator pattern)
+) EXPECT_AL: [120]
+5 !fact.n
+1 !fact.acc
+
+{
+  fact.n 0 >=<
+    fact.acc
+    {
+      fact.n 1 >- !fact.n
+      fact.acc fact.n 1 >+ >* !fact.acc
+      fact-step
+    }
+  >choose
+} !fact-step
+
+fact-step >chain
+
+) TEST: Countdown using chain
+) EXPECT_OUTPUT: 3
+) EXPECT_OUTPUT: 2
+) EXPECT_OUTPUT: 1
+) EXPECT_OUTPUT: Liftoff
+) EXPECT_AL: []
+3 !count
+
+{
+  count >toString >print
+  count 1 >- !count
+
+  count 0 >=<
+    { (Liftoff) >print }
+    countdown
+  >choose >^
+} !countdown
+
+countdown >chain
+
+) TEST: State machine via chain
+) EXPECT_OUTPUT: State A
+) EXPECT_OUTPUT: State B
+) EXPECT_OUTPUT: State C
+) EXPECT_OUTPUT: Done
+) EXPECT_AL: []
+{
+  (State A) >print
+  state-b
+} !state-a
+
+{
+  (State B) >print
+  state-c
+} !state-b
+
+{
+  (State C) >print
+  { (Done) >print }
+} !state-c
+
+state-a >chain
+
+) TEST: Trampoline pattern - mutual recursion via chain
+) EXPECT_OUTPUT: even: 4
+) EXPECT_OUTPUT: odd: 3
+) EXPECT_OUTPUT: even: 2
+) EXPECT_OUTPUT: odd: 1
+) EXPECT_OUTPUT: even: 0
+) EXPECT_OUTPUT: Result: True
+) EXPECT_AL: []
+{
+  (even: ) parity.n >toString >concat >print
+
+  parity.n 0 >==
+    { (Result: True) >print }
+    { parity.n 1 >- !parity.n is-odd }
+  >choose
+} !is-even
+
+{
+  (odd: ) parity.n >toString >concat >print
+
+  parity.n 0 >==
+    { (Result: False) >print }
+    { parity.n 1 >- !parity.n is-even }
+  >choose
+} !is-odd
+
+4 !parity.n
+is-even >chain
+
+) TEST: Parser/interpreter pattern - execute sequence of commands
+) EXPECT_OUTPUT: 0
+) EXPECT_OUTPUT: 1
+) EXPECT_OUTPUT: 2
+) EXPECT_OUTPUT: 3
+) EXPECT_AL: []
+0 !counter
+
+{ counter >toString >print counter >inc !counter } !cmd-print
+{ counter >toString >print counter >inc !counter } !cmd-print2
+{ counter >toString >print counter >inc !counter } !cmd-print3
+{ counter >toString >print } !cmd-final
+
+) Chain executes sequence: cmd-print -> cmd-print2 -> cmd-print3 -> cmd-final
+cmd-final cmd-print3 cmd-print2 cmd-print >chain
+
+) TEST: Collatz sequence via chain
+) EXPECT_OUTPUT: 10
+) EXPECT_OUTPUT: 5
+) EXPECT_OUTPUT: 16
+) EXPECT_OUTPUT: 8
+) EXPECT_OUTPUT: 4
+) EXPECT_OUTPUT: 2
+) EXPECT_OUTPUT: 1
+) EXPECT_AL: [Nil]
+10 !collatz.n
+
+{
+  collatz.n >toString >print
+
+  collatz.n 1 >==
+    Nil
+    {
+      collatz.n 2 >% 0 >==
+        collatz.n 2 >/
+        collatz.n 3 >* 1 >+
+      >choose
+      !collatz.n
+      collatz
+    }
+  >choose
+} !collatz
+
+collatz >chain

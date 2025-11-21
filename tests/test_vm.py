@@ -510,7 +510,7 @@ class TestBuiltins(unittest.TestCase):
         self.assertIn("top-level", str(ctx.exception).lower())
 
     def test_builtin_choose_true_branch(self):
-        """Test >choose executes true branch when condition is truthy."""
+        """Test >choose selects true branch when condition is truthy."""
         vm = VM()
 
         # Create blocks for branches
@@ -528,11 +528,12 @@ class TestBuiltins(unittest.TestCase):
         choose_builtin = vm.store.read_value(["choose"])
         choose_builtin.execute(vm)
 
-        # Should execute true branch (push 1)
-        self.assertEqual(vm.al, [1])
+        # Should select true branch (push block, not execute it)
+        self.assertEqual(len(vm.al), 1)
+        self.assertEqual(vm.al[0], true_block)
 
     def test_builtin_choose_false_branch(self):
-        """Test >choose executes false branch when condition is Nil."""
+        """Test >choose selects false branch when condition is Nil."""
         vm = VM()
 
         true_block = Block([
@@ -548,8 +549,9 @@ class TestBuiltins(unittest.TestCase):
         choose_builtin = vm.store.read_value(["choose"])
         choose_builtin.execute(vm)
 
-        # Should execute false branch (push 2)
-        self.assertEqual(vm.al, [2])
+        # Should select false branch (push block, not execute it)
+        self.assertEqual(len(vm.al), 1)
+        self.assertEqual(vm.al[0], false_block)
 
     def test_builtin_choose_void_is_falsy(self):
         """Test >choose treats Void as falsy."""
@@ -567,8 +569,9 @@ class TestBuiltins(unittest.TestCase):
         choose_builtin = vm.store.read_value(["choose"])
         choose_builtin.execute(vm)
 
-        # Should execute false branch (Void is falsy)
-        self.assertEqual(vm.al, [2])
+        # Should select false branch (Void is falsy, push block not execute)
+        self.assertEqual(len(vm.al), 1)
+        self.assertEqual(vm.al[0], false_block)
 
     def test_builtin_choose_al_underflow(self):
         """Test >choose raises error on AL underflow."""
@@ -581,6 +584,62 @@ class TestBuiltins(unittest.TestCase):
             choose_builtin.execute(vm)
 
         self.assertIn("underflow", str(ctx.exception).lower())
+
+    def test_builtin_choose_selects_non_block_values(self):
+        """Test >choose can select non-block values (ints, strings, etc)."""
+        vm = VM()
+        choose_builtin = vm.store.read_value(["choose"])
+
+        # Test with integers
+        vm.al = [1, 100, 200]  # condition=1 (truthy), true=100, false=200
+        choose_builtin.execute(vm)
+        self.assertEqual(vm.al, [100])
+
+        # Test with strings
+        vm.al = [Nil, "true_str", "false_str"]  # condition=Nil (falsy)
+        choose_builtin.execute(vm)
+        self.assertEqual(vm.al, ["false_str"])
+
+        # Test with mixed types
+        vm.al = [True, 42, "fallback"]
+        choose_builtin.execute(vm)
+        self.assertEqual(vm.al, [42])
+
+    def test_builtin_choose_blocks_not_executed(self):
+        """Test >choose does NOT execute blocks, only selects them."""
+        vm = VM()
+
+        # Create blocks that would modify AL if executed
+        executed_marker = []
+
+        def mark_executed(marker_list):
+            def execute_fn(vm):
+                marker_list.append("executed")
+                vm.al.append(999)
+            return execute_fn
+
+        true_block = Block([
+            RunNode(None, mark_executed(executed_marker))
+        ])
+        false_block = Block([
+            RunNode(None, mark_executed(executed_marker))
+        ])
+
+        # Choose true branch
+        vm.al = [1, true_block, false_block]
+        choose_builtin = vm.store.read_value(["choose"])
+        choose_builtin.execute(vm)
+
+        # Block should be on AL but NOT executed
+        self.assertEqual(len(vm.al), 1)
+        self.assertIs(vm.al[0], true_block)
+        self.assertEqual(executed_marker, [])  # No execution happened
+
+        # Now execute it manually to verify it works
+        selected_block = vm.al.pop()
+        selected_block.execute(vm)
+        self.assertEqual(executed_marker, ["executed"])
+        self.assertEqual(vm.al, [999])
 
     def test_builtin_chain_executes_block(self):
         """Test >chain pops and executes block from AL."""
@@ -711,12 +770,13 @@ class TestIntegration(unittest.TestCase):
         self.assertEqual(vm.al, [5, 5])
 
     def test_conditional_with_choose(self):
-        """Test conditional execution pattern."""
+        """Test conditional selection pattern."""
         vm = VM()
 
-        # True { 1 } { 2 } >choose
+        # True { 1 } { 2 } >choose >chain
+        # With new semantics: choose selects block, then chain executes it
         source = """
-        True { 1 } { 2 } >choose
+        True { 1 } { 2 } >choose >chain
         """
 
         # First, set up True as a truthy value (non-Nil, non-Void)
@@ -725,7 +785,7 @@ class TestIntegration(unittest.TestCase):
         compiled = compile_program(parse(source))
         compiled.execute(vm)
 
-        # Should execute true branch (push 1)
+        # Should select true branch and execute it (via chain)
         self.assertEqual(vm.al, [1])
 
     def test_loop_with_chain_and_block(self):
@@ -853,20 +913,6 @@ class TestErrors(unittest.TestCase):
 
         error_msg = str(ctx.exception).lower()
         self.assertTrue("execute" in error_msg or "block" in error_msg)
-
-    def test_choose_non_block_branch_error(self):
-        """Test >choose with non-block branch raises error."""
-        vm = VM()
-
-        # AL: [True, 1, 2] - branches are ints, not blocks
-        vm.al = [1, 1, 2]  # condition, true_branch (int!), false_branch (int!)
-
-        choose = vm.store.read_value(["choose"])
-
-        with self.assertRaises(VMRuntimeError) as ctx:
-            choose.execute(vm)
-
-        self.assertIn("block", str(ctx.exception).lower())
 
     def test_chain_non_block_error(self):
         """Test >chain with non-block raises error."""

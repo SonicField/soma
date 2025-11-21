@@ -242,7 +242,89 @@ a.b. >id      ; AL: [<unique identity integer>]
 
 ---
 
-## Block Operations
+## Control Flow Operations
+
+Control flow in SOMA is explicit and built from minimal primitives. These operations enable conditionals and loops.
+
+### >choose
+**Signature:** `(Bool, Value, Value) -> Value`
+
+Pops three values `(false_val, true_val, condition)` from the AL and pushes the selected value based on the condition. **Does NOT execute the selected value.**
+
+**Behavior:**
+- If `condition` is `True`, pushes `true_val`
+- If `condition` is `False`, pushes `false_val`
+- The selected value is pushed to AL as-is (not executed)
+- To execute the result, use `>^` or `>chain` after `>choose`
+
+**Examples:**
+```soma
+; Select a value
+True 10 20 >choose      ; AL: [10]
+False 10 20 >choose     ; AL: [20]
+
+; Select and execute a block
+5 3 ><
+  { (small) >print }
+  { (large) >print }
+>choose >^              ; Selects { (large) >print }, then executes it
+
+; Common pattern: select block for loop continuation
+counter 10 ><
+  >block                ; Continue - return current block
+  Nil                   ; Stop
+>choose                 ; AL: [block] or [Nil]
+```
+
+**Errors:** Fatal if AL has fewer than 3 values or if first value is not a Boolean.
+
+---
+
+### >chain
+**Signature:** `(Value) -> ()`
+
+Pops a value from the AL. If it's a Block, executes it and repeats (pops again). If it's not a Block, stops.
+
+**Behavior:**
+- Pops top value from AL
+- If value is a Block: executes it, then repeats (pops from AL again)
+- If value is NOT a Block: stops execution
+- Enables loops, recursion, and state machines
+- Perfect for tail-call optimization (no stack growth)
+
+**Examples:**
+```soma
+; Execute a block once
+{ 5 3 >+ } >chain       ; AL: [8]
+
+; Infinite loop (block returns itself)
+{
+  (tick) >print
+  >block                ; Push self back to AL
+} >chain                ; Prints "tick" forever
+
+; Conditional loop (using >choose)
+0 !counter
+{
+  counter >toString >print
+  counter >inc !counter
+  counter 10 ><
+    >block              ; Continue: push self
+    Nil                 ; Stop: push Nil
+  >choose
+} !loop
+loop >chain             ; Prints 0..9, then stops
+
+; State machine
+{ (A) >print state-b } !state-a
+{ (B) >print state-c } !state-b
+{ (C) >print Nil } !state-c
+state-a >chain          ; Prints "A", "B", "C", stops
+```
+
+**Errors:** None (stops cleanly on non-Block values).
+
+---
 
 ### >block
 **Signature:** `() -> Block`
@@ -253,27 +335,29 @@ Pushes the currently executing block onto the AL.
 - Always succeeds (execution always occurs within a block context)
 - At top-level: returns the outermost block (the implicit "program" block)
 - In nested blocks: returns the current block (not the parent block)
+- Enables self-reference for loops and recursion
 - Can be aliased like any built-in, enabling internationalization
 
 **Examples:**
 ```soma
 ; Get current block for recursion
-{ >print >block } >chain       ; Infinite loop: print, then execute this block again
+0 !counter
+{
+  counter >toString >print
+  counter >inc !counter
+  counter 5 ><
+    >block              ; Continue: push self
+    Nil                 ; Stop
+  >choose
+} >chain                ; Prints 0..4
 
 ; Store reference to current block
-{ >block !_.me }               ; Store CellRef to this block in Register
-
-; Compare blocks
-{
-  >block !_.outer
-  { >block _.outer >== } >chain    ; False - different blocks
-}
+{ >block !_.me _.me }   ; Store reference in Register, push to AL
 
 ; Internationalization via aliasing
-block !блок                    ; Russian
-block !ブロック                 ; Japanese
-block !block                   ; Swedish
-{ >print >блок } >chain        ; Use Russian alias
+block !блок             ; Russian
+block !ブロック          ; Japanese
+{ (loop) >print >блок } >chain   ; Use Russian alias
 ```
 
 **Errors:** None.
@@ -313,11 +397,13 @@ The following table summarizes all core built-in operations:
 | `>==`    | 2    | 1      | Equality test                 |
 | `><`     | 2    | 1      | Less-than test                |
 | `>>`     | 2    | 1      | Greater-than test             |
+| `>choose`| 3    | 1      | Select value based on condition (doesn't execute) |
+| `>chain` | 1    | 0      | Execute blocks repeatedly until non-Block |
+| `>block` | 0    | 1      | Push current executing block  |
 | `>print` | 1    | 0      | Print value to stdout         |
 | `>dump`  | 0    | 0      | Dump machine state            |
 | `>type`  | 1    | 1      | Get type name as string       |
 | `>id`    | 1    | 1      | Get identity of CellRef/Thing |
-| `>block` | 0    | 1      | Push current executing block  |
 | `>noop`  | 0    | 0      | No operation                  |
 
 ---

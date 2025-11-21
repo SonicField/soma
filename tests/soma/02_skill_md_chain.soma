@@ -1,0 +1,58 @@
+) Verify Skill.md advanced chain examples
+
+) TEST: Fibonacci tail-call from Skill.md
+) EXPECT_OUTPUT: 0
+) EXPECT_OUTPUT: 1
+) EXPECT_OUTPUT: 1
+) EXPECT_OUTPUT: 2
+) EXPECT_OUTPUT: 3
+) EXPECT_AL: [Nil]
+0 !fib.a
+1 !fib.b
+5 !fib.count
+
+{
+  fib.a >toString >print
+
+  fib.count 1 >=<
+    Nil
+    {
+      fib.count 1 >- !fib.count
+      fib.a fib.b >+ !fib.next
+      fib.b !fib.a
+      fib.next !fib.b
+      fib-step
+    }
+  >choose
+} !fib-step
+
+fib-step >chain
+
+) TEST: Factorial tail-call from Skill.md
+) EXPECT_AL: [120]
+5 !fact.n
+1 !fact.acc
+
+{
+  fact.n 0 >=<
+    fact.acc
+    {
+      fact.n 1 >- !fact.n
+      fact.acc fact.n 1 >+ >* !fact.acc
+      fact-step
+    }
+  >choose
+} !fact-step
+
+fact-step >chain
+
+) TEST: State machine from Skill.md
+) EXPECT_OUTPUT: State A
+) EXPECT_OUTPUT: State B
+) EXPECT_OUTPUT: State C
+) EXPECT_AL: [Nil]
+{ (State A) >print state-b } !state-a
+{ (State B) >print state-c } !state-b
+{ (State C) >print Nil } !state-c
+
+state-a >chain

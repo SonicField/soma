@@ -166,13 +166,19 @@ Store:
 
 data.b >isVoid         ; True — never explicitly set
 data.b                 ; Returns Void
-(Never set) (Has been set) >choose >print    ; Prints "Never set"
+data.b >isVoid
+  { (Never set) >print }
+  { (Has been set) >print }
+>ifelse                ; Prints "Never set"
 
 Nil !data.b            ; Explicitly set to Nil
 
 data.b >isVoid         ; False — now has been set (to Nil)
 data.b                 ; Returns Nil (not Void!)
-(Never set) (Has been set) >choose >print    ; Prints "Has been set"
+data.b >isVoid
+  { (Never set) >print }
+  { (Has been set) >print }
+>ifelse                ; Prints "Has been set"
 ```
 
 **Example 3: Sparse Data Structures**
@@ -188,7 +194,10 @@ array.3         ; Void — index 3 was never set
 array.4         ; Void — index 4 was never set
 
 ; We can detect unset vs set-to-empty
-array.1 >isVoid { (uninitialized) } { array.1 } >choose >print
+array.1 >isVoid
+  { (uninitialized) >print }
+  { array.1 >toString >print }
+>ifelse
 ```
 
 **Example 4: Distinguishing Nil from Void**
@@ -368,9 +377,9 @@ Attempting to execute Void using the `>` prefix.
 ```soma
 user.action
 Void >==
-  { "No action defined" >print }
+  { (No action defined) >print }
   { >user.action }
->choose
+>ifelse
 ```
 
 #### 2.1.8 Register Isolation Violation
@@ -475,9 +484,9 @@ This allows programs to test for existence and distinguish "never set" from "set
 ```soma
 config.user.name
 Void >==
-  { "No user configured" >print }
-  { config.user.name >print }
->choose
+  { (No user configured) >print }
+  { config.user.name >toString >print }
+>ifelse
 ```
 
 **Key distinction:**
@@ -498,14 +507,14 @@ settings.theme    ; AL = [Nil] — perfectly valid
 ```
 
 ### 3.3 Logical Errors
-Conditions like "file not found", "invalid input", or "operation failed" are **not runtime errors**. They are represented as values (Booleans, symbols, error records) on the AL and handled via `>choose`.
+Conditions like "file not found", "invalid input", or "operation failed" are **not runtime errors**. They are represented as values (Booleans, symbols, error records) on the AL and handled via conditionals.
 
 ```soma
 ; Hypothetical file operation that pushes success/failure
-"data.txt" >file_exists
-  { "data.txt" >load }
-  { "File not found" >print }
->choose
+(data.txt) >file_exists
+  { (data.txt) >load }
+  { (File not found) >print }
+>ifelse
 ```
 
 ## 4. The ! Operator: Store Mutation Semantics
@@ -779,13 +788,13 @@ ref               ; AL = [42] — NOT dangling, Cell still exists!
 
 **Example 1: Detached structures (like "new" in other languages)**
 ```soma
-{
+>{
   (initial data) !_.obj.data
   0 !_.obj.counter
   { _.obj.counter 1 >+ !_.obj.counter } !_.obj.increment
 
   _.obj.        ; Return CellRef to object
-} >chain !myObj
+} !myObj
 
 ; Block destroyed, Register destroyed, but object persists!
 myObj.data              ; "initial data"
@@ -1066,13 +1075,13 @@ Example: >{23 !_.x} _.x >print
 ; Initialize configuration with optional fields
 Nil !config.theme
 Nil !config.language
-"Admin" !config.username
+(Admin) !config.username
 
 ; Check and use
 config.theme Nil >==
-  { "default" !config.theme }
+  { (default) !config.theme }
   { }
->choose
+>ifelse
 ```
 
 ### 6.2 Correct: Using Void for Existence Testing
@@ -1081,9 +1090,9 @@ config.theme Nil >==
 ; Test if a path exists
 user.profile.avatar
 Void >==
-  { "No avatar set" >print }
+  { (No avatar set) >print }
   { user.profile.avatar >display }
->choose
+>ifelse
 ```
 
 ### 6.3 Correct: Structural Deletion
@@ -1144,11 +1153,11 @@ user.status       ; AL = [Void] — Cell no longer exists
 ; Hypothetical: divide operation that checks for zero
 5 0 >safe_divide
 
-; AL now has: [False, "Division by zero"]
+; AL now has: [False, (Division by zero)]
 ; Handle it:
-  { "Error: " >concat >print }
-  { >print }
->choose
+  { (Error: ) >concat >print }
+  { >toString >print }
+>ifelse
 ```
 
 ### 6.8 Register Examples: Correct Usage
@@ -1228,21 +1237,21 @@ handlers.custom
 Void >==
   { >handlers.default }    ; Use default if custom doesn't exist
   { >handlers.custom }     ; Use custom if it exists
->choose
+>ifelse
 ```
 
 ```soma
 ; Verify a value is a Block before executing
 config.startup
 Void >==
-  { "No startup action" >print }
+  { (No startup action) >print }
   {
     config.startup >IsBlock
       { >config.startup }
-      { "Startup value is not executable" >print }
-    >choose
+      { (Startup value is not executable) >print }
+    >ifelse
   }
->choose
+>ifelse
 ```
 
 ### 6.13 Correct: Executable vs Non-Executable Values
@@ -1671,6 +1680,278 @@ Cell `data.parent` has:
 ```
 
 This orthogonality enables graph structures (linked lists, trees, cyclic graphs) without requiring explicit node types.
+
+## 7. Common Mistakes and Anti-Patterns
+
+This section catalogs common errors that programmers make when learning SOMA, along with the correct alternatives.
+
+### 7.1 Using `{ } >chain` When `>{ }` Is Cleaner
+
+**Problem:** Using `{ code } >chain` when you just want to execute a block once.
+
+**Why it's wrong:** `>chain` is for tail-call loops — it repeatedly executes blocks returned on the AL. For single execution, `>{ }` is clearer and more direct.
+
+**❌ WRONG:**
+```soma
+{ 1 2 >+ } >chain !result    ; Unnecessarily verbose
+
+{
+  (Hello) >print
+  42 !x
+} >chain                      ; Confusing — implies looping when there's none
+```
+
+**✅ RIGHT:**
+```soma
+>{ 1 2 >+ } !result          ; Direct execution
+
+>{
+  (Hello) >print
+  42 !x
+}                             ; Clear single execution
+```
+
+**When to use `>chain`:**
+- Tail-call recursion patterns
+- State machines that return next state
+- Loops that return blocks to continue
+
+```soma
+; CORRECT use of >chain: tail-call loop
+{
+  counter >print
+  counter 1 >+ !counter
+  counter 10 ><
+    >block      ; Continue: return self for next iteration
+    Nil         ; Stop: return non-block to end chain
+  >choose
+} !loop
+loop >chain     ; Keeps executing until Nil returned
+```
+
+### 7.2 Expecting Register Values in Child Blocks (Register Isolation)
+
+**Problem:** Trying to access a Register path from an inner block when it was set in an outer block.
+
+**Why it fails:** Each block execution creates a **fresh, empty Register**. Inner blocks have completely isolated Registers and cannot see outer block's Register paths.
+
+**❌ WRONG:**
+```soma
+>{
+  5 !_.x                     ; Store in outer Register
+  >{ _.x >print }            ; FATAL: _.x is Void in inner Register!
+}
+
+>{
+  { _.n _.n >* } !_.square   ; Define in outer Register
+  >{ 7 >_.square }           ; FATAL: _.square is Void in inner Register!
+}
+```
+
+**What happens:**
+1. Outer block sets `_.x` in Register₁
+2. Inner block executes with fresh Register₂ (empty)
+3. Inner block reads `_.x` → resolves to Void
+4. Fatal error when Void is used
+
+**✅ RIGHT - Pass via AL:**
+```soma
+>{
+  5 !_.x                     ; Store in outer Register
+  _.x                        ; Push to AL
+  >{ !_.y _.y >print }       ; Pop from AL, store in inner Register
+}
+```
+
+**✅ RIGHT - Use Store (global state):**
+```soma
+>{
+  5 !x                       ; Store in Store (global)
+  >{ x >print }              ; Read from Store
+}
+```
+
+**✅ RIGHT - Return values via AL:**
+```soma
+>{
+  { !_.n _.n _.n >* } !_.square   ; Define in outer Register
+  7 _.square >^                   ; Pass 7 via AL, execute, result on AL
+}
+```
+
+**Key rule:** Registers are **block-local only**. No sharing between parent and child.
+
+### 7.3 Using `>choose` and Expecting Execution (It's a Selector!)
+
+**Problem:** Calling `>choose` and expecting it to execute the selected block.
+
+**Why it's wrong:** `>choose` **selects** a value based on a condition — it does NOT execute anything. If you want to execute the result, you need `>^` or use `>ifelse` from stdlib.
+
+**❌ WRONG:**
+```soma
+x 10 ><
+  { (small) >print }
+  { (large) >print }
+>choose                      ; Pushes a block onto AL, doesn't execute it!
+```
+
+**What happens:**
+- `>choose` pops condition + two values, pushes one value onto AL
+- The selected block is now on the AL (not executed)
+- Nothing prints
+
+**✅ RIGHT - Execute with `>^`:**
+```soma
+x 10 ><
+  { (small) >print }
+  { (large) >print }
+>choose >^                   ; Select, then execute from AL
+```
+
+**✅ RIGHT - Use `>ifelse` from stdlib:**
+```soma
+x 10 ><
+  { (small) >print }
+  { (large) >print }
+>ifelse                      ; Selects AND executes
+```
+
+**When `>choose` alone is correct:**
+```soma
+; Selecting a value (not a block)
+x 10 >< 100 200 >choose !result     ; result = 100 or 200
+
+; Selecting a block to store
+condition
+  { (option A) >print }
+  { (option B) >print }
+>choose !handler                     ; Store block for later
+
+; Selecting next state in tail-call loop
+counter 10 ><
+  >block      ; Return current block to continue
+  Nil         ; Return Nil to stop
+>choose       ; Don't execute! Just return for >chain
+```
+
+**Summary:**
+- `>choose` = selector (picks one value)
+- `>^` = executor (runs block from AL)
+- `>ifelse` = `>choose` + `>^` (stdlib convenience)
+
+### 7.4 Confusing Nil and Void in Conditionals
+
+**Problem:** Not understanding the semantic difference between Nil (explicitly empty) and Void (never set).
+
+**Why it matters:**
+- **Nil** = "This was set, but to nothing" (explicit emptiness)
+- **Void** = "This was never set" (absence/uninitialized)
+
+**❌ WRONG - Testing existence incorrectly:**
+```soma
+Nil !config.theme             ; Explicitly set to empty
+config.theme Void >==         ; False! It was set (to Nil)
+```
+
+**✅ RIGHT - Use `>isVoid` to test "never set":**
+```soma
+Nil !config.theme             ; Explicitly set to empty
+config.theme >isVoid          ; False — has been set
+
+unset.path >isVoid            ; True — never initialized
+```
+
+**✅ RIGHT - Distinguish Nil from Void:**
+```soma
+; Optional field explicitly empty
+Nil !person.middle_name
+person.middle_name >isVoid    ; False (was set to Nil)
+person.middle_name Nil >==    ; True
+
+; Optional field never set
+person.spouse                 ; Never stored
+person.spouse >isVoid         ; True (never initialized)
+person.spouse Nil >==         ; False (Void ≠ Nil)
+```
+
+**Common pattern - test then handle:**
+```soma
+config.theme >isVoid
+  { (default-theme) !config.theme }    ; Never set: use default
+  { }                                  ; Was set: keep current value
+>ifelse
+
+; Or check for explicit Nil
+config.theme Nil >==
+  { (fallback-theme) !config.theme }   ; Was set to Nil: replace
+  { }                                  ; Has actual value: keep
+>ifelse
+```
+
+### 7.5 Trying to Store Void as a Payload
+
+**Problem:** Attempting to write `Void !path` (without trailing dot).
+
+**Why it fails:** The Void-Payload-Invariant forbids writing Void as a Cell payload. Void represents "never set" — you can't deliberately write it.
+
+**❌ WRONG:**
+```soma
+Void !x              ; FATAL ERROR: cannot store Void as payload
+Void !_.temp         ; FATAL ERROR: cannot store Void in Register
+```
+
+**✅ RIGHT - Use Nil for "explicitly empty":**
+```soma
+Nil !x               ; Legal: explicitly set to empty
+Nil !_.temp          ; Legal: Register cell set to empty
+```
+
+**✅ RIGHT - Use trailing dot for deletion:**
+```soma
+Void !x.             ; Legal: delete Cell x entirely
+Void !_.temp.        ; Legal: delete Register Cell _.temp
+```
+
+**✅ RIGHT - Let auto-vivification create Void:**
+```soma
+42 !a.b.c            ; Creates a (Void), a.b (Void), a.b.c (42)
+a.b                  ; Returns Void — auto-created, never explicitly set
+```
+
+### 7.6 Forgetting Register Destruction After Block Completes
+
+**Problem:** Expecting Register values to persist after a block finishes.
+
+**Why it fails:** When a block completes, its Register is destroyed. Values don't survive beyond block execution.
+
+**❌ WRONG:**
+```soma
+>{ 23 !_.x }         ; Inner block sets _.x in Register₁
+_.x >print           ; FATAL: Register₁ destroyed, _.x is Void in Register₂
+```
+
+**✅ RIGHT - Store in Store for persistence:**
+```soma
+>{ 23 !result }      ; Store in Store (global)
+result >print        ; Read from Store — persists
+```
+
+**✅ RIGHT - Return via AL:**
+```soma
+>{ 23 }              ; Block returns 23 on AL
+>print               ; Print from AL
+```
+
+**✅ RIGHT - Use CellRef to escape Register:**
+```soma
+>{
+  42 !_.data.value
+  _.data.              ; Return CellRef to Register structure
+} !escaped
+
+; Register destroyed, but CellRef keeps structure alive
+escaped.value          ; 42
+```
 
 ## 8. Conclusion
 

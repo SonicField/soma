@@ -315,29 +315,29 @@
 ) 3.1 Comparisons with Choose (If-Then-Else Pattern)
 ) -----------------------------------------------------------------------------
 
-) TEST: Conditional execution with less-than (true branch)
+) TEST: Conditional selection with less-than (true branch)
 ) EXPECT_AL: [100]
-5 10 >< { 100 } { 200 } >choose
+5 10 >< 100 200 >choose
 
-) TEST: Conditional execution with less-than (false branch)
+) TEST: Conditional selection with less-than (false branch)
 ) EXPECT_AL: [200]
-10 5 >< { 100 } { 200 } >choose
+10 5 >< 100 200 >choose
 
-) TEST: Conditional execution with equality (true branch)
+) TEST: Conditional selection with equality (true branch)
 ) EXPECT_AL: [42]
-7 7 >== { 42 } { 99 } >choose
+7 7 >== 42 99 >choose
 
-) TEST: Conditional execution with equality (false branch)
+) TEST: Conditional selection with equality (false branch)
 ) EXPECT_AL: [99]
-7 8 >== { 42 } { 99 } >choose
+7 8 >== 42 99 >choose
 
-) TEST: Conditional execution with greater-than (true branch)
+) TEST: Conditional selection with greater-than (true branch)
 ) EXPECT_AL: [1]
-10 5 >> { 1 } { 0 } >choose
+10 5 >> 1 0 >choose
 
-) TEST: Conditional execution with greater-than (false branch)
+) TEST: Conditional selection with greater-than (false branch)
 ) EXPECT_AL: [0]
-5 10 >> { 1 } { 0 } >choose
+5 10 >> 1 0 >choose
 
 ) -----------------------------------------------------------------------------
 ) 3.2 Chained Comparisons
@@ -493,19 +493,19 @@
 
 ) TEST: Guard with greater-or-equal (passes)
 ) EXPECT_AL: [100]
-10 5 >=> { 100 } { 0 } >choose
+10 5 >=> 100 0 >choose
 
 ) TEST: Guard with greater-or-equal (fails)
 ) EXPECT_AL: [0]
-3 5 >=> { 100 } { 0 } >choose
+3 5 >=> 100 0 >choose
 
 ) TEST: Guard with less-or-equal (passes)
 ) EXPECT_AL: [100]
-3 5 >=< { 100 } { 0 } >choose
+3 5 >=< 100 0 >choose
 
 ) TEST: Guard with less-or-equal (fails)
 ) EXPECT_AL: [0]
-7 5 >=< { 100 } { 0 } >choose
+7 5 >=< 100 0 >choose
 
 ) -----------------------------------------------------------------------------
 ) 5.2 Nested Comparisons in Blocks

@@ -23,12 +23,12 @@ This section demonstrates how `if`, `ifelse`, `while`, `do`, and finite state ma
 
 ### 1.1 `>choose` — Conditional Selection
 
-`>choose` is SOMA's only branching primitive. It selects between two blocks based on a boolean value.
+`>choose` is SOMA's only branching primitive. **CRITICAL:** It is a **SELECTOR**, not an executor.
 
 **AL Contract (pre-execution):**
 ```
-Top → C (false branch block)
-      B (true branch block)
+Top → C (false branch value)
+      B (true branch value)
       A (boolean condition)
 ```
 
@@ -40,10 +40,10 @@ A B C >choose
 **Semantics:**
 1. Pop three values from the AL: `C`, `B`, `A` (in that order)
 2. `A` must be a Boolean, or fatal error
-3. If `A == True`: execute block `B`
-4. If `A == False`: execute block `C`
-5. After execution, the AL contains only the results of the chosen block
-6. The unchosen block is discarded
+3. If `A == True`: **push value `B` onto AL**
+4. If `A == False`: **push value `C` onto AL**
+5. **`>choose` does NOT execute blocks** — it only selects one value
+6. The unchosen value is discarded
 
 **Example:**
 ```soma
@@ -53,9 +53,19 @@ True
 >choose
 ```
 
+Result: AL contains the **block** `{ "Path taken" >print }` (NOT executed)
+
+**To execute the selected block, use `>^`:**
+```soma
+True
+  { "Path taken" >print }
+  { "Path not taken" >print }
+>choose >^
+```
+
 Output: `Path taken`
 
-The false branch block is never executed and leaves no trace. This is **eager evaluation with dead code elimination** — only the selected branch runs.
+**Key distinction:** `>choose` is a **selector** (picks a value), while `>^` is an **executor** (runs a block from AL). This separation is fundamental to SOMA's semantics.
 
 ---
 
@@ -254,12 +264,12 @@ if (condition) {
 condition
   { body }
   { }
->choose
+>choose >^
 ```
 
 **How it works:**
-- If `condition` is `True`, the body block executes
-- If `condition` is `False`, the empty block `{}` executes (does nothing)
+- `>choose` selects the body block if `True`, or empty block if `False`
+- `>^` executes the selected block
 - This is **if without else**
 
 **Example:**
@@ -267,8 +277,10 @@ condition
 x 10 >>
   { "x is greater than 10" >print }
   { }
->choose
+>choose >^
 ```
+
+**Note:** Without `>^`, the selected block would just sit on the AL without executing. The `>^` operator is what actually runs it.
 
 ---
 
@@ -283,26 +295,36 @@ if (condition) {
 }
 ```
 
-**SOMA pattern:**
+**SOMA pattern (using `>ifelse` from stdlib):**
 ```soma
 condition
   { true_body }
   { false_body }
->choose
+>ifelse
 ```
 
 **How it works:**
-- This is the **natural form** of `>choose`
+- `>ifelse` is defined in stdlib as `{ >choose >^ }`
+- It combines selection (`>choose`) and execution (`>^`)
 - One branch always executes
-- No special syntax needed — it's just `>choose`
+
+**Raw pattern (without stdlib):**
+```soma
+condition
+  { true_body }
+  { false_body }
+>choose >^
+```
 
 **Example:**
 ```soma
 user.authenticated
   { dashboard_page >render }
   { login_page >render }
->choose
+>ifelse
 ```
+
+**Key insight:** The `>ifelse` helper demonstrates SOMA's macro-like behavior — it looks like a built-in control structure but is actually just `{ >choose >^ }` defined in user code.
 
 ---
 
@@ -315,7 +337,7 @@ while (condition) {
 }
 ```
 
-**SOMA pattern:**
+**SOMA pattern (using Store for loop variable):**
 ```soma
 {
   condition
@@ -324,7 +346,7 @@ while (condition) {
     >block
   }
   { }
-  >choose
+  >choose >^
 } >chain
 ```
 
@@ -337,7 +359,8 @@ Let's trace execution step by step:
 3. Inside the block:
    - `condition` is evaluated (pushes a boolean)
    - Two blocks are pushed (true branch and false branch)
-   - `>choose` executes
+   - `>choose` selects one block based on condition
+   - `>^` executes the selected block
 4. If `condition` is `True`:
    - The true branch executes
    - `body` runs
@@ -362,7 +385,7 @@ Let's trace execution step by step:
     >block
   }
   { }
-  >choose
+  >choose >^
 } >chain
 ```
 
@@ -375,7 +398,13 @@ Output:
 4
 ```
 
-**Note:** This example uses `counter` (Store path) rather than `_.counter` (Register path) because the inner blocks cannot access the outer block's Register. The Store is globally accessible to all blocks.
+**CRITICAL: Why `>^` is needed:**
+- `>choose` only **selects** which block to use (true branch or false branch)
+- It doesn't **execute** the selected block
+- `>^` pops the selected block from AL and executes it
+- Without `>^`, the block would just sit on the AL and `>chain` would try to execute it, but the pattern wouldn't work correctly
+
+**Note:** This example uses `counter` (Store path) rather than `_.counter` (Register path) because nested block executions have **isolated Registers**. The inner blocks cannot access the outer block's Register. The Store is globally accessible to all blocks.
 
 This is a **while loop** built from `>choose` and `>chain`. No special syntax. No hidden control structures. Just blocks and state.
 
@@ -397,13 +426,15 @@ do {
   condition
   { >block }
   { }
-  >choose
+  >choose >^
 } >chain
 ```
 
 **How it works:**
 - The body executes **first**
 - Then the condition is checked
+- `>choose` selects `>block` (continue) or `{}` (stop)
+- `>^` executes the selected block
 - If true, `>block` causes the loop to continue
 - If false, nothing is pushed and the loop terminates
 
@@ -414,7 +445,7 @@ do {
   input "quit" >== >not
   { >block }
   { }
-  >choose
+  >choose >^
 } >chain
 ```
 
@@ -456,7 +487,166 @@ This is the simplest possible infinite loop in SOMA. One block. One continuation
 
 ---
 
-### 3.6 Internationalization: Aliasing `>block`
+### 3.6 Tail-Call Optimization with `>chain`
+
+**Key insight:** `>chain` is perfect for tail-call optimization because it repeatedly executes blocks from the AL **without growing the call stack**. Each iteration is flat — the previous block's execution completes before the next begins.
+
+#### Pattern: Accumulator-Based Recursion
+
+Traditional recursion builds up a call stack. In SOMA, we use an **accumulator pattern** with `>chain` to achieve the same result with constant stack space.
+
+**Example 1: Factorial with Accumulator**
+
+```soma
+5 !fact.n
+1 !fact.acc
+
+{
+  fact.n 0 >=<
+    fact.acc                    ) Base case: return accumulator
+    {                           ) Recursive case: update and continue
+      fact.n 1 >- !fact.n
+      fact.acc fact.n 1 >+ >* !fact.acc
+      fact-step                 ) Return self for tail-call
+    }
+  >choose
+} !fact-step
+
+fact-step >chain                ) AL: [120]
+```
+
+**How it works:**
+1. Initialize `fact.n = 5`, `fact.acc = 1`
+2. Block checks: is `n <= 0`?
+3. If no (5 > 0): update `n = 4`, `acc = 1 * 5 = 5`, push `fact-step` block
+4. `>choose` selects the recursive block (which contains `fact-step`)
+5. Block execution completes, leaving `fact-step` on AL
+6. `>chain` sees a block and executes it again
+7. Repeat until `n <= 0`, then push `acc` (120) to AL
+8. `>chain` sees a number (not a block) and stops
+
+**Key differences from traditional recursion:**
+- No call stack growth — `>chain` is a flat loop
+- State stored in Store (`fact.n`, `fact.acc`), not in function parameters
+- Each iteration completely replaces the previous one
+
+**Example 2: Fibonacci with Tail-Call Optimization**
+
+```soma
+0 !fib.a
+1 !fib.b
+7 !fib.count
+
+{
+  fib.a >toString >print
+
+  fib.count 1 >=<
+    Nil                         ) Base: stop (chain terminates)
+    {                           ) Recursive: compute next
+      fib.count 1 >- !fib.count
+      fib.a fib.b >+ !fib.next
+      fib.b !fib.a
+      fib.next !fib.b
+      fib-step                  ) Return self for tail-call
+    }
+  >choose
+} !fib-step
+
+fib-step >chain
+```
+
+**Output:**
+```
+0
+1
+1
+2
+3
+5
+8
+```
+
+**How it works:**
+1. Print current Fibonacci number (`fib.a`)
+2. Check if count has reached 1
+3. If no: compute next Fibonacci number, update state, push `fib-step`
+4. `>choose` selects the block (which ends with `fib-step`)
+5. Block completes, leaving `fib-step` on AL
+6. `>chain` executes it again
+7. When count reaches 1, `>choose` selects `Nil`
+8. `>chain` sees non-block value and terminates
+
+**Example 3: Countdown Pattern**
+
+```soma
+3 !count
+
+{
+  count >toString >print
+  count 1 >- !count
+
+  count 0 >=<
+    { (Liftoff) >print }
+    countdown
+  >choose >^
+} !countdown
+
+countdown >chain
+```
+
+**Output:**
+```
+3
+2
+1
+Liftoff
+```
+
+**Note the `>^` usage:**
+- When count reaches 0, `>choose` selects the liftoff block
+- `>^` **executes** it (prints "Liftoff")
+- Result is nothing on AL, so `>chain` stops
+- When count > 0, `>choose` selects `countdown` (the block value)
+- `>^` **executes** it, which runs the whole countdown block again
+- The recursive call is a tail-call because it's the last thing executed
+
+#### Tail-Call Pattern Summary
+
+**General pattern:**
+```soma
+{
+  ) Do work
+  work_step
+
+  ) Check condition
+  done_condition
+    final_result          ) Base case: value to return
+    {                     ) Recursive case:
+      ) Update state
+      state_update
+      self_block_name     ) Tail-call: return self
+    }
+  >choose
+} !self_block_name
+
+self_block_name >chain
+```
+
+**When to use:**
+- Recursion that would normally build deep call stacks
+- Loops with complex state transitions
+- State machines (see next section)
+- Any algorithm that can be expressed as "do work, then decide whether to continue"
+
+**Benefits:**
+- Constant stack space (no stack overflow)
+- Clear state evolution (all state in Store)
+- Natural expression of recursive algorithms
+- Same performance as iterative loops
+
+---
+
+### 3.7 Internationalization: Aliasing `>block`
 
 One of the key advantages of `>block` over the deprecated `_.self` magic binding is that **`>block` can be aliased**. This enables fully international code where programmers can use their native language for all built-ins.
 
@@ -501,10 +691,12 @@ Equal !Gleich
 bedingung
   { "wahr" >print >block }
   { "falsch" >print }
->Wählen >Kette
+>Wählen >^                       ) Note: >^ needed to execute selected block
 ```
 
 This demonstrates that SOMA has **no English-centric special cases**. All built-ins, including block self-reference, can be renamed to match the programmer's language and coding style.
+
+**Important:** Note the `>^` at the end — this is needed because `>Wählen` (choose) only **selects** a block, it doesn't execute it. The `>^` executes the selected block.
 
 ---
 
@@ -673,7 +865,7 @@ Hello
 
 ```soma
 { !if_exec_block !if_exec_cond
-  if_exec_cond { if_exec_block >^ } { } >choose >chain
+  if_exec_cond { if_exec_block >^ } { } >choose >^
 } !if_exec
 
 True { (Condition met) >print } >if_exec     ) Prints: Condition met
@@ -682,7 +874,19 @@ False { (Won't print) >print } >if_exec      ) Prints nothing
 
 **This is conditional execution of AL-passed blocks** — a higher-order control structure.
 
-**Note on Register isolation:** The original attempt `{ !_.block !_.cond _.cond { >_.block } { } >choose >chain }` would fail because the inner block `{ >_.block }` cannot access the outer block's Register path `_.block`. The corrected version stores the block and condition in the Store (`if_exec_block`, `if_exec_cond`), then uses `>^` to execute the block from the AL.
+**How it works:**
+1. Arguments on AL: `False`, `{ (Won't print) >print }`
+2. `>if_exec` executes the `if_exec` block
+3. Block stores condition in `if_exec_cond`, block in `if_exec_block`
+4. Reads `if_exec_cond` (False), pushes two blocks
+5. `>choose` selects empty block `{}`
+6. `>^` executes the empty block (does nothing)
+
+**Note on Register isolation and why we use Store:**
+- Original attempt: `{ !_.block !_.cond _.cond { >_.block } { } >choose >^ }`
+- This would fail because inner block `{ >_.block }` cannot access outer block's Register path `_.block`
+- Corrected version stores in Store (`if_exec_block`, `if_exec_cond`), making them accessible to nested executions
+- Uses `>^` to execute the block from the AL after it's pushed by the inner block
 
 ### 6.3 Execute With Argument
 
@@ -873,7 +1077,7 @@ Execution trace:
     "Normal" >print
     >block
   }
-  >choose
+  >choose >^
 } !alarm_on
 
 {
@@ -887,7 +1091,7 @@ Execution trace:
     "Normal" >print
     >block
   }
-  >choose
+  >choose >^
 } !alarm_off
 
 True !alarm.state
@@ -896,9 +1100,15 @@ alarm_off >chain
 
 This is a **conditional state machine**:
 - `alarm_off` state monitors for low readings
-- When sensor drops below 50, transition to `alarm_on`
+- When sensor drops below 50, `>choose` selects the block containing `alarm_on`, `>^` executes it
+- That block transitions to the `alarm_on` state
 - `alarm_on` state monitors for high readings
-- When sensor exceeds 100, transition back to `alarm_off`
+- When sensor exceeds 100, `>choose` selects the block containing `alarm_off`, `>^` executes it
+- That block transitions back to `alarm_off`
+
+**Key difference from simple state machine:**
+- Uses `>choose >^` to conditionally select and execute the next state
+- Can stay in same state (`>block` keeps looping) or transition to different state
 
 ---
 
@@ -928,14 +1138,14 @@ for i in 0..3 {
         >block
       }
       { }
-      >choose
+      >choose >^
     } >chain
 
     outer_i 1 >+ !outer_i
     >block
   }
   { }
-  >choose
+  >choose >^
 } >chain
 ```
 
@@ -1022,7 +1232,7 @@ Let's build a small library of reusable control structures:
 
 ```soma
 [IF - single branch]
-{ >swap { } >choose } !if
+{ >swap { } >choose >^ } !if
 
 [WHILE - loop with precondition]
 { !while_body !while_cond
@@ -1030,7 +1240,7 @@ Let's build a small library of reusable control structures:
     while_cond                ) Read condition from Store
     { while_body >block }     ) Read body from Store, continue loop
     { }
-    >choose
+    >choose >^                ) Select and execute
   }
 } !while
 
@@ -1041,7 +1251,7 @@ Let's build a small library of reusable control structures:
     do_cond                   ) Read condition from Store
     { >block }
     { }
-    >choose
+    >choose >^                ) Select and execute
   }
 } !do
 
@@ -1055,7 +1265,7 @@ Let's build a small library of reusable control structures:
       >block
     }
     { }
-    >choose
+    >choose >^                ) Select and execute
   }
 } !repeat
 ```
@@ -1067,27 +1277,35 @@ These control structure definitions store their parameters in the **Store** (e.g
 - Inner blocks cannot access the outer block's Register
 - Store paths are globally accessible to all blocks
 
+**Note on `>choose >^` pattern:**
+All these control structures use the pattern `>choose >^`:
+- `>choose` **selects** which block to use (continue or stop)
+- `>^` **executes** the selected block
+- This is the fundamental execution pattern in SOMA control flow
+
 ### 10.2 Use The Library
 
 **Using `if`:**
 ```soma
 x 0 >>
   { "positive" >print }
-if >chain
+if >^
 ```
+
+**Note:** The `if` helper swaps the arguments so the condition comes first, then adds an empty block, calls `>choose >^`. You still need to call it with `>^` (or use `>chain`).
 
 **Using `while`:**
 ```soma
 { outer_counter 10 >< }      ) condition block (reads from Store)
 { outer_counter >print outer_counter 1 >+ !outer_counter }  ) body block (uses Store)
-while >chain
+while >^
 ```
 
 **Using `repeat`:**
 ```soma
 { "hello" >print }  ) body
 5  ) count
-repeat >chain
+repeat >^
 ```
 
 Output:
@@ -1098,6 +1316,10 @@ hello
 hello
 hello
 ```
+
+**Note:** All these library functions return blocks, so you need to either:
+1. Execute with `>^` (as shown above)
+2. Use with `>chain` (e.g., `while >chain`)
 
 ---
 
@@ -1247,6 +1469,30 @@ Key properties of `>block`:
 
 All control flow patterns use `>block` rather than the deprecated `_.self` magic binding.
 
+### 14.4 `>choose` Semantics — Critical Clarification
+
+**CRITICAL CHANGE:** The semantics of `>choose` documented here differ from some earlier informal descriptions.
+
+**Current correct semantics:**
+- `>choose` is a **SELECTOR** — it selects one value based on a boolean
+- It does **NOT** execute blocks
+- To execute the selected block, you must use `>^` (or store and execute separately)
+
+**Pattern:** `>choose >^` (select, then execute)
+
+**This was clarified based on:**
+1. Test files (`02_advanced_chain.soma`, `05_test_docs_stdlib.soma`)
+2. Standard library implementation (`>ifelse = { >choose >^ }`)
+3. Working SOMA code that consistently uses `>choose >^` for execution
+
+**Why this matters:**
+- Separating selection from execution makes SOMA more compositional
+- Blocks are truly first-class — you can select without executing
+- The `>^` operator demonstrates that execution itself is user-defined
+- This enables patterns like storing the selected block before executing it
+
+**All examples in this document have been updated** to use the correct `>choose >^` pattern where execution is intended.
+
 ---
 
 ## Summary
@@ -1256,6 +1502,28 @@ SOMA's control flow is **emergent** rather than **prescribed**. By providing onl
 These patterns are not "library functions" in the traditional sense. They are **blocks** — first-class values that behave exactly like built-in language features.
 
 This is SOMA's **emergent macro system**: the ability to define new control structures that are indistinguishable from built-ins, without requiring a separate macro facility.
+
+**Key Semantic Principles:**
+
+1. **`>choose` is a SELECTOR, not an executor**
+   - It pops `[condition, true_value, false_value]` from AL
+   - It **pushes** the selected value back onto AL
+   - It does **NOT** execute blocks
+
+2. **`>^` is the executor**
+   - Defined as `{ !_ >_ }` — pops from AL, executes from Register
+   - This is **user-defined**, not a primitive
+   - Demonstrates that execution itself is emergent
+
+3. **`>ifelse` = `>choose >^`**
+   - The standard library defines `>ifelse` as `{ >choose >^ }`
+   - This combines selection (choose) and execution (^)
+   - Most control flow follows this pattern
+
+4. **`>chain` enables tail-call optimization**
+   - Repeatedly executes blocks from AL without stack growth
+   - Perfect for loops, recursion, state machines
+   - Each iteration is flat — no call stack accumulation
 
 **The `^` operator is the showcase example:**
 
@@ -1270,11 +1538,20 @@ From this foundation emerge:
 - Function calls
 - Dynamic dispatch
 - Higher-order functions
-- Control structures
+- Control structures (if/else, while, do, for)
 - State machines
+- Tail-call optimized recursion
 - Everything that looks like a "language feature"
 
 The key insight is that **blocks are the macro mechanism**. In languages with macros, you manipulate syntax to create new forms. In SOMA, you manipulate blocks. The result is the same, but the mechanism is simpler, more uniform, and available at runtime.
+
+**The fundamental execution pattern:**
+```soma
+condition
+  { true_branch }
+  { false_branch }
+>choose >^          ) Select, then execute
+```
 
 Control flow in SOMA is not hidden behind syntax. It is **explicit state transformation** guided by blocks and boolean values on the AL. This makes SOMA programs **observable, inspectable, and introspectable** in ways that traditional languages cannot match.
 

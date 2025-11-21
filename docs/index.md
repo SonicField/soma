@@ -4,7 +4,16 @@
 
 ## TL;DR
 
-SOMA is a computational model that treats programs as explicit state-transforming machines. Unlike functional languages that begin with a calculus and simulate mutation through abstractions, SOMA starts with the machine itself: mutable state, visible memory, and observable execution. There are no hidden stacks, no return semantics, no exceptions. Instead, computation flows through three structures—the Accumulator List (a stack-like value conduit), the Store (a hierarchical graph of named cells), and the Register (execution-local storage)—transformed by blocks that are values, not functions. SOMA doesn't reduce expressions; it runs programs by evolving state step by step, making mutation the primary semantic domain rather than an impurity to be hidden.
+SOMA is a computational model that treats programs as explicit state-transforming machines. Unlike functional languages that begin with a calculus and simulate mutation through abstractions, SOMA starts with the machine itself: mutable state, visible memory, and observable execution. There are no hidden stacks, no return semantics, no exceptions. Instead, computation flows through three structures—the Accumulator List (a stack-like value conduit), the Store (a hierarchical graph of named cells), and the Register (execution-local storage)—transformed by blocks that are values, not functions.
+
+**Core Philosophy:**
+- **Blocks are first-class values** — code is data, execution is explicit via `>`
+- **`>choose` selects, doesn't execute** — selector-based branching (choose + `>^` to execute)
+- **`>chain` enables tail-call optimization** — loops and recursion without stack growth
+- **Clean execution patterns** — `>func` from paths, `>{ }` for literals, `>^` from AL
+- **Functional elegance meets imperative clarity** — algebraic control flow with visible state
+
+SOMA doesn't reduce expressions; it runs programs by evolving state step by step, making mutation the primary semantic domain rather than an impurity to be hidden.
 
 ## Hello World
 
@@ -14,14 +23,23 @@ SOMA is a computational model that treats programs as explicit state-transformin
 
 This pushes a string onto the Accumulator List, then executes the `print` block which consumes it.
 
-A more elaborate example showing blocks, the store, and the register:
+A more elaborate example showing blocks, execution patterns, and state:
 
 ```soma
-{ !_ "Hello " _ >concat >print } !say_hello
-"world" >say_hello
+{ !_.name "Hello " _.name >concat >print } !greet
+"world" >greet
 ```
 
-This creates a block that pops a value into the register, concatenates it with "Hello ", and prints the result. The block is stored under `say_hello`, then invoked with "world" on the stack.
+This creates a block that pops a value into Register storage, concatenates it with "Hello ", and prints the result. The block is stored at Store path `greet`, then executed with "world" on the stack.
+
+**Key execution patterns:**
+
+```soma
+>func           ) Execute block from Store/Register path
+>{ code }       ) Execute block literal immediately (cleaner than { code } >chain)
+block >^        ) Execute block from AL (like Forth's EXECUTE, user-defined!)
+block >chain    ) Execute and continue tail-calls/loops (no stack growth)
+```
 
 ## Implementation Status
 

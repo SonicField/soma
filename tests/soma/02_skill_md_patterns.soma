@@ -1,0 +1,23 @@
+) Test updated Skill.md patterns
+
+) TEST: Execute block literal vs chain
+) EXPECT_AL: [42]
+>{ 42 }
+
+) TEST: Call stored function with >
+) EXPECT_AL: [8]
+{ !_.b !_.a _.a _.b >+ } !add
+5 3 >add
+
+) TEST: Register isolation with >{ }
+) EXPECT_OUTPUT: 5
+) EXPECT_AL: []
+>{
+  5 !_.x
+  _.x >{ !_.y _.y >toString >print }
+}
+
+) TEST: Function application pattern
+) EXPECT_AL: [6]
+{ 1 >+ } !inc
+5 >inc

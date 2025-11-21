@@ -23,12 +23,14 @@ SOMA execution is **linear, explicit, and introspectable**. There is no hidden c
 
 ### 1.1 What the AL Is (and Is Not)
 
-The AL is a **linear sequence of values** serving as the primary dynamic execution context. It is LIFO in behavior but **not a call stack**:
+The AL is a **shared LIFO stack** serving as the primary dynamic execution context. It is a **value conduit**, not a call stack:
 
+- **Shared**: All blocks (parent, child, nested) share the same AL
+- **LIFO**: Last In, First Out - values are pushed and popped from the top
 - It does not track return addresses
 - It does not manage stack frames
 - It does not unwind on errors
-- It is a **value conduit**, not a control structure
+- It is a **value conduit** for passing data between blocks, not a control structure
 
 ### 1.2 AL Operations
 
@@ -95,9 +97,10 @@ Example:
 | 2 | `!square` | `[]` | Pop block, store at `square` |
 | 3 | `5` | `[5]` | Push 5 |
 | 4 | `square` | `[{>dup >*}, 5]` | Push block from Store |
-| 5 | `>chain` | Executes block | |
+| 5 | `>chain` | (enters block) | Pop block and execute it |
 | 5.1 | `>dup` | `[5, 5]` | Duplicate top |
 | 5.2 | `>*` | `[25]` | Multiply |
+| 5.3 | (block ends) | `[25]` | Returns to chain, AL has Nil, stops |
 | 6 | (end) | `[25]` | Final AL state |
 
 The block consumed 1 value (implicitly) and produced 1 value.
@@ -833,7 +836,7 @@ Blocks communicate via the AL (stack).
 #### Example: Nested Loop Counters
 
 ```soma
-{
+>{
   0 !_.i                           ) Outer counter
   {
     0 !_.i                         ) Inner counter (different Register!)
@@ -863,7 +866,7 @@ Blocks communicate via the AL (stack).
 #### Example: Helper Functions with Local State
 
 ```soma
-{
+>{
   { !_.x _.x _.x >* } !_.square    ) Helper: square a number
   { !_.x _.x 2 >* } !_.double      ) Helper: double a number
 
@@ -881,7 +884,7 @@ Blocks communicate via the AL (stack).
 #### Example: Passing Context via Store
 
 ```soma
-{
+>{
   (config) !_.context              ) Outer has context in Register
 
   _.context !global_context        ) Save to Store for sharing
@@ -902,7 +905,7 @@ Blocks communicate via the AL (stack).
 #### Pattern 1: Accumulator via AL
 
 ```soma
-{
+>{
   0                                ) Initial value on AL
   { !_.acc _.acc 1 >+ } !_.inc    ) Increment AL top
   >_.inc >_.inc >_.inc             ) Apply 3 times
@@ -924,7 +927,7 @@ Blocks communicate via the AL (stack).
 #### Pattern 3: Local Computation in Register
 
 ```soma
-{
+>{
   42 !_.value                      ) Local to this block
   _.value _.value >* !_.squared    ) Local computation
   _.squared >print                 ) Prints 1764
@@ -995,14 +998,18 @@ The linked list was built in the Register, but returned as a CellRef. The Regist
 {
   (initial data) !_.obj.data
   0 !_.obj.counter
-  { _.obj.counter 1 >+ !_.obj.counter } !_.obj.increment
+  {
+    ) Note: This block needs the object CellRef on AL to work
+    !_.this                          ) Pop object from AL
+    _.this.counter 1 >+ !_.this.counter
+  } !_.obj.increment
 
   _.obj.        ) Return handle to object
 } >chain !myObj
 
 myObj.data              ) "initial data"
 myObj.counter           ) 0
->myObj.increment
+myObj. >myObj.increment ) Pass object to its own increment method
 myObj.counter           ) 1
 ```
 
@@ -1798,8 +1805,8 @@ a >print   ; prints 99
 
 ```soma
 { 100 !_.temp _.temp } !block
-block >chain >print   ; prints 100
-_.temp >print         ; ERROR: Register not set
+>block >print         ) prints 100
+_.temp >print         ) ERROR: Register not set (block's Register is destroyed)
 ```
 
 The Register is destroyed when the Block ends.
@@ -1807,7 +1814,7 @@ The Register is destroyed when the Block ends.
 **Example: Execution from Register path**
 
 ```soma
-{
+>{
   print !_.action           ) Store print block in Register
   (Hello from register)     ) Push string
   >_.action                 ) Execute what's at Register path _.action
@@ -1828,7 +1835,7 @@ The Register is destroyed when the Block ends.
 **Example: Nested blocks with isolated Registers**
 
 ```soma
-{
+>{
   1 !_.outer_val
 
   >{
@@ -1851,7 +1858,7 @@ The Register is destroyed when the Block ends.
 **Example: Correct data sharing via Store**
 
 ```soma
-{
+>{
   1 !shared.outer_val       ) Store in global Store
 
   >{
@@ -1939,10 +1946,10 @@ array.100 >print    ; prints "1"
 { !_.node. _.node.value } !list_get
 
 >list_new_node !head.
-(first) head. list_set
-head. list_append !head.
-(second) head. list_set
-head. list_forward list_get >print   ; prints "second"
+(first) head. list_set >chain
+head. list_append >chain !head.
+(second) head. list_set >chain
+head. list_forward >chain list_get >chain >print   ) prints "second"
 ```
 
 ### 7.7 CellRef Persistence and Path Deletion

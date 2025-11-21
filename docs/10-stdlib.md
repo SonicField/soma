@@ -65,7 +65,7 @@ Boolean logic operations transform `True`/`False` values on the AL. All three op
 
 **Definition:**
 ```soma
-{{False}{True}>choose} !not
+{False True >choose} !not
 ```
 
 **Semantics:**
@@ -81,13 +81,14 @@ After:  [True, ...]
 ```
 
 **How It Works:**
-1. The block `{{False}{True}>choose}` is stored at Store path `not`
+1. The block `{False True >choose}` is stored at Store path `not`
 2. When executed via `>not`:
    - The top value (a Boolean) is on the AL
-   - Two blocks are pushed: `{False}` (false branch) and `{True}` (true branch)
-   - `>choose` selects based on the Boolean:
-     - If `True`: execute `{False}` → pushes `False`
-     - If `False`: execute `{True}` → pushes `True`
+   - `False` is pushed onto AL
+   - `True` is pushed onto AL
+   - `>choose` pops the boolean and both values, selecting based on the boolean:
+     - If boolean was `True`: selects `False` (the false-branch value)
+     - If boolean was `False`: selects `True` (the true-branch value)
 3. Result: the Boolean is inverted
 
 **Example:**
@@ -105,7 +106,7 @@ user.logged_in >not
 >choose
 ```
 
-**Note:** This is **eager evaluation** — the Boolean is immediately inverted. Unlike short-circuit evaluation in some languages, SOMA's `>not` always evaluates its argument.
+**Note:** This is **direct value selection** — `>choose` selects between the two literal values `False` and `True` without executing them as blocks.
 
 ---
 
@@ -115,7 +116,7 @@ user.logged_in >not
 
 **Definition:**
 ```soma
-{{}{>drop False} >choose} !and
+{False >choose} !and
 ```
 
 **Semantics:**
@@ -133,12 +134,11 @@ After:  [False, ...]
 **How It Works:**
 1. Two Booleans are on the AL: `b` (top), `a` (second)
 2. The `and` block executes:
-   - If `a` is `True`: execute `{}` (empty block)
-     - AL still has `b` on top
-     - Result: the final value is `b`
-   - If `a` is `False`: execute `{>drop False}`
-     - `>drop` removes `b` from AL
-     - `False` is pushed
+   - Pushes `False` onto AL: `[b, a, False]`
+   - `>choose` pops `False`, pops `b`, pops `a`
+   - If `a` is `True`: selects `b` (the false-branch value)
+     - Result: `True` if b is True, `False` if b is False
+   - If `a` is `False`: selects `False` (the true-branch value)
      - Result: `False`
 
 **Truth Table:**
@@ -167,14 +167,14 @@ user.logged_in user.premium >and
 ```
 
 **Note on Short-Circuiting:**
-SOMA's `>and` is **not short-circuiting**. Both operands must be evaluated before calling `>and`. For short-circuit behavior, use explicit `>choose`:
+SOMA's `>and` is **not short-circuiting**. Both operands must be evaluated before calling `>and`. For short-circuit behavior, use explicit `>choose` with `>^`:
 
 ```soma
 ) Short-circuit AND
 condition_a
-  { condition_b { action } {} >choose }
+  { condition_b { action } {} >choose >^ }
   { }
->choose
+>choose >^
 ```
 
 ---
@@ -185,7 +185,7 @@ condition_a
 
 **Definition:**
 ```soma
-{{>drop True}{} >choose} !or
+{True >swap >choose} !or
 ```
 
 **Semantics:**
@@ -203,13 +203,13 @@ After:  [True, ...]
 **How It Works:**
 1. Two Booleans are on the AL: `b` (top), `a` (second)
 2. The `or` block executes:
-   - If `a` is `True`: execute `{>drop True}`
-     - `>drop` removes `b` from AL
-     - `True` is pushed
+   - Pushes `True` onto AL: `[b, a, True]`
+   - `>swap` swaps top two: `[True, a, b]`
+   - `>choose` pops `b`, pops `a`, pops `True`
+   - If `a` is `True`: selects `True` (the true-branch value)
      - Result: `True`
-   - If `a` is `False`: execute `{}`
-     - AL still has `b` on top
-     - Result: the final value is `b`
+   - If `a` is `False`: selects `b` (the false-branch value)
+     - Result: `True` if b is True, `False` if b is False
 
 **Truth Table:**
 | a     | b     | Result |
@@ -942,7 +942,7 @@ counter >dec !counter
 
 **Definition:**
 ```soma
-{>dup 0 >< {0 >swap >-} {} >choose} !abs
+{>dup 0 >< {0 >swap >-} {} >choose >^} !abs
 ```
 
 **Semantics:**
@@ -957,14 +957,14 @@ After:  [|n|, ...]
 **How It Works:**
 1. `>dup`: Duplicate the value → `[n, n]`
 2. `0 ><`: Test if `n < 0` → `[n, bool]`
-3. `>choose`:
-   - If `True` (n is negative): execute `{0 >swap >-}`
-     - Push `0`
-     - `>swap`: `[0, n]`
-     - `>-`: Compute `0 - n` = `-n` (positive)
-   - If `False` (n is non-negative): execute `{}`
-     - Do nothing, value remains
-4. Result: non-negative value
+3. `{0 >swap >-} {}`: Push the two branch blocks
+4. `>choose`: Selects based on bool:
+   - If `True` (n is negative): selects `{0 >swap >-}`
+   - If `False` (n is non-negative): selects `{}` (empty block)
+5. `>^`: Executes the selected block
+   - If negative: computes `0 - n` = `-n` (positive)
+   - If non-negative: does nothing, value remains
+6. Result: non-negative value
 
 **Example:**
 ```soma
@@ -987,7 +987,7 @@ a b >- >abs     ; |a - b|
 
 **Definition:**
 ```soma
-{>over >over >< {>drop} {>swap >drop} >choose} !min
+{>over >over >< {>drop} {>swap >drop} >choose >^} !min
 ```
 
 **Semantics:**
@@ -1002,52 +1002,15 @@ After:  [min(a, b), ...]
 **How It Works:**
 1. `>over >over`: Duplicate both values → `[b, a, b, a]`
 2. `><`: Test `a < b` → `[b, a, bool]`
-3. `>choose`:
-   - If `True` (a < b): execute `{>drop}` → `[b, a]` then `[b]` — keeps a
+3. `{>drop} {>swap >drop}`: Push the two branch blocks
+4. `>choose`: Selects based on bool:
+   - If `True` (a < b): selects `{>drop}`
+   - If `False` (a ≥ b): selects `{>swap >drop}`
+5. `>^`: Executes the selected block
+   - If a < b: drops top (b), keeps a
+   - If a ≥ b: swaps then drops, keeps b
 
-   Wait, that's wrong. Let me trace more carefully:
-
-After `>over >over ><`: AL is `[b, a, bool]`
-
-`{>drop} {>swap >drop} >choose`:
-- Pops bool
-- Pops true branch: `{>drop}`
-- Pops false branch: `{>swap >drop}`
-- If bool is `True`:
-  - Execute `{>drop}`
-  - AL was `[b, a]` (after choose popped its args)
-  - Wait, no. Choose consumes the bool and branches, leaving `[b, a]`
-
-Let me re-trace from the beginning:
-
-```
-a b                    ; AL: [b, a]
->over >over            ; AL: [b, a, b, a]
-><                     ; AL: [b, a, (a < b)]
-{>drop}                ; AL: [b, a, (a < b), {>drop}]
-{>swap >drop}          ; AL: [b, a, (a < b), {>drop}, {>swap >drop}]
->choose                ; Pops 3 values: false_branch, true_branch, bool
-                       ; Leaves: [b, a]
-                       ; Executes chosen branch
-```
-
-If `a < b` is `True`:
-- Execute `{>drop}`
-- AL is `[b, a]`
-- `>drop` removes `a`
-- Result: `[b]` — **Wrong!** We want `a` since `a < b`.
-
-Hmm, there's an error in my understanding. Let me check the stack state more carefully.
-
-Actually, after `><` the AL is `[b, a, bool]`. But the order might be different than I think.
-
-Let me reconsider. After `>over >over`:
-- We have `[b, a]` initially
-- `>over` copies second to top → `[b, a, b]`
-- `>over` copies second to top → `[b, a, b, a]`
-- `><` pops `(a, b)` and tests `b < a` → Result is `(b < a)`
-
-Wait, that's different! Let me trace with concrete values:
+Step-by-step execution with concrete values:
 
 ```
 3 7                    ; AL: [7, 3]    (want min = 3)
@@ -1058,13 +1021,14 @@ Wait, that's different! Let me trace with concrete values:
 {>drop} {>swap >drop} >choose
                        ; Pops: {>swap >drop}, {>drop}, False
                        ; Leaves: [7, 3]
-                       ; Executes: {>swap >drop} (false branch)
+                       ; Selects: {>swap >drop} (false branch)
+>^                     ; Executes the selected block
   >swap                ; AL: [3, 7]
   >drop                ; AL: [3]
                        ; Result: 3 ✓
 ```
 
-Let me verify with opposite order:
+Verify with opposite order:
 ```
 7 3                    ; AL: [3, 7]    (want min = 3)
 >over                  ; AL: [3, 7, 3]
@@ -1072,13 +1036,12 @@ Let me verify with opposite order:
 ><                     ; Pop (7, 3), test: 3 < 7 → True
                        ; AL: [3, 7, True]
 {>drop} {>swap >drop} >choose
-                       ; Executes: {>drop} (true branch)
+                       ; Selects: {>drop} (true branch)
                        ; AL: [3, 7]
+>^                     ; Executes the selected block
   >drop                ; AL: [3]
                        ; Result: 3 ✓
 ```
-
-**Correct!**
 
 **Example:**
 ```soma
@@ -1101,7 +1064,7 @@ value limit >min
 
 **Definition:**
 ```soma
-{>over >over >> {>drop} {>swap >drop} >choose} !max
+{>over >over >> {>drop} {>swap >drop} >choose >^} !max
 ```
 
 **Semantics:**
@@ -1118,9 +1081,11 @@ Similar to `>min`, but uses `>>` (greater-than) instead of `><`:
 
 1. `>over >over`: Duplicate both → `[b, a, b, a]`
 2. `>>`: Test `a > b` → `[b, a, bool]`
-3. `>choose`:
-   - If `True` (a > b): `{>drop}` → keep a
-   - If `False` (a ≤ b): `{>swap >drop}` → keep b
+3. `{>drop} {>swap >drop}`: Push the two branch blocks
+4. `>choose`: Selects based on bool:
+   - If `True` (a > b): selects `{>drop}` → keep a
+   - If `False` (a ≤ b): selects `{>swap >drop}` → keep b
+5. `>^`: Executes the selected block
 
 **Example:**
 ```soma
@@ -1185,9 +1150,11 @@ This is a sophisticated loop built using `>chain` and `>choose`. Let's trace it:
    - Pushes new count and block back onto AL
    - Pushes self (`>block`) onto AL
    - Tests if count > 0 (`0 _.new_cnt ><`)
-   - If true: push empty block (continue loop via `>chain`)
-   - If false: push cleanup block (`{>drop >drop >drop Nil}`)
-   - `>choose` selects and executes
+   - Pushes empty block `{}` and cleanup block `{>drop >drop >drop Nil}`
+   - `>choose` selects based on the test:
+     - If true: selects empty block (continue loop via `>chain`)
+     - If false: selects cleanup block
+   - `>^` executes the selected block
 3. Loop continues until count reaches 0
 
 **Example:**
@@ -1218,7 +1185,7 @@ Hello
 
 **Definition:**
 ```soma
-{{} >choose} !if
+{{} >choose >^} !if
 ```
 
 **Semantics:**
@@ -1237,8 +1204,9 @@ After:  [...]
 1. AL has: `[block, bool]`
 2. Push empty block: `[block, bool, {}]`
 3. `>choose` selects:
-   - If `bool` is `True`: execute `block`
-   - If `bool` is `False`: execute `{}` (empty, does nothing)
+   - If `bool` is `True`: pushes `block` onto AL
+   - If `bool` is `False`: pushes `{}` (empty block) onto AL
+4. `>^` executes the selected block from the AL
 
 **Example:**
 ```soma
@@ -1259,11 +1227,11 @@ user.authenticated { show_dashboard } >if
 
 **Definition:**
 ```soma
-{>choose} !ifelse
+{>choose >^} !ifelse
 ```
 
 **Semantics:**
-Alias for `>choose`. Executes one of two blocks based on a boolean.
+Executes one of two blocks based on a boolean. This is the select-then-execute pattern.
 
 **AL Transformation:**
 ```
@@ -1275,7 +1243,11 @@ After:  [<result of false_body>, ...]
 ```
 
 **How It Works:**
-This is just `>choose` with a more descriptive name. No wrapper needed.
+1. AL has: `[false_block, true_block, bool]`
+2. `>choose` selects based on bool:
+   - If `True`: pushes `true_block` onto AL
+   - If `False`: pushes `false_block` onto AL
+3. `>^` executes the selected block from the AL
 
 **Example:**
 ```soma
@@ -1382,9 +1354,12 @@ This is a sophisticated while loop that:
 2. On each iteration:
    - Pushes condition and body back onto AL
    - Pushes self-reference (`>block`)
-   - Executes condition block
-   - If `True`: executes body and continues
-   - If `False`: cleans up and terminates
+   - Executes condition block (leaving boolean on AL)
+   - Pushes continuation block and cleanup block
+   - `>choose` selects based on boolean:
+     - If `True`: selects continuation block (executes body and continues)
+     - If `False`: selects cleanup block
+   - `>^` executes the selected block
 
 **Example:**
 ```soma
@@ -1451,9 +1426,12 @@ Similar to `>while`, but executes body **before** testing condition:
 1. Stores body and condition in Register
 2. Executes body immediately
 3. Pushes state and self-reference
-4. Tests condition
-5. If `True`: continues loop
-6. If `False`: cleans up
+4. Tests condition (leaving boolean on AL)
+5. Pushes empty block and cleanup block
+6. `>choose` selects based on boolean:
+   - If `True`: selects empty block (continues loop)
+   - If `False`: selects cleanup block
+7. `>^` executes the selected block
 
 **Example:**
 ```soma
@@ -1541,7 +1519,7 @@ result >print        ; Output: 120
   >and               ; Both must be true
 }
 {
-  x >print
+  x >toString >print
   x 2 >+ !x
 }
 >while
@@ -1561,7 +1539,7 @@ count 1 >- {
   >>                       ; Is value > current_max?
   { !current_max }         ; If yes, update
   { >drop }                ; If no, discard
-  >choose
+  >choose >^
 } >times
 
 current_max              ; Result on AL
@@ -1601,13 +1579,14 @@ Complex loops use `>block` to push self-reference:
 {
   <body>
   <test>
-  { >block }           ; Continue loop
-  { }                  ; Exit loop
-  >choose
+  { >block }           ; Continue loop block
+  { }                  ; Exit loop block
+  >choose              ; Select block
+  >^                   ; Execute selected block
 } >chain
 ```
 
-**Why?** This creates iterative loops without recursion or call stack growth.
+**Why?** This creates iterative loops without recursion or call stack growth. The `>^` operator executes the selected block from the AL.
 
 ### Pattern 4: Storing Loop State in Store
 
@@ -1623,11 +1602,11 @@ Loops that need shared state use Store paths, not Register paths:
     >block
   }
   {}
-  >choose
+  >choose >^
 } >chain
 ```
 
-**Why?** Nested blocks have isolated Registers, but all blocks share the Store.
+**Why?** Nested blocks have isolated Registers, but all blocks share the Store. The `>^` executes the selected continuation or exit block.
 
 ---
 
@@ -1699,7 +1678,7 @@ You can add your own operations following the same patterns:
 
 ```soma
 ) Execute block if condition is false
-{>not >if} !unless
+{>swap >not >swap >if} !unless
 
 False { "Executed" >print } >unless   ; Prints: Executed
 ```
@@ -1716,7 +1695,7 @@ False { "Executed" >print } >unless   ; Prints: Executed
     >_.cond
     { >drop >drop Nil }    ; Exit if true
     {}                     ; Continue if false
-    >choose
+    >choose >^
   } >chain
   >drop
 } !repeat_until

@@ -159,8 +159,8 @@ BLOCK ::= '{' <tokens>* '}'
 
 ```soma
 { >a >b }           ) Valid block
->{ >print }         ) Valid: execute a block
-!{ >print }         ) LEXER ERROR: cannot store to block
+>{ >print }         ) Valid: execute a block directly
+!{ >print }         ) Invalid: cannot store to block (detected at lex time)
 ```
 
 ## 2.7 Prefix Modifiers
@@ -393,9 +393,9 @@ Tokens: INT("42"), EXEC(">"), PATH("print"), EOF
 Tokens: STRING("hello"), STORE("!"), PATH("message"), EOF
 
 ```soma
-{ >a >b } >execute
+{ >a >b } !myblock
 ```
-Tokens: LBRACE("{"), EXEC(">"), PATH("a"), EXEC(">"), PATH("b"), RBRACE("}"), EXEC(">"), PATH("execute"), EOF
+Tokens: LBRACE("{"), EXEC(">"), PATH("a"), EXEC(">"), PATH("b"), RBRACE("}"), STORE("!"), PATH("myblock"), EOF
 
 ```soma
 a.b.c 23 +hello
@@ -439,7 +439,7 @@ Tokens: PATH("_.counter"), INT("1"), EXEC(">"), PATH("+"), STORE("!"), PATH("_.c
 ```soma
 _.self >chain
 ```
-Tokens: PATH("_.self"), EXEC(">"), PATH("Chain"), EOF
+Tokens: PATH("_.self"), EXEC(">"), PATH("chain"), EOF
 
 **Lexical vs Semantic:**
 
@@ -1139,7 +1139,7 @@ Program(statements=[
 
 **Source:**
 ```soma
->{ { 1 2 >+ } >execute }
+>{ { 1 2 >+ } >^ }
 ```
 
 **Token Stream:**
@@ -1153,9 +1153,9 @@ Token(EXEC, ">", 1, 10)
 Token(PATH, "+", 1, 11)
 Token(RBRACE, "}", 1, 13)
 Token(EXEC, ">", 1, 15)
-Token(PATH, "execute", 1, 16)
-Token(RBRACE, "}", 1, 24)
-Token(EOF, "", 1, 25)
+Token(PATH, "^", 1, 16)
+Token(RBRACE, "}", 1, 18)
+Token(EOF, "", 1, 19)
 ```
 
 **AST:**
@@ -1166,7 +1166,7 @@ ExecNode(target=BlockNode(body=[
         IntNode(value=2),
         ExecNode(target=ValuePath(components=["+"]))
     ]),
-    ExecNode(target=ValuePath(components=["execute"]))
+    ExecNode(target=ValuePath(components=["^"]))
 ]))
 ```
 
@@ -1176,7 +1176,7 @@ ExecNode(target=BlockNode(body=[
 3. `_parse_statement()` → `_parse_block()` — Inner block
 4. Parse `1`, `2`, `>+` inside inner block
 5. Return inner `BlockNode`
-6. `_parse_statement()` → `_parse_exec()` → `ExecNode(ValuePath(["execute"]))`
+6. `_parse_statement()` → `_parse_exec()` → `ExecNode(ValuePath(["^"]))`
 7. Return outer `BlockNode`
 8. Return `ExecNode(target=<outer block>)`
 
@@ -1406,8 +1406,9 @@ from soma.parser import parse
 source = """
 { 0 !_.counter
   _.counter 10 ><
-  { _.counter 1 >+ !_.counter }
-  >choose
+  { _.counter 1 >+ !_.counter >block }
+  Nil
+  >choose >^
 }
 """
 

@@ -116,16 +116,16 @@ SOMA has no control stack. No return path. No exception unwinding.
 
 Instead, control arises from two primitive operations:
 
-- **`>choose`** - select and execute one of two blocks based on a boolean
+- **`>choose`** - select one of two values based on a boolean (does NOT execute)
 - **`>chain`** - repeatedly execute blocks until a non-block value appears
 
 All control structures—loops, conditionals, recursion, finite state machines—emerge from these primitives acting on explicit state.
 
 ```soma
-True { "Yes" >print } { "No" >print } >choose
+True { (Yes) >print } { (No) >print } >choose >^
 ```
 
-No hidden jumps. No implicit context. The boolean is on the AL. The blocks are on the AL. `>choose` executes one and discards the other. That's it.
+No hidden jumps. No implicit context. The boolean is on the AL. The blocks are on the AL. `>choose` selects one and discards the other. Then `>^` executes the selected block. That's it.
 
 ### Structure is Visible
 
@@ -196,14 +196,29 @@ This design enables powerful patterns. You can store blocks and execute them lat
 >greet          ; Executes the stored block
 ```
 
-You can even define user-defined execution operators. For example, `{ !_ >_ } !^` creates an operator that executes the top of the AL, similar to Forth's `EXECUTE` or Lisp's `FUNCALL`. This enables macro-like behavior from simple primitives:
+You can also execute block literals directly with `>{ }`:
 
 ```soma
-{ !_ >_ } !^              ; Define "execute AL top"
-(Data) print >^           ; Prints "Data"
+>{ 1 2 >+ >print }    ; Execute block immediately
 ```
 
-The separation between values and execution is what makes SOMA's control structures algebraic rather than syntactic. Blocks flow through the AL as data until explicitly executed with `>`.
+This is cleaner than the older pattern `{ 1 2 >+ >print } >chain` for single execution.
+
+The standard library defines `>^` which executes the top value from the AL:
+
+```soma
+{ !_ >_ } !^              ; Store this block as "^"
+(Data) print >^           ; Pushes "Data", pushes print block, executes it
+```
+
+This enables macro-like behavior from simple primitives. The `>^` operator is similar to Forth's `EXECUTE` or Lisp's `FUNCALL`.
+
+**Three ways to execute:**
+1. **`>path`** - Execute a block stored at a path
+2. **`>{ code }`** - Execute a block literal directly
+3. **`>^`** - Execute a block from the AL (useful when blocks are computed)
+
+The separation between values and execution is what makes SOMA's control structures algebraic rather than syntactic. Blocks flow through the AL as data until explicitly executed.
 
 ---
 
@@ -233,13 +248,37 @@ This eliminates:
 - Hidden control flow through exception propagation
 - Confusion about scope and shadowing
 
-Instead, you build control graphs explicitly:
+Instead, you build control graphs explicitly using `>chain`:
 
 ```soma
-{ _.self "tick" >print _.self } >chain
+{ _.self (tick) >print _.self } >chain
 ```
 
-This block prints "tick" and then re-executes itself. Forever. No stack growth. No tail call optimization needed. Just explicit state.
+This block prints "tick" and then returns itself to `>chain`, which executes it again. Forever. No stack growth. No tail call optimization needed—it's built into the execution model.
+
+**`>chain` is the key to tail-call optimization.** It pops from the AL and:
+- If the value is a Block, executes it and repeats
+- If the value is anything else, stops and leaves it on the AL
+
+This makes tail-recursive patterns natural and efficient:
+
+```soma
+) Countdown from 10
+10 !counter
+{
+  counter >toString >print
+  counter 1 >- !counter
+
+  counter 0 >>
+    _.self          ; Continue: return this block
+    Nil             ; Stop: return Nil
+  >choose
+} !countdown
+
+countdown >chain    ; No stack growth!
+```
+
+**Functional elegance with imperative mutation:** SOMA combines the best of both worlds. The control flow is functional (blocks returning blocks), but the state mutation is explicit and visible. You can see exactly what changes and when, while still writing clean tail-recursive loops.
 
 ### Why the AL?
 
@@ -255,6 +294,52 @@ It replaces:
 - Temporary variables
 
 You could build SOMA with just the Store, but the AL provides a minimal amount of dynamic structure without sacrificing clarity.
+
+### Functional Elegance with Imperative Mutation
+
+SOMA achieves a unique synthesis: **functional control flow with imperative state**.
+
+Traditional approaches force a choice:
+- **Functional languages** (Haskell, ML) hide mutation under monads and abstractions
+- **Imperative languages** (C, Python) hide control flow under syntax keywords
+
+SOMA rejects this false dichotomy. Instead:
+
+**Control flow is functional:** Blocks return values. `>choose` selects between alternatives. `>chain` implements tail-call optimization. Loops are just blocks returning themselves.
+
+**State mutation is imperative:** The Store is explicitly mutated with `!`. You can see what changes, when it changes, and where it lives.
+
+This combination provides:
+- **Clarity of mutation** - no hidden state transformations
+- **Elegance of tail calls** - no stack growth, pure data flow
+- **Simplicity of primitives** - both aspects emerge from minimal operations
+
+Example - tail-recursive factorial with accumulator:
+
+```soma
+5 !fact.n
+1 !fact.acc
+
+{
+  fact.n 0 >=<
+    fact.acc                    ; Base: return accumulator (stops chain)
+    {                           ; Recursive: mutate and continue
+      fact.acc fact.n >* !fact.acc
+      fact.n 1 >- !fact.n
+      _.self                    ; Return self (continues chain)
+    }
+  >choose
+} !fact-step
+
+fact-step >chain                ; AL: [120]
+```
+
+**What's happening:**
+- **Functional:** Block returns either `fact.acc` (number, stops) or `_.self` (block, continues)
+- **Imperative:** State clearly mutates via `!fact.acc` and `!fact.n`
+- **Efficient:** No stack frames, just tail calls through `>chain`
+
+You can trace every mutation. You can see the control flow. There are no hidden mechanics. This is SOMA's philosophical core: computation made visible through the marriage of functional structure and imperative clarity.
 
 ### Comparing the Three State Spaces
 
@@ -286,14 +371,16 @@ Let's implement a simple counter that prints numbers until it reaches a limit.
 5 !counter.limit
 
 {
-  counter.n >print
+  counter.n >toString >print
   counter.n 1 >+ !counter.n
 
   counter.n counter.limit >>
-  { {} }
-  { _.self }
+  { Nil }           ; Stop: return Nil to terminate chain
+  { _.self }        ; Continue: return self to continue chain
   >choose
-} >chain
+} !counter-loop
+
+counter-loop >chain
 ```
 
 **What happens:**
@@ -302,11 +389,14 @@ Let's implement a simple counter that prints numbers until it reaches a limit.
    - Prints current value
    - Increments counter
    - Checks if counter exceeds limit
-   - If yes, push empty block (terminates Chain)
-   - If no, push self (continues Chain)
+   - Uses `>choose` to select which value to return
+   - If yes, returns Nil (terminates chain)
+   - If no, returns self (continues chain)
 3. Execute the block with `>chain`
 
-No recursion. No stack frames. No return values. Just state evolution.
+No recursion. No stack frames. No return values. Just state evolution through tail-call optimization.
+
+**This is functional elegance:** The loop control is purely functional (blocks returning blocks), but the state mutation is explicit and imperative (Store updates with `!`). You get the clarity of mutation with the efficiency of tail calls.
 
 ### Haskell Version
 
@@ -420,9 +510,15 @@ SOMA is structured graphs at arbitrary depth.
 
 SOMA does not try to be a better Haskell or a safer C or a faster Python. It tries to be an honest description of what computers do: transform state, step by step, without hidden mechanisms.
 
-If you want to understand how programs run—not how they reduce, not how they type-check, but how they **run**—SOMA shows you the machine.
+But it also reveals something deeper: **functional elegance and imperative clarity are not opposites.** They are complementary perspectives on computation. SOMA shows how they can coexist:
 
-No call stack. No exceptions. No purity. Just state, blocks, and explicit flow.
+- **Control flow** is functional - blocks as values, tail-call optimization, algebraic composition
+- **State mutation** is imperative - visible writes, explicit paths, observable changes
+- **Execution** is explicit - no hidden machinery, no implicit behaviors
+
+If you want to understand how programs run—not how they reduce, not how they type-check, but how they **run**—SOMA shows you the machine. And it shows you that the machine can be both elegant and explicit.
+
+No call stack. No exceptions. No false dichotomy between purity and mutation. Just state, blocks, and explicit flow.
 
 **This is computation as it is, not as we wish it were.**
 

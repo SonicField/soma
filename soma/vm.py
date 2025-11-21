@@ -984,39 +984,36 @@ def builtin_block(vm: VM):
 
 def builtin_choose(vm: VM):
     """
-    >choose built-in: Conditional execution.
+    >choose built-in: Conditional selection (SELECTOR, not executor).
 
-    AL before: [condition, true_branch, false_branch, ...]
-    AL after: [result_of_executed_branch, ...]
+    AL before: [condition, true_value, false_value, ...]
+    AL after: [selected_value, ...]
 
     The condition is popped and evaluated:
     - Nil/Void/False = False
     - Everything else (including True) = True
 
-    Then the appropriate branch (which must be a Block) is executed.
+    Then the appropriate value is selected and pushed to AL.
+    Does NOT execute - just pushes the selected value to AL.
+    Any value type can be selected (blocks, ints, strings, etc.).
 
     Raises:
-        RuntimeError: If AL underflow or branch is not a Block
+        RuntimeError: If AL underflow
     """
     if len(vm.al) < 3:
-        raise RuntimeError("AL underflow: >choose requires 3 values (false, true, condition)")
+        raise RuntimeError("AL underflow: >choose requires 3 values")
 
     # Pop in reverse order: false, true, condition (LIFO)
-    false_branch = vm.al.pop()
-    true_branch = vm.al.pop()
+    false_value = vm.al.pop()
+    true_value = vm.al.pop()
     condition = vm.al.pop()
 
     # Evaluate condition: Nil/Void/False = False, everything else = True
     is_true = not isinstance(condition, (NilSingleton, VoidSingleton, FalseSingleton))
 
-    # Choose branch
-    branch = true_branch if is_true else false_branch
-
-    # Execute branch (must be Block or BuiltinBlock)
-    if isinstance(branch, (Block, BuiltinBlock)):
-        branch.execute(vm)
-    else:
-        raise RuntimeError(f">choose branch must be Block, got {type(branch).__name__}")
+    # Choose value and push to AL
+    selected = true_value if is_true else false_value
+    vm.al.append(selected)
 
 
 def builtin_chain(vm: VM):

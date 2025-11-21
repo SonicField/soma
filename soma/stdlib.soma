@@ -4,13 +4,13 @@
 ) ==================== Boolean Logic ====================
 
 ) not: Boolean negation
-{{False}{True}>choose} !not
+{False True >choose} !not
 
 ) and: Logical AND
-{{}{>drop False} >choose} !and
+{False >choose} !and
 
 ) or: Logical OR
-{{>drop True}{} >choose} !or
+{True >swap >choose} !or
 
 ) ==================== Comparison Operators ====================
 
@@ -55,13 +55,13 @@
 {1 >-} !dec
 
 ) abs: Absolute value
-{>dup 0 >< {0 >swap >-} {} >choose} !abs
+{>dup 0 >< {0 >swap >-} {} >choose >^} !abs
 
 ) min: Minimum of two values
-{>over >over >< {>drop} {>swap >drop} >choose} !min
+{>over >over >< {>drop} {>swap >drop} >choose >^} !min
 
 ) max: Maximum of two values
-{>over >over >> {>drop} {>swap >drop} >choose} !max
+{>over >over >> {>drop} {>swap >drop} >choose >^} !max
 
 ) ==================== Control Flow Helpers ====================
 
@@ -79,7 +79,7 @@
     0 _.new_cnt ><
     {}
     {>drop >drop >drop Nil}
-    >choose
+    >choose >^
   } >chain
   >drop
 } !times
@@ -87,15 +87,16 @@
 ) if: Execute block if condition is true
 ) AL: [condition, block, ...] -> [...]
 ) Usage: True { (Hello) >print } >if
-{{} >choose} !if
+{{} >choose >^} !if
 
 ) ifelse: Conditional with both branches (alias for choose)
 ) AL: [condition, true_block, false_block, ...] -> [...]
 ) Usage: x 0 >< { (positive) } { (not positive) } >ifelse
-{>choose} !ifelse
+{>choose >^} !ifelse
 
-) Execute from AL (like Forth's EXECUTE)
-{!_ >_} !^
+) ^: Execute from AL (like Forth's EXECUTE)
+) AL: [block, ...] -> [result, ...]
+{ !_ >_ } !^
 
 ) while: Loop while condition is true
 ) AL: [cond_block, body_block, ...] -> [...]
@@ -112,7 +113,7 @@
       _.cond _.body _.loop        ) Push state back for next iteration
     }
     {>drop >drop >drop Nil}       ) False: cleanup
-    >choose
+    >choose >^
   } >chain
   >drop
 } !while
@@ -129,7 +130,7 @@
     >_.cond                       ) Execute condition LAST so bool is on top
     {}                            ) True: empty (state already on AL)
     {>drop >drop >drop Nil}       ) False: cleanup
-    >choose
+    >choose >^
   } >chain
   >drop
 } !do

@@ -1,0 +1,45 @@
+) Verification tests for Skill.md examples
+
+) TEST: Factorial from Skill.md
+) EXPECT_AL: [120]
+{
+  !fact-n
+  fact-n 0 >==
+  { 1 }
+  { fact-n fact-n 1 >- fact >chain >* }
+  >choose >^
+} !fact
+
+5 fact >chain
+
+) TEST: Loop with >block pattern
+) EXPECT_OUTPUT: 0
+) EXPECT_OUTPUT: 1
+) EXPECT_OUTPUT: 2
+) EXPECT_AL: [Nil]
+0 !counter
+{
+  counter >toString >print
+  counter >inc !counter
+
+  counter 3 ><
+    >block
+    Nil
+  >choose
+} >chain
+
+) TEST: Choose selector with values
+) EXPECT_AL: [Nil]
+undefined_path >isVoid
+  Nil
+  undefined_path
+>choose
+
+) TEST: Conditional pattern from cookbook
+) EXPECT_OUTPUT: small
+) EXPECT_AL: []
+5 !x
+x 10 ><
+  { (small) >print }
+  { (large) >print }
+>ifelse

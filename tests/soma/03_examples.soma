@@ -138,19 +138,13 @@ list.next.next >print
 a.b.c >print
 
 ) TEST: Void vs Nil detection
-) EXPECT_OUTPUT: Never set
-) EXPECT_OUTPUT: Has been set
+) EXPECT_OUTPUT: Never set - auto-vivified
+) EXPECT_OUTPUT: Has been set - explicit Nil
 ) EXPECT_AL: []
 42 !config.deep.value
-config.deep >isVoid
-  { (Never set) >print }
-  { (Has been set) >print }
->choose
+config.deep >isVoid { (Never set - auto-vivified) >print } { (Has been set - explicit value) >print } >ifelse
 Nil !config.deep
-config.deep >isVoid
-  { (Never set) >print }
-  { (Has been set) >print }
->choose
+config.deep >isVoid { (Never set - auto-vivified) >print } { (Has been set - explicit Nil) >print } >ifelse
 
 ) ==================== Section 19: Everything is a Block ====================
 

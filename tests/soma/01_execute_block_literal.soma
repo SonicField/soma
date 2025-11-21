@@ -1,0 +1,64 @@
+) SOMA Execute Block Literal Tests
+) Tests for >{ } pattern - executing block literals directly
+
+) TEST: Simple execute block literal
+) EXPECT_OUTPUT: Hello
+) EXPECT_AL: []
+>{ (Hello) >print }
+
+) TEST: Execute block with result
+) EXPECT_AL: [42]
+>{ 42 }
+
+) TEST: Execute block with computation
+) EXPECT_AL: [8]
+>{ 5 3 >+ }
+
+) TEST: Execute block with argument from AL
+) EXPECT_AL: [10]
+5 >{ !_.x _.x 2 >* }
+
+) TEST: Execute block with multiple arguments
+) EXPECT_AL: [15]
+5 10 >{ !_.b !_.a _.a _.b >+ }
+
+) TEST: Nested execute blocks
+) EXPECT_AL: [100]
+>{
+  >{ 10 }
+  >{ !_.x _.x _.x >* }
+}
+
+) TEST: Execute block with Store access
+) EXPECT_AL: [42]
+42 !value
+>{ value }
+
+) TEST: Execute block with Store mutation
+) EXPECT_OUTPUT: 10
+) EXPECT_AL: []
+5 !counter
+>{ counter 5 >+ !counter }
+counter >toString >print
+
+) TEST: Execute block for side effects only
+) EXPECT_OUTPUT: Side effect
+) EXPECT_AL: []
+>{ (Side effect) >print }
+
+) TEST: Execute block passing data to nested block
+) EXPECT_OUTPUT: 7
+) EXPECT_AL: []
+7 >{ !_.x _.x >{ !_.y _.y >toString >print } }
+
+) TEST: Execute block vs chain comparison
+) EXPECT_AL: [42]
+) Both should give same result, >{ } is cleaner
+>{ 42 }
+
+) TEST: Execute block with Register isolation
+) EXPECT_AL: [5]
+>{
+  5 !_.outer
+  _.outer >{ !_.inner _.inner }
+}

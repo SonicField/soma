@@ -192,7 +192,7 @@ stats = {
 Execute a block only if a condition is true:
 
 ```soma
-True { (Condition is true) >print } {} >choose
+True { (Condition is true) >print } {} >ifelse
 ```
 
 **Explanation:**
@@ -200,6 +200,7 @@ True { (Condition is true) >print } {} >choose
 - `True` is the condition (Boolean on AL)
 - First block executes if True
 - Empty block `{}` executes if False (does nothing)
+- `>ifelse` selects the appropriate block based on condition AND executes it
 
 **Output:**
 ```
@@ -213,7 +214,7 @@ Condition is true
 age 18 >>
   { (Adult) >print }
   { (Minor) >print }
->choose
+>ifelse
 ```
 
 **Execution trace:**
@@ -221,8 +222,8 @@ age 18 >>
 1. `age 18 >>` compares: is age > 18?
    - Result: `False` (15 is not greater than 18)
    - `AL = [False]`
-2. `>choose` pops the condition and the two blocks
-   - Since False, executes second block
+2. `>ifelse` pops the condition and the two blocks
+   - Since False, selects and executes second block
    - Second block prints (Minor)
 
 **Output:**
@@ -241,15 +242,15 @@ temperature 30 >>
     temperature 20 >>
       { (Warm) >print }
       { (Cold) >print }
-    >choose
+    >ifelse
   }
->choose
+>ifelse
 ```
 
 **Execution trace:**
 
 1. Compare temperature (25) with 30: `False`
-2. Execute else branch (the nested choose)
+2. Execute else branch (the nested ifelse)
    - **Inner block gets fresh, empty Register**
 3. Compare temperature (25) with 20: `True`
 4. Execute (Warm) branch
@@ -270,7 +271,7 @@ Warm
 stored_password user_input >==
   { (Access granted) >print }
   { (Access denied) >print }
->choose
+>ifelse
 ```
 
 **Output:**
@@ -480,9 +481,7 @@ Let's make this explicit:
 ```soma
 {
   1 !_.n
-  {
-    2 !_.n
-  } >chain
+  >{ 2 !_.n }
   _.n >print
 } >chain
 ```
@@ -511,9 +510,7 @@ Let's make this explicit:
 ```soma
 {
   1 !_.n
-  {
-    _.n >print
-  } >chain
+  >{ _.n >print }
 } >chain
 ```
 
@@ -533,10 +530,7 @@ Let's make this explicit:
 {
   1 !_.n
   _.n
-  {
-    !_.inner_n
-    _.inner_n >print
-  } >chain
+  >{ !_.inner_n _.inner_n >print }
 } >chain
 ```
 
@@ -560,9 +554,7 @@ Let's make this explicit:
 ```soma
 {
   1 !shared_data
-  {
-    shared_data >print
-  } >chain
+  >{ shared_data >print }
 } >chain
 ```
 
@@ -804,7 +796,7 @@ True !state
   state
     { (ON) >print False !state }
     { (OFF) >print True !state }
-  >choose
+  >ifelse
 
   count 1 >+ !count
 
@@ -898,7 +890,7 @@ A door that can be opened and closed:
   door_input (open) >==
     { opened >chain }
     { closed >chain }
-  >choose
+  >ifelse
 } !closed
 
 {
@@ -907,7 +899,7 @@ A door that can be opened and closed:
   door_input (close) >==
     { closed >chain }
     { opened >chain }
-  >choose
+  >ifelse
 } !opened
 
 closed >chain
@@ -921,7 +913,7 @@ Door is OPEN
 
 **Explanation:**
 
-The `door_input` Store cell determines which state transition occurs. All FSM state blocks are stored in the **Store** for global access.
+The `door_input` Store cell determines which state transition occurs. All FSM state blocks are stored in the **Store** for global access. Each state uses `>ifelse` to execute the appropriate transition.
 
 ---
 
@@ -2071,12 +2063,12 @@ Delete paths based on conditions:
   _.should_clear
     { Void !_.cache. (Cache cleared) >print }
     { (Cache retained) >print }
-  >choose
+  >ifelse
 
   _.cache >isVoid
     { (Cache is empty) >print }
     { (Cache has data) >print }
-  >choose
+  >ifelse
 } >chain
 ```
 
@@ -2156,7 +2148,7 @@ Increment only if value is below threshold:
 value threshold ><
   { value 1 >+ !value }
   { }
->choose
+>ifelse
 
 value >print
 ```
@@ -2263,7 +2255,7 @@ value >print
 15 10 20 in_range >chain
   { (In range) >print }
   { (Out of range) >print }
->choose
+>ifelse
 ```
 
 **Output:**
@@ -2301,16 +2293,16 @@ In range
 4. Executes `>_.g` (increment): 10 + 1 = 11 on AL
 5. Result 11 left on AL
 
-### 13.2 Conditional Block Selection
+### 13.2 Conditional Block Selection and Execution
 
 ```soma
 { (Option A) >print } !block_a
 { (Option B) >print } !block_b
 
 True
-  { block_a >chain }
-  { block_b >chain }
->choose
+  { >block_a }
+  { >block_b }
+>ifelse
 ```
 
 **Output:**
@@ -2318,7 +2310,7 @@ True
 Option A
 ```
 
-**Note:** Blocks are stored in Store, accessed by inner blocks.
+**Note:** `>ifelse` selects the appropriate block based on the condition and executes it.
 
 ### 13.3 Block as Return Value
 
@@ -2542,15 +2534,15 @@ tick
       n 5 >/ 5 >* n >==
         { (FizzBuzz) >print }
         { (Fizz) >print }
-      >choose
+      >ifelse
     }
     {
       n 5 >/ 5 >* n >==
         { (Buzz) >print }
         { n >print }
-      >choose
+      >ifelse
     }
-  >choose
+  >ifelse
 
   n 1 >+ !n
 
@@ -2598,7 +2590,7 @@ FizzBuzz
       n 2 >/ 2 >* n >==
         { n 2 >/ !n }
         { n 3 >* 1 >+ !n }
-      >choose
+      >ifelse
       >block
     }
   >choose
@@ -2899,7 +2891,7 @@ You can detect whether a cell has been set using hypothetical `>isVoid`:
 config.deep >isVoid
   { (Never set) >print }
   { (Has been set) >print }
->choose
+>ifelse
 
 ) Now explicitly set to Nil
 Nil !config.deep
@@ -2908,7 +2900,7 @@ Nil !config.deep
 config.deep >isVoid
   { (Never set) >print }
   { (Has been set) >print }
->choose
+>ifelse
 ```
 
 **Output:**
@@ -2945,7 +2937,7 @@ array.50            ) Returns Void (never set)
 array.1 >isVoid
   { (Index 1 is uninitialized) >print }
   { array.1 >print }
->choose
+>ifelse
 
 ) Now explicitly set an index to Nil
 Nil !array.2
@@ -2953,7 +2945,7 @@ Nil !array.2
 array.2 >isVoid
   { (Index 2 is uninitialized) >print }
   { (Index 2 is explicitly Nil) >print }
->choose
+>ifelse
 ```
 
 **Output:**
@@ -2985,9 +2977,9 @@ person.middle_name >isVoid
     person.middle_name >isNil
       { (No middle name) >print }
       { person.middle_name >print }
-    >choose
+    >ifelse
   }
->choose
+>ifelse
 
 person.spouse >isVoid
   { (Spouse information not provided) >print }
@@ -2995,9 +2987,9 @@ person.spouse >isVoid
     person.spouse >isNil
       { (No spouse) >print }
       { person.spouse >print }
-    >choose
+    >ifelse
   }
->choose
+>ifelse
 ```
 
 **Output:**
@@ -3138,7 +3130,7 @@ data !_.intermediate
 _.intermediate >isVoid
   { (Yes, it's Void) >print }
   { (No, it was set) >print }
->choose
+>ifelse
 ```
 
 **Output:**

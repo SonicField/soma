@@ -144,7 +144,7 @@ def run_test_file(filepath, verbose=False):
 
     # Load stdlib if test file needs it (check for >stdlib operations)
     stdlib_source = ''
-    if '_stdlib' in filepath.name or '02_' in filepath.name:
+    if '_stdlib' in filepath.name or '02_' in filepath.name or '03_' in filepath.name:
         stdlib_path = Path(__file__).parent.parent / 'soma' / 'stdlib.soma'
         if stdlib_path.exists():
             with open(stdlib_path, 'r') as f:
