@@ -13,6 +13,35 @@ Comprehensive documentation is available in the `docs/` folder:
 - **[Examples](docs/08-examples.md)** - Working SOMA programs
 - **[Comparisons](docs/07-comparisons.md)** - SOMA vs Forth, Haskell, Lambda Calculus, and others
 
+## Examples
+
+The `examples/` directory contains complete, runnable SOMA programs demonstrating real-world applications:
+
+### Sin Calculator (`examples/sin_calculator/`)
+
+A Taylor series implementation of `sin(x)` showcasing:
+- **Scaled integer arithmetic** - Simulating decimal precision using 10^10 scale factor
+- **>chain iteration** - Taylor series convergence with tail-call optimization
+- **Unicode string escapes** - Proper formatting with `\28\(` and `\29\)` characters
+- **Store-based state** - Clean iteration without complex context-passing
+
+```bash
+python3 examples/sin_calculator/run_soma_sin.py
+```
+
+**Output:**
+```
+sin(0°) = 0.0000000000
+sin(30°) = 0.5000000001
+sin(45°) = 0.7071067814
+sin(90°) = 1.0000000010
+```
+
+See `examples/sin_calculator/README.md` for complete documentation including:
+- How to read SOMA code
+- Detailed walkthrough of the implementation
+- Accuracy analysis and design decisions
+
 ## Testing
 
 SOMA has a comprehensive test suite covering both FFI built-ins and the standard library.

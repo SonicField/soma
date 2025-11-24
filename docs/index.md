@@ -18,7 +18,7 @@ SOMA doesn't reduce expressions; it runs programs by evolving state step by step
 ## Hello World
 
 ```soma
-"Hello world" >print
+(Hello world) >print
 ```
 
 This pushes a string onto the Accumulator List, then executes the `print` block which consumes it.
@@ -26,8 +26,8 @@ This pushes a string onto the Accumulator List, then executes the `print` block 
 A more elaborate example showing blocks, execution patterns, and state:
 
 ```soma
-{ !_.name "Hello " _.name >concat >print } !greet
-"world" >greet
+{ !_.name (Hello ) _.name >concat >print } !greet
+(world) >greet
 ```
 
 This creates a block that pops a value into Register storage, concatenates it with "Hello ", and prints the result. The block is stored at Store path `greet`, then executed with "world" on the stack.
@@ -43,9 +43,30 @@ block >chain    ) Execute and continue tail-calls/loops (no stack growth)
 
 ## Implementation Status
 
-**Implemented:** Lexer, Parser
+**✅ Complete Reference Implementation:**
 
-**Future:** Runtime
+- **Lexer** (`soma/lexer.py`) - Full tokenization with unicode escape sequences
+- **Parser** (`soma/parser.py`) - AST generation with path validation
+- **VM/Runtime** (`soma/vm.py`) - Complete virtual machine with AL, Store, and Register
+- **Standard Library** (`soma/stdlib.soma`) - Derived operations built on FFI primitives
+- **Test Framework** (`tests/run_soma_tests.py`) - Automated test runner with EXPECT_AL/EXPECT_OUTPUT
+- **Examples** (`examples/`) - Working programs demonstrating SOMA concepts
+  - `examples/sin_calculator/` - Taylor series sin(x) computation with scaled integer arithmetic
+
+**Run SOMA:**
+```bash
+# Execute SOMA code via Python API
+from soma.vm import run_soma_program
+run_soma_program("(Hello, SOMA!) >print")
+
+# Run test suite
+python3 tests/run_soma_tests.py
+
+# Try examples
+python3 examples/sin_calculator/run_soma_sin.py
+```
+
+The reference implementation is **production-ready** and demonstrates all language features described in this specification.
 
 ## Table of Contents
 

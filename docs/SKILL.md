@@ -911,6 +911,35 @@ result >toString >print
 
 ---
 
+## When You Get Stuck
+
+This skill document is a **quick reference** designed for common tasks. For comprehensive documentation on all SOMA features, syntax details, and advanced topics:
+
+**📚 Full SOMA Documentation:**
+https://github.com/SonicField/soma/blob/main/docs/index.md
+
+**Key documentation highlights:**
+
+- **String escapes and special characters:** `docs/02-lexer.md` section 2.5
+  - Unicode escapes: `\HEX\` (e.g., `\28\` for `(`, `\29\` for `)`, `\b0\` for `°`)
+  - String literal rules and multiline strings
+
+- **Execution scope and context-passing:** `docs/09-idioms.md`
+  - The context-passing idiom with `_.` → `!_.`
+  - Advanced patterns for sharing state between blocks
+
+- **Complete builtin reference:** `docs/06-builtins.md`
+  - All FFI primitives with detailed signatures
+  - Edge cases and type requirements
+
+- **Working examples:** `tests/soma/` directory
+  - Real SOMA programs you can run and study
+  - Test files demonstrate best practices
+
+**Can't find what you need?** The official docs are comprehensive and regularly updated!
+
+---
+
 ## Philosophy
 
 SOMA reveals computation rather than obscuring it:
