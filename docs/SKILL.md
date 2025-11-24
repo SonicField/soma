@@ -11,7 +11,7 @@ Use this skill when:
 
 ## Overview
 
-SOMA (Semantic Oriented Machine Algebra) is a minimalistic stack-based language with explicit state mutation. It deliberately counterpoints type-centric alternatives by making state and mutation visible.
+SOMA (State-Oriented Machine Algebra) is a minimalistic stack-based language with explicit state mutation. It deliberately counterpoints type-centric alternatives by making state and mutation visible.
 
 **Core Philosophy:**
 - Values exist on the AL (Accumulator List - a stack)
@@ -19,6 +19,7 @@ SOMA (Semantic Oriented Machine Algebra) is a minimalistic stack-based language 
 - Blocks are first-class values (code is data)
 - Execution is explicit (via `>` prefix)
 - State mutation is visible (via `!` prefix)
+- **Execution scope, not lexical scope** - blocks get fresh Registers on execution
 
 ---
 
@@ -185,15 +186,15 @@ _.x         ) Read from register
 - **CRITICAL: Isolated between parent and child blocks**
 - Prefix: `_.`
 
-### Register Isolation Rules
+### Register Isolation and Execution Scope
 
-**IMPORTANT:** Each block gets a **fresh, empty Register**.
+**CRITICAL:** SOMA uses **execution scope**, not lexical scope. Each block gets a **fresh, empty Register** when executed.
 
 ```soma
-) WRONG - Register isolation violation
+) WRONG - Assuming lexical scope
 {
   5 !_.x                ) Store 5 in outer block's Register
-  >{ _.x >print }       ) Inner block has FRESH Register - _.x is Void!
+  >{ _.x >print }       ) ERROR: Inner block has FRESH Register - _.x is Void!
 }
 
 ) CORRECT - Use Store for sharing
@@ -202,15 +203,36 @@ _.x         ) Read from register
   >{ x >print }         ) Can read from Store
 }
 
-) CORRECT - Pass via AL
+) CORRECT - Pass via AL (simple values)
 {
   5 !_.x                ) Store in Register
   _.x                   ) Push to AL
   >{ !_.y _.y >print }  ) Inner block pops from AL, stores in its Register
 }
+
+) BEST - Context-passing idiom (for multiple values)
+{
+  5 !_.x
+  10 !_.y
+  _.                    ) Push CellRef to Register root onto AL
+  >{                    ) Execute block WITH context on AL
+    !_.                 ) Pop CellRef, store at inner Register root
+    _.x _.y >+ >print   ) Access outer Register transparently!
+  }
+}
 ```
 
-**Key Rule:** Parent and child blocks have **completely separate Registers**. No sharing.
+**The Context-Passing Idiom:**
+
+This is the most important pattern in SOMA. It enables blocks to share state without global variables.
+
+1. `_.` creates a CellRef to the current Register's root Cell
+2. Push this CellRef onto the AL
+3. `!_.` in the inner block stores that CellRef AT the inner Register's `_` location
+4. When the inner block accesses `_.x`, the Register follows the CellRef automatically
+5. All reads and writes go through to the aliased Register
+
+**Key Rule:** Parent and child blocks have **completely separate Registers** by default. Use the context-passing idiom (`_.` → `!_.`) to share state explicitly.
 
 ### Execution Flow
 
@@ -328,7 +350,42 @@ Located in `soma/stdlib.soma`. Automatically loaded for test files numbered 02+.
 
 ## 6. Common Patterns Cookbook
 
-### Counter
+### The Standard Loop Template (with Context-Passing)
+
+This is the idiomatic way to write loops in SOMA using `>chain` and context-passing:
+
+```soma
+>{
+  0 !_.counter         ) Initialize state in Register
+
+  {
+    !_.                ) Pop context from AL
+
+    ) Do work using _.counter, _.other_fields, etc.
+    _.counter >toString >print
+    _.counter >inc !_.counter
+
+    _.                 ) Push context for next iteration
+    _.counter 10 ><    ) Check condition
+      { loop }         ) True: continue (return block name)
+      { >drop Nil }    ) False: drop context, stop
+    >choose >^
+  } !loop              ) Store in Store (for self-reference)
+
+  _.                   ) Push initial context
+  loop >^              ) Execute first iteration
+  >chain               ) Chain remaining iterations
+  >drop                ) Clean up Nil result
+}
+```
+
+**Key points:**
+1. **Context flows through AL:** Each iteration receives context via `_.` → `!_.`
+2. **Self-reference requires Store:** Block stored as `!loop` (Store), not `!_.loop` (Register)
+3. **Always push context:** Before condition check in each iteration
+4. **Clean up after >chain:** Add `>drop` when test expects empty AL
+
+### Counter (Simple)
 ```soma
 0 !counter
 counter >inc !counter
@@ -598,23 +655,35 @@ undefined_path >isVoid
 
 **Error: Register isolation gotcha**
 ```soma
-) WRONG - Inner block can't see outer Register
+) WRONG - Inner block can't see outer Register (lexical scope assumption!)
 {
   5 !_.x
   >{ _.x >print }     ) _.x is Void in inner block!
 }
 
-) CORRECT - Use Store
+) CORRECT - Use Store (if truly global)
 {
   5 !x
   >{ x >print }
 }
 
-) CORRECT - Pass via AL
+) CORRECT - Pass via AL (single value)
 {
   5 !_.x
   _.x                ) Push to AL
   >{ !_.y _.y >print } ) Pop from AL, store in inner Register
+}
+
+) BEST - Context-passing idiom (multiple values)
+{
+  5 !_.x
+  10 !_.y
+  _.                 ) Push CellRef to Register root
+  >{
+    !_.              ) Pop and alias the Register
+    _.x >print       ) Access outer Register transparently
+    _.y >print
+  }
 }
 ```
 
@@ -763,12 +832,13 @@ foldl f acc xs              -- Custom with loop + accumulator
 When you need more details, refer to these files in the SOMA repository:
 
 ### Documentation
+- **Programming idioms:** `docs/09-idioms.md` - **Start here for execution scope!**
 - **Syntax details:** `docs/02-lexer.md`
 - **Execution model:** `docs/03-machine-model.md`
 - **Blocks and execution:** `docs/04-blocks-execution.md`
 - **Control flow:** `docs/05-control-flow.md`
 - **FFI reference:** `docs/06-builtins.md`
-- **Stdlib reference:** `docs/10-stdlib.md`
+- **Stdlib reference:** `docs/11-stdlib.md`
 - **Examples:** `docs/08-examples.md`
 - **Comparisons:** `docs/07-comparisons.md`
 
@@ -781,9 +851,7 @@ When you need more details, refer to these files in the SOMA repository:
 ### Tests (Working Examples)
 - **FFI tests:** `tests/soma/01_ffi_builtins.soma`
 - **Stdlib tests:** `tests/soma/02_stdlib.soma`
-- **Example tests:** `tests/soma/03_examples.soma`
-- **Comparison tests:** `tests/soma/04_comparisons_stdlib.soma`
-- **Documentation tests:** `tests/soma/05_test_docs_stdlib.soma`
+- **Idioms tests:** `tests/soma/03_*.soma` - **Context-passing, loops, execution scope**
 
 ### Running Tests
 ```bash
@@ -828,16 +896,18 @@ result >toString >print
 
 ## Key Reminders
 
-1. **Strings use parentheses:** `(text)` not `"text"`
-2. **Execute with >:** `>operation` not just `operation`
-3. **Register is isolated:** Each block gets fresh, empty Register
-4. **Blocks are values:** They don't execute until you use `>`
-5. **AL is LIFO:** Last pushed is first popped
-6. **Store is global:** Visible to all blocks
-7. **Void can't be stored:** Use Nil instead
-8. **Comments use ):** Not `//` or `#` or `;`
-9. **>chain for loops/tail-calls:** Use `>{ }` or `>func` for single execution
-10. **>choose selects, doesn't execute:** Use `>^` or `>ifelse` to execute the result
+1. **Execution scope, not lexical:** Blocks get fresh Registers - use `_.` → `!_.` to pass context
+2. **Strings use parentheses:** `(text)` not `"text"`
+3. **Execute with >:** `>operation` not just `operation`
+4. **Register is isolated:** Each block gets fresh, empty Register - no automatic access to parent
+5. **Blocks are values:** They don't execute until you use `>`
+6. **AL is LIFO:** Last pushed is first popped
+7. **Store is global:** Visible to all blocks
+8. **Void can't be stored:** Use Nil instead
+9. **Comments use ):** Not `//` or `#` or `;`
+10. **>chain for loops/tail-calls:** Use `>{ }` or `>func` for single execution
+11. **>choose selects, doesn't execute:** Use `>^` or `>ifelse` to execute the result
+12. **Context-passing is key:** See `docs/09-idioms.md` for the full pattern
 
 ---
 

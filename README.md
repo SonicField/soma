@@ -1,6 +1,17 @@
-# soma
-Semantic Oriented Machine Algebra (SOMA) —
-a minimalistic semantic analysis language based on explicit state and mutation, deliberately counterpointing type-centric alternatives.
+# SOMA
+
+**State-Oriented Machine Algebra (SOMA)** — a minimalistic computational model based on explicit state and mutation, deliberately counterpointing type-centric alternatives.
+
+SOMA treats programs as explicit state-transforming machines with mutable state, visible memory, and observable execution. Blocks are first-class values, not functions. Execution is explicit via `>`. There are no hidden stacks, no return semantics, no exceptions.
+
+## Documentation
+
+Comprehensive documentation is available in the `docs/` folder:
+
+- **[Language Specification](docs/index.md)** - Complete SOMA v1.1 specification
+- **[Programming Idioms](docs/09-idioms.md)** - Best practices, common patterns, and anti-patterns
+- **[Examples](docs/08-examples.md)** - Working SOMA programs
+- **[Comparisons](docs/07-comparisons.md)** - SOMA vs Forth, Haskell, Lambda Calculus, and others
 
 ## Testing
 
@@ -36,7 +47,16 @@ SOMA Test Suite
   ... (41 tests total)
 
 ============================================================
-Summary: 65/65 tests passed
+📄 03_*.soma files
+   (idioms and patterns)
+============================================================
+  ✓ Context passing patterns
+  ✓ Looping with >chain
+  ✓ Store vs Register usage
+  ... (237 tests total)
+
+============================================================
+Summary: 302/302 tests passed
 ============================================================
 ✓ All tests passed!
 ```
@@ -58,6 +78,15 @@ Summary: 65/65 tests passed
   - Arithmetic helpers (`inc`, `dec`, `abs`, `min`, `max`)
   - Control flow (`times`, `if`, `ifelse`, `while`, `do`)
 
+- **`tests/soma/03_*.soma`** - Tests for idioms and patterns (237 tests)
+  - Context-passing idiom (`_.` → `!_.` pattern)
+  - Execution scope vs lexical scope
+  - Looping with `>chain` (tail-call optimization)
+  - Store vs Register usage
+  - `>choose` patterns (values vs blocks)
+  - Self-referencing blocks
+  - Complete examples (Collatz, Fibonacci, counters, etc.)
+
 ### Running Python Unit Tests
 
 To run the Python implementation tests:
@@ -76,7 +105,7 @@ python3 -m pytest tests/test_lexer.py -v    # Lexer tests
 
 ### Success Criteria
 
-- All 65 SOMA tests must pass
+- All 302 SOMA tests must pass
 - All Python unit tests must pass
 - No errors or exceptions during execution
 
