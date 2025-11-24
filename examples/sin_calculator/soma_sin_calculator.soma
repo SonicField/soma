@@ -1,0 +1,131 @@
+) ============================================================================
+) SOMA Sin(x) Calculator using Taylor Series Expansion with >chain
+) ============================================================================
+) Uses Store-based state management for simplicity
+) ============================================================================
+
+10000000000 !SCALE              ) Scale factor: 10^10
+31415926536 !PI_SCALED          ) π * SCALE
+180 !DEGREES_PER_PI             ) 180 degrees = π radians
+1000 !MIN_TERM                  ) Minimum |term| to continue iterating
+
+) ============================================================================
+) Scaled multiplication
+) ============================================================================
+{
+  !_.b !_.a
+  _.a _.b >*
+  SCALE >/
+} !scaled_mult
+
+) ============================================================================
+) Degree to radian conversion
+) ============================================================================
+{
+  !_.deg
+  _.deg PI_SCALED >*
+  DEGREES_PER_PI >/
+} !deg_to_rad
+
+) ============================================================================
+) Taylor series sin computation
+) ============================================================================
+{
+  !sin.x
+  sin.x !sin.term
+  sin.x !sin.sum
+  1 !sin.power
+
+  {
+    ) Compute next term: term * x² / ((n+1)(n+2)), then negate
+    sin.term sin.x sin.x
+    >scaled_mult >scaled_mult
+    sin.power 1 >+ !sin.n1
+    sin.n1 1 >+ !sin.n2
+    sin.n1 sin.n2 >* >/
+    0 >swap >-
+    !sin.term
+
+    ) Add to sum
+    sin.sum sin.term >+ !sin.sum
+
+    ) Update power
+    sin.n2 !sin.power
+
+    ) Check |term| > MIN_TERM to continue
+    sin.term >dup 0 ><
+      { 0 >swap >- }
+      { }
+    >ifelse
+    MIN_TERM >>
+      { iter }
+      { Nil }
+    >ifelse
+  } !iter
+
+  >iter >chain >drop
+  sin.sum
+} !compute_sin
+
+) ============================================================================
+) Format as D.DDDDDDDDDD using >concat (returns string to AL)
+) ============================================================================
+{
+  !fmt.val
+
+  ) Start with sign (or empty string)
+  fmt.val 0 ><
+    { 0 fmt.val >- !fmt.val
+      (-) !fmt.str }
+    { () !fmt.str }
+  >ifelse
+
+  ) Concatenate integer part
+  fmt.val SCALE >/ !fmt.int
+  fmt.str fmt.int >toString >concat !fmt.str
+
+  ) Concatenate decimal point
+  fmt.str (.) >concat !fmt.str
+
+  ) Concatenate fractional part (10 digits)
+  fmt.val fmt.int SCALE >* >- !fmt.frac
+  10 !fmt.digits
+
+  {
+    fmt.frac 10 >*
+    >dup SCALE >/ !fmt.digit
+    fmt.str fmt.digit >toString >concat !fmt.str
+    fmt.digit SCALE >* >- !fmt.frac
+    fmt.digits 1 >- !fmt.digits
+    fmt.digits 0 >>
+      { fmt_loop }
+      { Nil }
+    >ifelse
+  } !fmt_loop
+
+  >fmt_loop >chain >drop
+
+  ) Return the formatted string to AL
+  fmt.str
+} !format
+
+) ============================================================================
+) Main program
+) ============================================================================
+(sin\28\0\b0\\29\ = ) 0 >deg_to_rad >compute_sin >format >concat >print
+
+(sin\28\30\b0\\29\ = ) 30 >deg_to_rad >compute_sin >format >concat >print
+
+(sin\28\45\b0\\29\ = ) 45 >deg_to_rad >compute_sin >format >concat >print
+
+(sin\28\60\b0\\29\ = ) 60 >deg_to_rad >compute_sin >format >concat >print
+
+(sin\28\90\b0\\29\ = ) 90 >deg_to_rad >compute_sin >format >concat >print
+
+(sin\28\180\b0\\29\ = ) 180 >deg_to_rad >compute_sin >format >concat >print
+
+(sin\28\270\b0\\29\ = ) 270 >deg_to_rad >compute_sin >format >concat >print
+
+(sin\28\360\b0\\29\ = ) 360 >deg_to_rad >compute_sin >format >concat >print
+
+
