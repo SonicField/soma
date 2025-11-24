@@ -1,0 +1,12 @@
+) TEST: Store CellRef in Store
+) EXPECT_OUTPUT: 42
+) EXPECT_AL: []
+
+>{
+  42 !_.x
+  _.
+  !ctx
+  >{
+    ctx.x >toString >print
+  }
+}

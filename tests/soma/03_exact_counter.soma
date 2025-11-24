@@ -1,0 +1,26 @@
+) TEST: Exact counter pattern
+) EXPECT_OUTPUT: 1\n2\n3
+) EXPECT_AL: []
+
+>{
+  0 !_.counter
+
+  {
+    !_.
+    _.counter            ) Push current value
+    >inc                 ) Increment it
+    !_.counter          ) Store result
+    _.counter >toString >print
+
+    _.                   ) Push context before choose
+    _.counter 3 ><
+      { loop_count }     ) Counter < 3: continue (True branch)
+      { >drop Nil }      ) Counter >= 3: stop (False branch)
+    >choose >^
+  } !loop_count          ) Store block in Store (no _. prefix)
+
+  _.
+  loop_count >^          ) Read block from Store and execute
+  >chain
+  >drop                  ) Drop the Nil result
+}

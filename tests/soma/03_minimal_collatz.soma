@@ -1,0 +1,23 @@
+) TEST: Minimal Collatz iteration
+) EXPECT_AL: []
+
+>{
+  6 !_.current
+
+  ) First iteration
+  _.
+  >{
+    !_.
+    _.current >toString >print
+
+    ) Compute next (6 is even, should become 3)
+    _.current
+    _.current 2 >% 0 >==
+      { 2 >/ }
+      { 3 >* 1 >+ }
+    >choose >^
+    !_.current
+
+    _.current >toString >print
+  }
+}

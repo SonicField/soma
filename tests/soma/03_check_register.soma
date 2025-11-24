@@ -1,0 +1,9 @@
+) TEST: Check Register structure
+) EXPECT_AL: []
+
+>{
+  (Setting x) >print
+  42 !_.x
+  _.x >toString >print
+  (Done) >print
+}

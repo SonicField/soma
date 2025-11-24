@@ -1,0 +1,46 @@
+) TEST: Collatz sequence for 6
+) EXPECT_OUTPUT: 6\n3\n10\n5\n16\n8\n4\n2\n1
+) EXPECT_AL: [Nil]
+
+) Initialize context in outer Register
+6 !_.current
+
+) Define the step block
+{
+  !_.                    ) Pop context CellRef from AL, store AT this Register's root
+
+  ) Print current value
+  _.current >toString >print
+
+  ) Push context for the chosen block BEFORE choosing
+  _.
+  _.current 1 >==
+    {
+      ) Stop branch: we've printed 1, clean up and terminate
+      >drop              ) Drop the context we pushed
+      Nil                ) Return Nil to stop chain
+    }
+    {
+      ) Continue branch: compute next value and continue
+      >{                 ) Execute a block WITH the context on AL
+        !_.              ) Pop context into this nested block's Register
+
+        ) Compute next Collatz value
+        _.current
+        _.current 2 >% 0 >==
+          { 2 >/ }       ) Even: divide by 2
+          { 3 >* 1 >+ }  ) Odd: 3n+1
+        >choose >^
+        !_.current
+
+        ) Push context for next iteration and return block name
+        _.
+        collatz-step
+      }
+    }
+  >choose >^             ) Choose and execute the selected block
+} !collatz-step
+
+_.                       ) Push initial context onto AL
+collatz-step >^          ) Execute first iteration
+>chain                    ) Chain remaining iterations

@@ -1,0 +1,19 @@
+) TEST: Write through CellRef in conditional
+) EXPECT_OUTPUT: 5
+) EXPECT_AL: []
+
+>{
+  5 !_.x
+  0 !_.max
+  _.
+  >{
+    !_.
+    ) Use choose to select the value to store
+    _.x _.max >>
+      _.x          ) True: use _.x
+      _.max        ) False: keep _.max
+    >choose
+    !_.max
+    _.max >toString >print
+  }
+}

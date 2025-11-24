@@ -65,7 +65,9 @@ def parse_test_file(filepath):
         elif line.strip().startswith(') EXPECT_OUTPUT:'):
             if current_test:
                 output = line.split('EXPECT_OUTPUT:', 1)[1].strip()
-                current_test.expect_output.append(output)
+                # Split on literal \n to get individual lines
+                lines = output.split('\\n')
+                current_test.expect_output.extend(lines)
 
         else:
             # Regular source line

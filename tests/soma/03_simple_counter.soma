@@ -1,0 +1,10 @@
+) TEST: Simplest counter test
+) EXPECT_OUTPUT: 0
+) EXPECT_AL: []
+
+0 !_.counter
+_.
+>{
+  !_.
+  _.counter >toString >print
+}

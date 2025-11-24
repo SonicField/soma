@@ -1,0 +1,15 @@
+) TEST: Simplest context passing
+) EXPECT_OUTPUT: 42
+) EXPECT_AL: []
+
+>{
+  42 !_.x
+
+  {
+    !_.
+    _.x >toString >print
+  } !myblock
+
+  _.
+  myblock >^
+}

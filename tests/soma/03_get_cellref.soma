@@ -1,0 +1,10 @@
+) TEST: Get CellRef to Register root
+) EXPECT_AL: []
+
+>{
+  42 !_.x
+  (Getting CellRef) >print
+  _.
+  (Got it) >print
+  >drop
+}

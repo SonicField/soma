@@ -405,7 +405,18 @@ class Store:
         for component in components[:-1]:
             if component not in current:
                 return None
-            current = current[component].children
+            cell = current[component]
+
+            # CellRef dereferencing: If a Cell's value is a CellRef, we follow it.
+            # This enables transparent reference semantics. For example:
+            #   42 !data.x    - Store 42 at data.x
+            #   data. !ref    - Store a CellRef to 'data' cell at 'ref'
+            #   ref.x         - Should return 42 (follow ref -> data, then access x)
+            # Without this check, we'd only look at ref's children, missing the indirection.
+            if isinstance(cell.value, CellRef):
+                cell = cell.value.cell
+
+            current = cell.children
 
         final_component = components[-1]
         return current.get(final_component)
@@ -430,7 +441,17 @@ class Store:
         for component in components[:-1]:
             if component not in current:
                 current[component] = Cell(value=Void)
-            current = current[component].children
+            cell = current[component]
+
+            # CellRef dereferencing: Follow references during path traversal.
+            # This ensures writes through CellRefs work correctly. For example:
+            #   data. !ref    - Store CellRef to 'data' at 'ref'
+            #   99 !ref.y     - Should write to data.y (follow ref -> data, then write y)
+            # Without this, we'd create a child 'y' under 'ref' instead of following the reference.
+            if isinstance(cell.value, CellRef):
+                cell = cell.value.cell
+
+            current = cell.children
 
         # Get or create final cell
         final_component = components[-1]
@@ -561,33 +582,122 @@ class Register:
             cell.value = value
             cell.children.clear()  # Remove all children
 
+    def _resolve_register_root(self, components: List[str], auto_vivify: bool = False) -> Optional[dict]:
+        """
+        Helper: Resolve the Register root and handle CellRef dereferencing.
+
+        This centralizes the logic for:
+        - Validating Register paths start with "_"
+        - Getting/creating the root Cell
+        - Following CellRef if root has been aliased (context-passing pattern)
+        - Returning the dict to start traversal from
+
+        Args:
+            components: Full path including "_" prefix
+            auto_vivify: If True, create root Cell if it doesn't exist
+
+        Returns:
+            Dictionary to start traversal from (root_cell.children after dereferencing)
+            or None if root doesn't exist (when auto_vivify=False)
+        """
+        if len(components) == 0:
+            raise RuntimeError("Empty path not allowed")
+
+        # Register paths must start with "_"
+        if components[0] != "_":
+            raise RuntimeError(f"Register paths must start with '_', got: {components}")
+
+        # Get or create root Cell
+        if "_" not in self.root:
+            if not auto_vivify:
+                return None
+            self.root["_"] = Cell(value=Void)
+
+        root_cell = self.root["_"]
+
+        # Context-passing: If root's value is a CellRef, follow it.
+        # This enables the idiom where outer Register is passed via `_.` and stored as `!_.`
+        # Then all subsequent accesses like `_.x` transparently access the aliased Register.
+        if isinstance(root_cell.value, CellRef):
+            root_cell = root_cell.value.cell
+
+        return root_cell.children
+
     def _get_cell(self, components: List[str]) -> Optional[Cell]:
-        """Get Cell at path without creating."""
+        """
+        Get Cell at path without creating.
+
+        Register paths should start with "_" which represents the Register root Cell.
+        All Register data lives as children of this root Cell.
+        For example: ["_", "x"] means root["_"].children["x"]
+        """
         if len(components) == 0:
             return None
 
-        current = self.root
-        for component in components[:-1]:
+        # If just accessing "_" itself, need to follow CellRef if present
+        if len(components) == 1:
+            root_cell = self.root.get("_")
+            if root_cell is None:
+                return None
+            # Follow CellRef if root has been aliased (context-passing)
+            if isinstance(root_cell.value, CellRef):
+                return root_cell.value.cell
+            return root_cell
+
+        # Resolve root and get starting point for traversal
+        current = self._resolve_register_root(components, auto_vivify=False)
+        if current is None:
+            return None
+
+        # Traverse path (with CellRef dereferencing at each step)
+        for component in components[1:-1]:
             if component not in current:
                 return None
-            current = current[component].children
+            cell = current[component]
+
+            # CellRef dereferencing during path traversal
+            if isinstance(cell.value, CellRef):
+                cell = cell.value.cell
+
+            current = cell.children
 
         final_component = components[-1]
         return current.get(final_component)
 
     def _get_or_create_cell(self, components: List[str]) -> Cell:
-        """Get or create Cell at path (auto-vivification)."""
+        """
+        Get or create Cell at path (auto-vivification).
+
+        Register paths should start with "_" which represents the Register root Cell.
+        All Register data lives as children of this root Cell.
+        """
         if len(components) == 0:
-            # Special case: empty path not allowed
             raise RuntimeError("Cannot get cell with empty path")
 
-        current = self.root
+        # If just accessing "_" itself, need to follow CellRef if present
+        if len(components) == 1:
+            if "_" not in self.root:
+                self.root["_"] = Cell(value=Void)
+            root_cell = self.root["_"]
+            # Follow CellRef if root has been aliased (context-passing)
+            if isinstance(root_cell.value, CellRef):
+                return root_cell.value.cell
+            return root_cell
 
-        # Auto-vivify intermediate cells
-        for component in components[:-1]:
+        # Resolve root and get starting point for traversal (creates root if needed)
+        current = self._resolve_register_root(components, auto_vivify=True)
+
+        # Auto-vivify and traverse path (with CellRef dereferencing)
+        for component in components[1:-1]:
             if component not in current:
                 current[component] = Cell(value=Void)
-            current = current[component].children
+            cell = current[component]
+
+            # CellRef dereferencing during path traversal
+            if isinstance(cell.value, CellRef):
+                cell = cell.value.cell
+
+            current = cell.children
 
         # Get or create final cell
         final_component = components[-1]
@@ -762,25 +872,10 @@ def compile_node(node: Any) -> RunNode:
         is_register = (components[0] == "_")
 
         if is_register:
-            # Register path: strip leading _ for actual components
-            if len(components) == 1:
-                # Single _ = register root value
-                reg_components = []
-            else:
-                # _.x.y = register path without leading _
-                reg_components = components[1:]
-
+            # Register path: pass full path including "_"
+            # The Register class handles "_" as the root Cell
             def read_register_value(vm):
-                if len(reg_components) == 0:
-                    # Reading _ (register root) - need special handling
-                    # Read from a pseudo root cell
-                    cell = vm.register.root.get("_")
-                    if cell:
-                        vm.al.append(cell.value)
-                    else:
-                        vm.al.append(Void)
-                else:
-                    vm.al.append(vm.register.read_value(reg_components))
+                vm.al.append(vm.register.read_value(components))
 
             return RunNode(
                 ast_node=node,
@@ -799,22 +894,10 @@ def compile_node(node: Any) -> RunNode:
         is_register = (components[0] == "_")
 
         if is_register:
-            # Register path
-            if len(components) == 1:
-                # _. = register root ref
-                reg_components = []
-            else:
-                reg_components = components[1:]
-
+            # Register path: pass full path including "_"
+            # The Register class handles "_" as the root Cell
             def read_register_ref(vm):
-                if len(reg_components) == 0:
-                    # Reading _. (register root ref)
-                    # Get or create the _ cell in register
-                    if "_" not in vm.register.root:
-                        vm.register.root["_"] = Cell(value=Void)
-                    vm.al.append(CellRef(vm.register.root["_"]))
-                else:
-                    vm.al.append(vm.register.read_ref(reg_components))
+                vm.al.append(vm.register.read_ref(components))
 
             return RunNode(
                 ast_node=node,
@@ -863,17 +946,6 @@ def compile_node(node: Any) -> RunNode:
         components = target.components
         is_register = (components[0] == "_")
 
-        # Determine actual components (strip _ for register paths)
-        if is_register:
-            if len(components) == 1:
-                # _ or _. = register root
-                actual_components = []
-            else:
-                # _.x.y = strip leading _
-                actual_components = components[1:]
-        else:
-            actual_components = components
-
         def store_fn(vm: VM):
             if len(vm.al) == 0:
                 raise RuntimeError(f"AL underflow: store requires value on AL")
@@ -885,45 +957,10 @@ def compile_node(node: Any) -> RunNode:
 
             if is_ref:
                 # Reference write - replace entire cell
-                if len(actual_components) == 0:
-                    # Writing to _ or _. (register root)
-                    if is_register:
-                        # Create or replace root cell
-                        if isinstance(value, VoidSingleton):
-                            # Delete root cell
-                            if "_" in vm.register.root:
-                                del vm.register.root["_"]
-                        else:
-                            vm.register.root["_"] = Cell(value=value)
-                    else:
-                        raise RuntimeError("Cannot write ref to empty store path")
-                else:
-                    storage.write_ref(actual_components, value)
+                storage.write_ref(components, value)
             else:
                 # Value write
-                if len(actual_components) == 0:
-                    # Writing to _ (register root value)
-                    if is_register:
-                        if isinstance(value, VoidSingleton):
-                            raise RuntimeError(
-                                "Cannot write Void as payload (Void-Payload-Invariant). Path: _"
-                            )
-                        # Create or update root cell
-                        if "_" not in vm.register.root:
-                            vm.register.root["_"] = Cell(value=value)
-                        else:
-                            # Check for CellRef write-through
-                            root_cell = vm.register.root["_"]
-                            if isinstance(root_cell.value, CellRef):
-                                # Write through the CellRef
-                                root_cell.value.cell.value = value
-                            else:
-                                # Normal write
-                                root_cell.value = value
-                    else:
-                        raise RuntimeError("Cannot write value to empty store path")
-                else:
-                    storage.write_value(actual_components, value)
+                storage.write_value(components, value)
 
         return RunNode(ast_node=node, execute=store_fn)
 

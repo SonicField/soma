@@ -1,0 +1,14 @@
+) TEST: Debug CellRef following in Register
+) EXPECT_OUTPUT: Setting up\nStored CellRef\n42
+) EXPECT_AL: []
+
+>{
+  (Setting up) >print
+  42 !_.x
+  _.
+  >{
+    !_.
+    (Stored CellRef) >print
+    _.x >toString >print
+  }
+}

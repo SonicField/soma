@@ -1,0 +1,7 @@
+) TEST: Can we read a value from a stored CellRef?
+) EXPECT_OUTPUT: 42
+) EXPECT_AL: []
+
+42 !data.x
+data. !ref
+ref.x >toString >print

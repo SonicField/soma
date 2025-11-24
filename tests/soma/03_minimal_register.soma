@@ -1,0 +1,8 @@
+) TEST: Minimal Register write and read
+) EXPECT_OUTPUT: 42
+) EXPECT_AL: []
+
+>{
+  42 !_.x
+  _.x >toString >print
+}

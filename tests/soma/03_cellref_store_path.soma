@@ -1,0 +1,10 @@
+) TEST: CellRef to Store path
+) EXPECT_OUTPUT: 42
+) EXPECT_AL: []
+
+42 !store.x
+store.
+!ctx
+>{
+  ctx.x >toString >print
+}

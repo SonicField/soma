@@ -1,0 +1,13 @@
+) TEST: Write CellRef to inner Register
+) EXPECT_AL: []
+
+>{
+  42 !_.x
+  _.
+  >{
+    (In inner block) >print
+    !_.
+    (Stored CellRef) >print
+  }
+  (Back in outer) >print
+}

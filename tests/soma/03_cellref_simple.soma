@@ -1,0 +1,12 @@
+) TEST: Simple CellRef to Register root
+) EXPECT_OUTPUT: 42
+) EXPECT_AL: []
+
+>{
+  42 !_.x
+  _.
+  >{
+    !_.
+    _.x >toString >print
+  }
+}

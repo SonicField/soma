@@ -1,0 +1,8 @@
+) TEST: Store and read from Register root directly
+) EXPECT_OUTPUT: 42
+) EXPECT_AL: []
+
+>{
+  42 !_.x
+  _.x >toString >print
+}

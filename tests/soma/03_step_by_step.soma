@@ -1,0 +1,17 @@
+) TEST: Step-by-step CellRef test
+) EXPECT_AL: []
+
+>{
+  (Step 1: Setting x in outer) >print
+  42 !_.x
+  (Step 2: Reading x from outer) >print
+  _.x >toString >print
+  (Step 3: Getting CellRef to outer _) >print
+  _.
+  >{
+    (Step 4: Inside inner block, storing CellRef) >print
+    !_.
+    (Step 5: Trying to read x through CellRef) >print
+    _.x >toString >print
+  }
+}

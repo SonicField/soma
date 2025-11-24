@@ -57,8 +57,9 @@ block >chain    ) Execute and continue tail-calls/loops (no stack growth)
 6. [Built-ins](06-builtins.md) - Core operations and their AL contracts
 7. [Comparisons](07-comparisons.md) - SOMA vs Forth, Haskell, Lambda Calculus, and others
 8. [Examples](08-examples.md) - Working SOMA programs demonstrating key concepts
-9. [Errors and Semantics](09-errors-semantics.md) - Fatal errors, abstract machine, and formal grammar
-10. [Standard Library](10-stdlib.md) - Derived operations built from FFI primitives
+9. [Programming Idioms](09-idioms.md) - Idiomatic patterns, best practices, and common anti-patterns
+10. [Errors and Semantics](10-errors-semantics.md) - Fatal errors, abstract machine, and formal grammar
+11. [Standard Library](11-stdlib.md) - Derived operations built from FFI primitives
 
 ---
 

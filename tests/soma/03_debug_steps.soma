@@ -1,0 +1,16 @@
+) TEST: Debug context passing step by step
+) EXPECT_AL: []
+
+>{
+  42 !_.x
+  (Outer has x) >print
+  _.
+  (Pushing CellRef) >print
+  >{
+    (Storing CellRef) >print
+    !_.
+    (Stored CellRef) >print
+    (Looking for x) >print
+    _.x >toString >print
+  }
+}
