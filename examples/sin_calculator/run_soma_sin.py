@@ -16,20 +16,14 @@ sys.path.insert(0, str(REPO_ROOT))
 
 from soma.vm import run_soma_program
 
-# Load stdlib (relative to repo root)
-stdlib_path = REPO_ROOT / 'soma' / 'stdlib.soma'
-with open(stdlib_path, 'r') as f:
-    stdlib_code = f.read()
-
 # Load sin calculator (in same directory as this script)
 sin_calculator_path = SCRIPT_DIR / 'soma_sin_calculator.soma'
 with open(sin_calculator_path, 'r') as f:
     sin_code = f.read()
 
-# Execute
-full_code = stdlib_code + '\n' + sin_code
+# Execute (stdlib auto-loads)
 print("Running SOMA Sin Calculator...")
 print("="*60)
-al = run_soma_program(full_code)
+al = run_soma_program(sin_code)
 print("="*60)
 print("Done!")

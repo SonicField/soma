@@ -72,7 +72,7 @@ class TestCompilation(unittest.TestCase):
         self.assertEqual(run_node.ast_node, int_node)
 
         # Execute should push int onto AL
-        vm = VM()
+        vm = VM(load_stdlib=False)
         run_node.execute(vm)
         self.assertEqual(vm.al, [42])
 
@@ -83,7 +83,7 @@ class TestCompilation(unittest.TestCase):
 
         self.assertIsInstance(run_node, RunNode)
 
-        vm = VM()
+        vm = VM(load_stdlib=False)
         run_node.execute(vm)
         self.assertEqual(vm.al, ["hello"])
 
@@ -102,7 +102,7 @@ class TestCompilation(unittest.TestCase):
         self.assertIsInstance(run_node, RunNode)
 
         # Execute should push Block onto AL
-        vm = VM()
+        vm = VM(load_stdlib=False)
         run_node.execute(vm)
         self.assertEqual(len(vm.al), 1)
         self.assertIsInstance(vm.al[0], Block)
@@ -118,7 +118,7 @@ class TestCompilation(unittest.TestCase):
         path_node = ValuePath(components=["foo"], location={})
         run_node = compile_node(path_node)
 
-        vm = VM()
+        vm = VM(load_stdlib=False)
 
         # Reading non-existent path returns Void
         run_node.execute(vm)
@@ -136,7 +136,7 @@ class TestCompilation(unittest.TestCase):
         path_node = ValuePath(components=["_", "x"], location={})
         run_node = compile_node(path_node)
 
-        vm = VM()
+        vm = VM(load_stdlib=False)
 
         # Reading non-existent register path returns Void
         run_node.execute(vm)
@@ -145,7 +145,7 @@ class TestCompilation(unittest.TestCase):
 
         # Store a value in register, then read it
         vm.al = []
-        vm.register.write_value(["x"], 23)
+        vm.register.write_value(["_", "x"], 23)
         run_node.execute(vm)
         self.assertEqual(vm.al, [23])
 
@@ -154,7 +154,7 @@ class TestCompilation(unittest.TestCase):
         path_node = ReferencePath(components=["data"], location={})
         run_node = compile_node(path_node)
 
-        vm = VM()
+        vm = VM(load_stdlib=False)
 
         # Reading reference auto-vivifies and returns CellRef
         run_node.execute(vm)
@@ -166,7 +166,7 @@ class TestCompilation(unittest.TestCase):
         path_node = ReferencePath(components=["_", "temp"], location={})
         run_node = compile_node(path_node)
 
-        vm = VM()
+        vm = VM(load_stdlib=False)
 
         # Reading register reference auto-vivifies and returns CellRef
         run_node.execute(vm)
@@ -187,7 +187,7 @@ class TestCompilation(unittest.TestCase):
         exec_node = ExecNode(target=block, location={})
         run_node = compile_node(exec_node)
 
-        vm = VM()
+        vm = VM(load_stdlib=False)
 
         # Store multiplication operator
         mult_block = BuiltinBlock("*", lambda vm: vm.al.append(vm.al.pop() * vm.al.pop()))
@@ -203,7 +203,7 @@ class TestCompilation(unittest.TestCase):
         store_node = StoreNode(target=ValuePath(components=["foo"], location={}), location={})
         run_node = compile_node(store_node)
 
-        vm = VM()
+        vm = VM(load_stdlib=False)
         vm.al.append(42)
 
         # Execute should pop AL and store
@@ -217,7 +217,7 @@ class TestCompilation(unittest.TestCase):
         store_node = StoreNode(target=ReferencePath(components=["bar"], location={}), location={})
         run_node = compile_node(store_node)
 
-        vm = VM()
+        vm = VM(load_stdlib=False)
         vm.al.append(99)
 
         # Execute should pop AL and replace cell
@@ -231,13 +231,13 @@ class TestCompilation(unittest.TestCase):
         store_node = StoreNode(target=ValuePath(components=["_", "temp"], location={}), location={})
         run_node = compile_node(store_node)
 
-        vm = VM()
+        vm = VM(load_stdlib=False)
         vm.al.append(7)
 
         # Execute should pop AL and store in register
         run_node.execute(vm)
         self.assertEqual(vm.al, [])
-        self.assertEqual(vm.register.read_value(["temp"]), 7)
+        self.assertEqual(vm.register.read_value(["_", "temp"]), 7)
 
     def test_compile_program(self):
         """Test compiling complete Program to CompiledProgram."""
@@ -256,7 +256,7 @@ class TestVMExecution(unittest.TestCase):
 
     def test_vm_initialization(self):
         """Test VM starts with empty AL, empty Store, empty Register."""
-        vm = VM()
+        vm = VM(load_stdlib=False)
         self.assertEqual(vm.al, [])
         self.assertIsInstance(vm.store, Store)
         self.assertIsInstance(vm.register, Register)
@@ -264,21 +264,21 @@ class TestVMExecution(unittest.TestCase):
 
     def test_push_int_to_al(self):
         """Test pushing int onto AL."""
-        vm = VM()
+        vm = VM(load_stdlib=False)
         compiled = compile_program(parse("42"))
         compiled.execute(vm)
         self.assertEqual(vm.al, [42])
 
     def test_push_string_to_al(self):
         """Test pushing string onto AL."""
-        vm = VM()
+        vm = VM(load_stdlib=False)
         compiled = compile_program(parse("(hello)"))
         compiled.execute(vm)
         self.assertEqual(vm.al, ["hello"])
 
     def test_push_block_to_al(self):
         """Test pushing block onto AL."""
-        vm = VM()
+        vm = VM(load_stdlib=False)
         compiled = compile_program(parse("{ 1 2 }"))
         compiled.execute(vm)
         self.assertEqual(len(vm.al), 1)
@@ -286,7 +286,7 @@ class TestVMExecution(unittest.TestCase):
 
     def test_multiple_values_on_al(self):
         """Test multiple values on AL (LIFO order)."""
-        vm = VM()
+        vm = VM(load_stdlib=False)
         compiled = compile_program(parse("1 2 3"))
         compiled.execute(vm)
         # Top of stack is rightmost
@@ -298,7 +298,7 @@ class TestStoreOperations(unittest.TestCase):
 
     def test_store_read_nonexistent(self):
         """Test reading non-existent Store path returns Void."""
-        vm = VM()
+        vm = VM(load_stdlib=False)
         compiled = compile_program(parse("foo"))
         compiled.execute(vm)
         self.assertEqual(len(vm.al), 1)
@@ -306,14 +306,14 @@ class TestStoreOperations(unittest.TestCase):
 
     def test_store_write_and_read(self):
         """Test write to Store and read back."""
-        vm = VM()
+        vm = VM(load_stdlib=False)
         compiled = compile_program(parse("42 !counter counter"))
         compiled.execute(vm)
         self.assertEqual(vm.al, [42])
 
     def test_store_auto_vivification(self):
         """Test auto-vivification creates intermediate cells with Void."""
-        vm = VM()
+        vm = VM(load_stdlib=False)
         compiled = compile_program(parse("99 !a.b.c"))
         compiled.execute(vm)
 
@@ -328,7 +328,7 @@ class TestStoreOperations(unittest.TestCase):
 
     def test_store_read_cellref(self):
         """Test reading CellRef from Store."""
-        vm = VM()
+        vm = VM(load_stdlib=False)
         compiled = compile_program(parse("data."))
         compiled.execute(vm)
 
@@ -338,7 +338,7 @@ class TestStoreOperations(unittest.TestCase):
 
     def test_store_write_cellref(self):
         """Test writing through CellRef."""
-        vm = VM()
+        vm = VM(load_stdlib=False)
         compiled = compile_program(parse("42 !node node. !ref 99 !ref ref"))
         compiled.execute(vm)
 
@@ -352,7 +352,7 @@ class TestStoreOperations(unittest.TestCase):
 
     def test_store_structural_deletion(self):
         """Test Void !path. deletes cell structurally."""
-        vm = VM()
+        vm = VM(load_stdlib=False)
         # Create cell, then delete it
         vm.store.write_value(["temp"], 42)
         vm.store.write_ref(["temp"], Void)
@@ -362,7 +362,7 @@ class TestStoreOperations(unittest.TestCase):
 
     def test_store_nested_paths(self):
         """Test reading/writing nested Store paths."""
-        vm = VM()
+        vm = VM(load_stdlib=False)
         compiled = compile_program(parse("1 !config.server.port config.server.port"))
         compiled.execute(vm)
         self.assertEqual(vm.al, [1])
@@ -373,7 +373,7 @@ class TestRegisterOperations(unittest.TestCase):
 
     def test_register_read_nonexistent(self):
         """Test reading non-existent Register path returns Void."""
-        vm = VM()
+        vm = VM(load_stdlib=False)
         compiled = compile_program(parse("_.x"))
         compiled.execute(vm)
         self.assertEqual(len(vm.al), 1)
@@ -381,21 +381,21 @@ class TestRegisterOperations(unittest.TestCase):
 
     def test_register_write_and_read(self):
         """Test write to Register and read back."""
-        vm = VM()
+        vm = VM(load_stdlib=False)
         compiled = compile_program(parse("23 !_.temp _.temp"))
         compiled.execute(vm)
         self.assertEqual(vm.al, [23])
 
     def test_register_root_access(self):
         """Test reading/writing Register root (_)."""
-        vm = VM()
+        vm = VM(load_stdlib=False)
         compiled = compile_program(parse("42 !_ _"))
         compiled.execute(vm)
         self.assertEqual(vm.al, [42])
 
     def test_register_root_cellref(self):
         """Test reading Register root CellRef (_.)."""
-        vm = VM()
+        vm = VM(load_stdlib=False)
         compiled = compile_program(parse("_."))
         compiled.execute(vm)
         self.assertEqual(len(vm.al), 1)
@@ -403,7 +403,7 @@ class TestRegisterOperations(unittest.TestCase):
 
     def test_register_isolation_fresh_per_block(self):
         """Test each block gets fresh, empty Register."""
-        vm = VM()
+        vm = VM(load_stdlib=False)
         # Outer block: store in register, inner block: read register (should be Void)
         compiled = compile_program(parse("{ 1 !_.x { _.x } >chain }"))
         compiled.execute(vm)
@@ -422,7 +422,7 @@ class TestRegisterOperations(unittest.TestCase):
 
     def test_register_destroyed_after_block(self):
         """Test Register is destroyed when block completes."""
-        vm = VM()
+        vm = VM(load_stdlib=False)
         compiled = compile_program(parse("{ 100 !_.value _.value }"))
         compiled.execute(vm)
 
@@ -441,11 +441,11 @@ class TestRegisterOperations(unittest.TestCase):
         self.assertEqual(vm.al, [100])
 
         # Top-level register should not have _.value
-        self.assertIsInstance(vm.register.read_value(["value"]), VoidSingleton)
+        self.assertIsInstance(vm.register.read_value(["_", "value"]), VoidSingleton)
 
     def test_register_nested_isolation(self):
         """Test nested blocks have completely isolated Registers."""
-        vm = VM()
+        vm = VM(load_stdlib=False)
         # Outer: 1 !_.n, Inner: 2 !_.n, Outer: _.n (should still be 1)
         source = """
         {
@@ -468,12 +468,12 @@ class TestRegisterOperations(unittest.TestCase):
 
     def test_register_deletion(self):
         """Test Void !_.path. deletes Register cell."""
-        vm = VM()
-        vm.register.write_value(["temp"], 42)
-        vm.register.write_ref(["temp"], Void)
+        vm = VM(load_stdlib=False)
+        vm.register.write_value(["_", "temp"], 42)
+        vm.register.write_ref(["_", "temp"], Void)
 
         # Reading should return Void
-        self.assertIsInstance(vm.register.read_value(["temp"]), VoidSingleton)
+        self.assertIsInstance(vm.register.read_value(["_", "temp"]), VoidSingleton)
 
 
 class TestBuiltins(unittest.TestCase):
@@ -481,7 +481,7 @@ class TestBuiltins(unittest.TestCase):
 
     def test_builtin_block_push_current_block(self):
         """Test >block pushes current block onto AL."""
-        vm = VM()
+        vm = VM(load_stdlib=False)
 
         # Create block with >block inside
         source = "{ >block }"
@@ -501,7 +501,7 @@ class TestBuiltins(unittest.TestCase):
 
     def test_builtin_block_at_top_level_error(self):
         """Test >block at top-level raises error (no current block)."""
-        vm = VM()
+        vm = VM(load_stdlib=False)
 
         # Top-level has no current_block
         with self.assertRaises(VMRuntimeError) as ctx:
@@ -511,7 +511,7 @@ class TestBuiltins(unittest.TestCase):
 
     def test_builtin_choose_true_branch(self):
         """Test >choose selects true branch when condition is truthy."""
-        vm = VM()
+        vm = VM(load_stdlib=False)
 
         # Create blocks for branches
         true_block = Block([
@@ -534,7 +534,7 @@ class TestBuiltins(unittest.TestCase):
 
     def test_builtin_choose_false_branch(self):
         """Test >choose selects false branch when condition is Nil."""
-        vm = VM()
+        vm = VM(load_stdlib=False)
 
         true_block = Block([
             RunNode(IntNode(value=1, location={}), lambda vm: vm.al.append(1))
@@ -555,7 +555,7 @@ class TestBuiltins(unittest.TestCase):
 
     def test_builtin_choose_void_is_falsy(self):
         """Test >choose treats Void as falsy."""
-        vm = VM()
+        vm = VM(load_stdlib=False)
 
         true_block = Block([
             RunNode(IntNode(value=1, location={}), lambda vm: vm.al.append(1))
@@ -575,7 +575,7 @@ class TestBuiltins(unittest.TestCase):
 
     def test_builtin_choose_al_underflow(self):
         """Test >choose raises error on AL underflow."""
-        vm = VM()
+        vm = VM(load_stdlib=False)
         vm.al = [1, 2]  # Only 2 values, need 3
 
         choose_builtin = vm.store.read_value(["choose"])
@@ -587,7 +587,7 @@ class TestBuiltins(unittest.TestCase):
 
     def test_builtin_choose_selects_non_block_values(self):
         """Test >choose can select non-block values (ints, strings, etc)."""
-        vm = VM()
+        vm = VM(load_stdlib=False)
         choose_builtin = vm.store.read_value(["choose"])
 
         # Test with integers
@@ -607,7 +607,7 @@ class TestBuiltins(unittest.TestCase):
 
     def test_builtin_choose_blocks_not_executed(self):
         """Test >choose does NOT execute blocks, only selects them."""
-        vm = VM()
+        vm = VM(load_stdlib=False)
 
         # Create blocks that would modify AL if executed
         executed_marker = []
@@ -643,7 +643,7 @@ class TestBuiltins(unittest.TestCase):
 
     def test_builtin_chain_executes_block(self):
         """Test >chain pops and executes block from AL."""
-        vm = VM()
+        vm = VM(load_stdlib=False)
 
         block = Block([
             RunNode(IntNode(value=42, location={}), lambda vm: vm.al.append(42))
@@ -659,7 +659,7 @@ class TestBuiltins(unittest.TestCase):
 
     def test_builtin_chain_stops_on_non_block(self):
         """Test >chain stops when AL top is not a block."""
-        vm = VM()
+        vm = VM(load_stdlib=False)
 
         # Push a value (not a block)
         vm.al = [42]
@@ -672,7 +672,7 @@ class TestBuiltins(unittest.TestCase):
 
     def test_builtin_chain_loop_with_block(self):
         """Test >chain loops while block leaves block on AL."""
-        vm = VM()
+        vm = VM(load_stdlib=False)
 
         # Counter in Store
         vm.store.write_value(["counter"], 0)
@@ -703,21 +703,21 @@ class TestIntegration(unittest.TestCase):
         """Test 1 2 >+ (if built-in + exists)."""
         # Note: This test assumes + is implemented as a built-in
         # For minimal VM, we'll just test compilation and structure
-        vm = VM()
+        vm = VM(load_stdlib=False)
         compiled = compile_program(parse("1 2"))
         compiled.execute(vm)
         self.assertEqual(vm.al, [1, 2])
 
     def test_store_and_retrieve(self):
         """Test 42 !counter counter."""
-        vm = VM()
+        vm = VM(load_stdlib=False)
         compiled = compile_program(parse("42 !counter counter"))
         compiled.execute(vm)
         self.assertEqual(vm.al, [42])
 
     def test_block_definition_and_storage(self):
         """Test { 5 5 } !square."""
-        vm = VM()
+        vm = VM(load_stdlib=False)
         compiled = compile_program(parse("{ 5 5 } !square"))
         compiled.execute(vm)
 
@@ -730,14 +730,14 @@ class TestIntegration(unittest.TestCase):
 
     def test_register_operations(self):
         """Test 1 !_.x _.x."""
-        vm = VM()
+        vm = VM(load_stdlib=False)
         compiled = compile_program(parse("1 !_.x _.x"))
         compiled.execute(vm)
         self.assertEqual(vm.al, [1])
 
     def test_nested_blocks(self):
         """Test { { 42 } }."""
-        vm = VM()
+        vm = VM(load_stdlib=False)
         compiled = compile_program(parse("{ { 42 } }"))
         compiled.execute(vm)
 
@@ -762,7 +762,7 @@ class TestIntegration(unittest.TestCase):
 
     def test_block_execution_with_exec_node(self):
         """Test executing inline block: >{ 5 5 }."""
-        vm = VM()
+        vm = VM(load_stdlib=False)
         compiled = compile_program(parse(">{ 5 5 }"))
         compiled.execute(vm)
 
@@ -771,7 +771,7 @@ class TestIntegration(unittest.TestCase):
 
     def test_conditional_with_choose(self):
         """Test conditional selection pattern."""
-        vm = VM()
+        vm = VM(load_stdlib=False)
 
         # True { 1 } { 2 } >choose >chain
         # With new semantics: choose selects block, then chain executes it
@@ -790,7 +790,7 @@ class TestIntegration(unittest.TestCase):
 
     def test_loop_with_chain_and_block(self):
         """Test simple loop using >block."""
-        vm = VM()
+        vm = VM(load_stdlib=False)
 
         # Counter in Store
         vm.store.write_value(["counter"], 0)
@@ -819,7 +819,7 @@ class TestIntegration(unittest.TestCase):
 
     def test_cellref_persistence(self):
         """Test CellRef persists after path deletion."""
-        vm = VM()
+        vm = VM(load_stdlib=False)
 
         # Create cell, get CellRef, delete path, access via CellRef
         source = """
@@ -849,7 +849,7 @@ class TestErrors(unittest.TestCase):
 
     def test_al_underflow_exec(self):
         """Test AL underflow on exec (empty AL)."""
-        vm = VM()
+        vm = VM(load_stdlib=False)
 
         # Create ExecNode with path target
         exec_node = ExecNode(target=ValuePath(components=["foo"], location={}), location={})
@@ -863,7 +863,7 @@ class TestErrors(unittest.TestCase):
 
     def test_al_underflow_store(self):
         """Test AL underflow on store (empty AL)."""
-        vm = VM()
+        vm = VM(load_stdlib=False)
 
         # Create StoreNode
         store_node = StoreNode(target=ValuePath(components=["x"], location={}), location={})
@@ -877,7 +877,7 @@ class TestErrors(unittest.TestCase):
 
     def test_write_void_as_payload_error(self):
         """Test writing Void as payload raises error (Void-Payload-Invariant)."""
-        vm = VM()
+        vm = VM(load_stdlib=False)
 
         with self.assertRaises(VMRuntimeError) as ctx:
             vm.store.write_value(["path"], Void)
@@ -887,16 +887,16 @@ class TestErrors(unittest.TestCase):
 
     def test_write_void_to_register_error(self):
         """Test writing Void to Register raises error."""
-        vm = VM()
+        vm = VM(load_stdlib=False)
 
         with self.assertRaises(VMRuntimeError) as ctx:
-            vm.register.write_value(["temp"], Void)
+            vm.register.write_value(["_", "temp"], Void)
 
         self.assertIn("void", str(ctx.exception).lower())
 
     def test_execute_non_block_error(self):
         """Test executing non-block value raises error."""
-        vm = VM()
+        vm = VM(load_stdlib=False)
 
         # Push int onto AL, try to exec it
         vm.al = [42]
@@ -916,7 +916,7 @@ class TestErrors(unittest.TestCase):
 
     def test_chain_non_block_error(self):
         """Test >chain with non-block raises error."""
-        vm = VM()
+        vm = VM(load_stdlib=False)
 
         # This should NOT error - Chain just stops if AL top is not a block
         vm.al = [42]
@@ -933,7 +933,7 @@ class TestCellOperations(unittest.TestCase):
 
     def test_cell_value_and_subpaths_independent(self):
         """Test Cell can have both value and children."""
-        vm = VM()
+        vm = VM(load_stdlib=False)
 
         # Set parent value
         vm.store.write_value(["parent"], Nil)
@@ -949,7 +949,7 @@ class TestCellOperations(unittest.TestCase):
 
     def test_path_traversal_through_void(self):
         """Test can traverse through Void intermediate cells."""
-        vm = VM()
+        vm = VM(load_stdlib=False)
 
         # Auto-vivify a.b with Void, set a.b.c to 42
         vm.store.write_value(["a", "b", "c"], 42)
@@ -962,7 +962,7 @@ class TestCellOperations(unittest.TestCase):
 
     def test_path_traversal_through_nil(self):
         """Test can traverse through Nil cells."""
-        vm = VM()
+        vm = VM(load_stdlib=False)
 
         # Set a.b to Nil
         vm.store.write_value(["a", "b"], Nil)
@@ -978,7 +978,7 @@ class TestCellOperations(unittest.TestCase):
 
     def test_int_with_children(self):
         """Test Int value can have children."""
-        vm = VM()
+        vm = VM(load_stdlib=False)
 
         vm.store.write_value(["node"], 42)
         vm.store.write_value(["node", "sub"], 99)
@@ -988,7 +988,7 @@ class TestCellOperations(unittest.TestCase):
 
     def test_block_with_children(self):
         """Test Block value can have children."""
-        vm = VM()
+        vm = VM(load_stdlib=False)
 
         block = Block([])
         vm.store.write_value(["action"], block)
@@ -1003,7 +1003,7 @@ class TestVoidVsNil(unittest.TestCase):
 
     def test_void_from_auto_vivification(self):
         """Test auto-vivification creates Void."""
-        vm = VM()
+        vm = VM(load_stdlib=False)
 
         vm.store.write_value(["a", "b", "c"], 42)
 
@@ -1016,7 +1016,7 @@ class TestVoidVsNil(unittest.TestCase):
 
     def test_nil_is_explicit(self):
         """Test Nil is explicitly set."""
-        vm = VM()
+        vm = VM(load_stdlib=False)
 
         vm.store.write_value(["field"], Nil)
 
@@ -1024,7 +1024,7 @@ class TestVoidVsNil(unittest.TestCase):
 
     def test_void_vs_nil_different(self):
         """Test Void and Nil are different values."""
-        vm = VM()
+        vm = VM(load_stdlib=False)
 
         # Auto-vivify (Void)
         vm.store.write_value(["auto", "child"], 1)
@@ -1041,7 +1041,7 @@ class TestVoidVsNil(unittest.TestCase):
 
     def test_void_singleton(self):
         """Test Void is a singleton."""
-        vm = VM()
+        vm = VM(load_stdlib=False)
 
         void1 = vm.store.read_value(["nonexistent1"])
         void2 = vm.store.read_value(["nonexistent2"])
@@ -1051,7 +1051,7 @@ class TestVoidVsNil(unittest.TestCase):
 
     def test_nil_singleton(self):
         """Test Nil is a singleton."""
-        vm = VM()
+        vm = VM(load_stdlib=False)
 
         vm.store.write_value(["a"], Nil)
         vm.store.write_value(["b"], Nil)
@@ -1068,33 +1068,33 @@ class TestRegisterLifecycle(unittest.TestCase):
 
     def test_register_created_on_block_start(self):
         """Test fresh Register created when block executes."""
-        vm = VM()
+        vm = VM(load_stdlib=False)
 
         # Store value in top-level register
-        vm.register.write_value(["top_level"], 1)
+        vm.register.write_value(["_", "top_level"], 1)
 
         # Create and execute block
         block = Block([
-            RunNode(None, lambda vm: vm.register.write_value(["block_level"], 2))
+            RunNode(None, lambda vm: vm.register.write_value(["_", "block_level"], 2))
         ])
 
         block.execute(vm)
 
         # Top-level register should still have top_level
-        self.assertEqual(vm.register.read_value(["top_level"]), 1)
+        self.assertEqual(vm.register.read_value(["_", "top_level"]), 1)
 
         # Top-level register should NOT have block_level
-        self.assertIsInstance(vm.register.read_value(["block_level"]), VoidSingleton)
+        self.assertIsInstance(vm.register.read_value(["_", "block_level"]), VoidSingleton)
 
     def test_register_destroyed_on_block_end(self):
         """Test Register destroyed when block completes."""
-        vm = VM()
+        vm = VM(load_stdlib=False)
 
         original_register = vm.register
 
         # Block that modifies register
         block = Block([
-            RunNode(None, lambda vm: vm.register.write_value(["temp"], 42))
+            RunNode(None, lambda vm: vm.register.write_value(["_", "temp"], 42))
         ])
 
         block.execute(vm)
@@ -1104,14 +1104,14 @@ class TestRegisterLifecycle(unittest.TestCase):
 
     def test_register_isolation_complete(self):
         """Test Registers are completely isolated."""
-        vm = VM()
+        vm = VM(load_stdlib=False)
 
         # Outer register
-        vm.register.write_value(["outer"], 1)
+        vm.register.write_value(["_", "outer"], 1)
 
         # Inner block tries to read outer register
         def read_outer(vm):
-            value = vm.register.read_value(["outer"])
+            value = vm.register.read_value(["_", "outer"])
             vm.al.append(value)
 
         inner_block = Block([RunNode(None, read_outer)])
@@ -1123,12 +1123,12 @@ class TestRegisterLifecycle(unittest.TestCase):
 
     def test_register_cellref_escape(self):
         """Test CellRef to Register cell persists after block ends."""
-        vm = VM()
+        vm = VM(load_stdlib=False)
 
         # Block that creates Register cell and returns CellRef
         def create_and_escape(vm):
-            vm.register.write_value(["data"], 42)
-            cellref = vm.register.read_ref(["data"])
+            vm.register.write_value(["_", "data"], 42)
+            cellref = vm.register.read_ref(["_", "data"])
             vm.al.append(cellref)
 
         block = Block([RunNode(None, create_and_escape)])
@@ -1150,7 +1150,7 @@ class TestExamplesFromSpec(unittest.TestCase):
         """Test: (Hello, world!) >print."""
         # This requires print built-in, which we'll assume exists
         # For now, just test compilation
-        vm = VM()
+        vm = VM(load_stdlib=False)
         compiled = compile_program(parse('(Hello, world!)'))
         compiled.execute(vm)
 
@@ -1160,7 +1160,7 @@ class TestExamplesFromSpec(unittest.TestCase):
         """Test: 0 !counter counter 1 >+ !counter."""
         # Requires + built-in
         # Test structure only
-        vm = VM()
+        vm = VM(load_stdlib=False)
         compiled = compile_program(parse('0 !counter counter'))
         compiled.execute(vm)
 
@@ -1168,7 +1168,7 @@ class TestExamplesFromSpec(unittest.TestCase):
 
     def test_sparse_array(self):
         """Test sparse array with Void."""
-        vm = VM()
+        vm = VM(load_stdlib=False)
 
         vm.store.write_value(["array", "0"], 1)
         vm.store.write_value(["array", "100"], 2)
@@ -1183,7 +1183,7 @@ class TestExamplesFromSpec(unittest.TestCase):
 
     def test_linked_list_with_cellrefs(self):
         """Test linked list using CellRefs."""
-        vm = VM()
+        vm = VM(load_stdlib=False)
 
         # Node 1
         vm.store.write_value(["list", "value"], 1)

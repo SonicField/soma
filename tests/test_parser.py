@@ -189,6 +189,69 @@ class TestValuePaths(unittest.TestCase):
         self.assertIn("_temp", error_msg)
         self.assertIn("register", error_msg.lower())
 
+    def test_invalid_register_path_double_underscore(self):
+        """Test that '__' is rejected (malformed register path)."""
+        with self.assertRaises(ParseError) as ctx:
+            parse("__")
+
+        error_msg = str(ctx.exception)
+        self.assertIn("__", error_msg)
+        self.assertIn("register", error_msg.lower())
+
+    def test_invalid_register_path_underscore_digit(self):
+        """Test that '_23' is rejected (should be '_.23' or just '23')."""
+        with self.assertRaises(ParseError) as ctx:
+            parse("_23")
+
+        error_msg = str(ctx.exception)
+        self.assertIn("_23", error_msg)
+        self.assertIn("register", error_msg.lower())
+
+    def test_invalid_register_path_in_store(self):
+        """Test that '!_x' is rejected (illegal register path in store)."""
+        with self.assertRaises(ParseError) as ctx:
+            parse("!_x")
+
+        error_msg = str(ctx.exception)
+        self.assertIn("_x", error_msg)
+        self.assertIn("register", error_msg.lower())
+
+    def test_invalid_register_path_in_exec(self):
+        """Test that '>_x' is rejected (illegal register path in exec)."""
+        with self.assertRaises(ParseError) as ctx:
+            parse(">_x")
+
+        error_msg = str(ctx.exception)
+        self.assertIn("_x", error_msg)
+        self.assertIn("register", error_msg.lower())
+
+    def test_invalid_register_path_in_reference(self):
+        """Test that '_x.' is rejected (illegal register reference path)."""
+        with self.assertRaises(ParseError) as ctx:
+            parse("_x.")
+
+        error_msg = str(ctx.exception)
+        self.assertIn("_x", error_msg)
+        self.assertIn("register", error_msg.lower())
+
+    def test_invalid_register_path_triple_underscore(self):
+        """Test that '___' is rejected (malformed register path)."""
+        with self.assertRaises(ParseError) as ctx:
+            parse("___")
+
+        error_msg = str(ctx.exception)
+        self.assertIn("___", error_msg)
+        self.assertIn("register", error_msg.lower())
+
+    def test_invalid_register_path_underscore_letter(self):
+        """Test that '_abc' is rejected (should be '_.abc')."""
+        with self.assertRaises(ParseError) as ctx:
+            parse("_abc")
+
+        error_msg = str(ctx.exception)
+        self.assertIn("_abc", error_msg)
+        self.assertIn("register", error_msg.lower())
+
     def test_path_with_special_characters(self):
         """Test paths can contain special characters (from lexer tests)."""
         ast = parse("a,b")

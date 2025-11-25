@@ -1,0 +1,40 @@
+) ============================================================================
+) Basic Python FFI Tests
+) ============================================================================
+
+) TEST: Simple int conversion
+) EXPECT_AL: [42, Void]
+
+(python) >use
+Void (42) (int) >use.python.call
+
+
+) TEST: pow(2, 10) with correct argument order
+) EXPECT_AL: [1024, Void]
+
+(python) >use
+Void 2 10 (pow) >use.python.call
+
+
+) TEST: Exception case - result is Void, exception exists
+) EXPECT_AL: [Void]
+
+(python) >use
+Void (invalid) (int) >use.python.call
+) Stack: [result(Void), exception(Exception)]
+) Check exception is not Void, then drop to leave just result(Void)
+>isVoid >not >drop
+
+
+) TEST: Python import success
+) EXPECT_AL: [True]
+
+(python) >use
+(math) >use.python.import
+
+
+) TEST: Python import failure
+) EXPECT_AL: [False]
+
+(python) >use
+(nonexistent_xyz) >use.python.import

@@ -300,7 +300,7 @@ These are the **only** built-in operations in SOMA. Everything else is built fro
 
 ## 5. Standard Library Quick Reference
 
-Located in `soma/stdlib.soma`. Automatically loaded for test files numbered 02+.
+Located in `soma/stdlib.soma`. Automatically loaded by the VM on initialization before any user code runs - no manual loading required.
 
 ### Boolean Logic
 ```soma

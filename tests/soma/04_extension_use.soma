@@ -1,0 +1,37 @@
+) ============================================================================
+) SOMA Tests for Extension System
+) ============================================================================
+
+) TEST: Load Python extension via >use
+) EXPECT_AL: []
+
+(python) >use
+
+
+) TEST: use.python.call builtin exists
+) EXPECT_AL: [True]
+
+(python) >use
+use.python.call >isVoid >not
+
+
+) TEST: use.python.load builtin exists
+) EXPECT_AL: [True]
+
+(python) >use
+use.python.load >isVoid >not
+
+
+) TEST: use.python.import builtin exists
+) EXPECT_AL: [True]
+
+(python) >use
+use.python.import >isVoid >not
+
+
+) TEST: Extension loading is idempotent
+) EXPECT_AL: []
+
+(python) >use
+(python) >use
+(python) >use

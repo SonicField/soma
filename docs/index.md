@@ -81,6 +81,7 @@ The reference implementation is **production-ready** and demonstrates all langua
 9. [Programming Idioms](09-idioms.md) - Idiomatic patterns, best practices, and common anti-patterns
 10. [Errors and Semantics](10-errors-semantics.md) - Fatal errors, abstract machine, and formal grammar
 11. [Standard Library](11-stdlib.md) - Derived operations built from FFI primitives
+12. [Extensions](extensions/index.md) - Implementation-specific features (Python FFI, etc.)
 
 ---
 

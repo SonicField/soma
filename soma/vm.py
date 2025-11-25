@@ -304,6 +304,9 @@ class Store:
         self.root["isVoid"] = Cell(value=BuiltinBlock("isVoid", builtin_is_void))
         self.root["isNil"] = Cell(value=BuiltinBlock("isNil", builtin_is_nil))
 
+        # Extension system
+        self.root["use"] = Cell(value=BuiltinBlock("use", builtin_use))
+
     def read_value(self, components: List[str]) -> Thing:
         """
         Read Cell value at path.
@@ -498,6 +501,38 @@ class Register:
         """Initialize empty Register."""
         self.root: dict[str, Cell] = {}
 
+    def _validate_register_path(self, components: List[str]):
+        """
+        Validate Register path syntax.
+
+        Rules:
+        - Must have at least one component
+        - First component must be exactly "_"
+        - Invalid: ["_root"], ["_temp"], ["_x"], etc. (malformed single-component paths)
+
+        Args:
+            components: Path components to validate
+
+        Raises:
+            RuntimeError: If path is invalid
+        """
+        if len(components) == 0:
+            raise RuntimeError("Empty Register path not allowed")
+
+        # First component must be exactly "_"
+        # This rejects ["_root"], ["_temp"], etc. which are malformed single-component paths
+        if components[0] != "_":
+            # Check if it looks like a malformed register path (starts with underscore)
+            if components[0].startswith("_"):
+                raise RuntimeError(
+                    f"Invalid Register path '{components[0]}': use '_' for root or "
+                    f"'_.{components[0][1:]}' for child"
+                )
+            else:
+                raise RuntimeError(
+                    f"Register paths must start with '_', got: {'.'.join(components)}"
+                )
+
     def read_value(self, components: List[str]) -> Thing:
         """
         Read Cell value at path.
@@ -510,6 +545,7 @@ class Register:
         Returns:
             The value at the path, or Void if path doesn't exist
         """
+        self._validate_register_path(components)
         cell = self._get_cell(components)
         return cell.value if cell else Void
 
@@ -525,6 +561,7 @@ class Register:
         Returns:
             CellRef to the Cell at the path
         """
+        self._validate_register_path(components)
         cell = self._get_or_create_cell(components)
         return CellRef(cell)
 
@@ -545,6 +582,8 @@ class Register:
         Raises:
             RuntimeError: If attempting to write Void as payload
         """
+        self._validate_register_path(components)
+
         if isinstance(value, VoidSingleton):
             raise RuntimeError(
                 f"Cannot write Void as payload (Void-Payload-Invariant). "
@@ -573,6 +612,8 @@ class Register:
             components: List of path components
             value: Value to write (Void triggers deletion)
         """
+        self._validate_register_path(components)
+
         if isinstance(value, VoidSingleton):
             # Structural deletion
             self._delete_cell(components)
@@ -982,12 +1023,21 @@ class VM:
     - current_block: Currently executing block (None at top-level)
     """
 
-    def __init__(self):
-        """Initialize VM with empty AL, fresh Store, and empty Register."""
+    def __init__(self, load_stdlib=True):
+        """
+        Initialize VM with empty AL, fresh Store, and empty Register.
+
+        Args:
+            load_stdlib: If True (default), automatically load stdlib.soma
+        """
         self.al: List[Thing] = []
         self.store: Store = Store()
         self.register: Register = Register()
         self.current_block: Optional[Block] = None
+        self.loaded_extensions: set = set()
+
+        if load_stdlib:
+            self._load_stdlib()
 
     def execute(self, compiled_program: CompiledProgram):
         """
@@ -997,6 +1047,108 @@ class VM:
             compiled_program: CompiledProgram to execute
         """
         compiled_program.execute(self)
+
+    def _load_stdlib(self):
+        """
+        Load stdlib.soma into the VM.
+
+        Called automatically during VM initialization unless load_stdlib=False.
+        Safe to call multiple times (idempotent).
+        """
+        # Find stdlib.soma relative to this file
+        import os
+        vm_dir = os.path.dirname(os.path.abspath(__file__))
+        stdlib_path = os.path.join(vm_dir, 'stdlib.soma')
+
+        if not os.path.exists(stdlib_path):
+            raise RuntimeError(f"stdlib.soma not found at {stdlib_path}")
+
+        # Load and execute stdlib code
+        with open(stdlib_path, 'r') as f:
+            stdlib_code = f.read()
+
+        # Execute stdlib using the same pipeline as run_soma_program
+        from soma.lexer import lex
+        from soma.parser import Parser
+
+        tokens = lex(stdlib_code)
+        parser = Parser(tokens)
+        ast = parser.parse()
+        compiled = compile_program(ast)
+        compiled.execute(self)
+
+    def execute_code(self, source: str):
+        """
+        Execute SOMA source code in this VM instance.
+
+        Args:
+            source: SOMA source code string
+        """
+        from soma.lexer import lex
+        from soma.parser import Parser
+
+        tokens = lex(source)
+        parser = Parser(tokens)
+        ast = parser.parse()
+        compiled = compile_program(ast)
+        compiled.execute(self)
+
+    def register_extension_builtin(self, name: str, builtin_fn):
+        """
+        Register an extension builtin under the use.* namespace.
+
+        Args:
+            name: Fully qualified name (must start with 'use.')
+            builtin_fn: Function taking (vm) as parameter
+
+        Raises:
+            ValueError: If name doesn't start with 'use.'
+        """
+        if not name.startswith('use.'):
+            raise ValueError(f"Extension builtin name must be under 'use.*' namespace, got '{name}'")
+
+        # Split name into path components
+        path = name.split('.')
+
+        # Create BuiltinBlock and store it
+        builtin_block = BuiltinBlock(name, builtin_fn)
+        self.store.write_value(path, builtin_block)
+
+    def load_extension(self, extension_name: str):
+        """
+        Load a SOMA extension by name.
+
+        Args:
+            extension_name: Name of extension to load (e.g., 'python', 'http')
+
+        Raises:
+            RuntimeError: If extension module not found or fails to load
+        """
+        # Skip if already loaded
+        if extension_name in self.loaded_extensions:
+            return
+
+        # Try to import extension module
+        try:
+            import importlib
+            extension_module = importlib.import_module(f'soma.extensions.{extension_name}')
+        except ImportError as e:
+            raise RuntimeError(f"Extension '{extension_name}' not found: {e}")
+
+        # Call register function to register builtins
+        if hasattr(extension_module, 'register'):
+            extension_module.register(self)
+        else:
+            raise RuntimeError(f"Extension '{extension_name}' missing register() function")
+
+        # Execute setup SOMA code if provided
+        if hasattr(extension_module, 'get_soma_setup'):
+            setup_code = extension_module.get_soma_setup()
+            if setup_code:
+                self.execute_code(setup_code)
+
+        # Mark as loaded
+        self.loaded_extensions.add(extension_name)
 
 
 # ==================== Built-in Operations ====================
@@ -1410,6 +1562,30 @@ def builtin_is_nil(vm: VM):
     value = vm.al.pop()
     result = True_ if isinstance(value, NilSingleton) else False_
     vm.al.append(result)
+
+
+def builtin_use(vm: VM):
+    """
+    use: Load a SOMA extension.
+
+    AL before: [extension_name(string), ...]
+    AL after: [...]
+
+    Loads the named extension, registering its builtins under use.* namespace
+    and executing its setup code.
+
+    Raises:
+        RuntimeError: If AL underflow, argument not string, or extension not found
+    """
+    if len(vm.al) < 1:
+        raise RuntimeError("AL underflow: use requires 1 value (extension name)")
+
+    extension_name = vm.al.pop()
+
+    if not isinstance(extension_name, str):
+        raise RuntimeError(f"use: expected string extension name, got {type(extension_name).__name__}")
+
+    vm.load_extension(extension_name)
 
 
 # ==================== Main Entry Point ====================

@@ -1,0 +1,53 @@
+) ============================================================================
+) Register Path Validation Tests
+) ============================================================================
+) These tests verify that illegal register paths are rejected by the parser.
+) Note: Test runner expects these to raise ParseError during parsing.
+
+) TEST: _x is illegal (missing dot)
+) EXPECT_ERROR: ParseError
+_x
+
+) TEST: _temp is illegal (should be _.temp)
+) EXPECT_ERROR: ParseError
+_temp
+
+) TEST: _abc is illegal (should be _.abc)
+) EXPECT_ERROR: ParseError
+_abc
+
+) TEST: __ is illegal (double underscore)
+) EXPECT_ERROR: ParseError
+__
+
+) TEST: ___ is illegal (triple underscore)
+) EXPECT_ERROR: ParseError
+___
+
+) TEST: _23 is illegal (should be _.23 or just 23)
+) EXPECT_ERROR: ParseError
+_23
+
+) TEST: !_x is illegal in store
+) EXPECT_ERROR: ParseError
+!_x
+
+) TEST: >_x is illegal in exec
+) EXPECT_ERROR: ParseError
+>_x
+
+) TEST: _x. is illegal in reference
+) EXPECT_ERROR: ParseError
+_x.
+
+) TEST: !_temp is illegal in store
+) EXPECT_ERROR: ParseError
+42 !_temp
+
+) TEST: >_temp is illegal in exec
+) EXPECT_ERROR: ParseError
+>_temp
+
+) TEST: _root is illegal
+) EXPECT_ERROR: ParseError
+_root

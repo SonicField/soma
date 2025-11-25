@@ -28,11 +28,12 @@ from soma.vm import run_soma_program
 
 
 class TestCase:
-    def __init__(self, name, source, expect_al=None, expect_output=None):
+    def __init__(self, name, source, expect_al=None, expect_output=None, expect_error=None):
         self.name = name
         self.source = source
         self.expect_al = expect_al
         self.expect_output = expect_output if expect_output else []
+        self.expect_error = expect_error
 
 
 def parse_test_file(filepath):
@@ -69,6 +70,11 @@ def parse_test_file(filepath):
                 lines = output.split('\\n')
                 current_test.expect_output.extend(lines)
 
+        elif line.strip().startswith(') EXPECT_ERROR:'):
+            if current_test:
+                error_type = line.split('EXPECT_ERROR:', 1)[1].strip()
+                current_test.expect_error = error_type
+
         else:
             # Regular source line
             current_source.append(line)
@@ -99,16 +105,58 @@ def repr_al(al):
     return '[' + ', '.join(items) + ']'
 
 
-def run_test(test, verbose=False, stdlib_source=''):
+def run_test(test, verbose=False, load_stdlib=True):
     """Run a single test case and return (passed, message)."""
+    # If test expects an error, verify it raises the right error
+    if test.expect_error:
+        try:
+            from soma.vm import VM
+            from soma.lexer import lex
+            from soma.parser import Parser, ParseError
+            from soma.vm import compile_program
+
+            # Try to parse and run - should fail
+            tokens = lex(test.source)
+            parser = Parser(tokens)
+            ast = parser.parse()
+            compiled = compile_program(ast)
+
+            vm = VM(load_stdlib=load_stdlib)
+            vm.execute(compiled)
+
+            # If we get here, test failed - no error was raised
+            return False, f"Expected {test.expect_error} but code executed successfully"
+
+        except Exception as e:
+            error_type = type(e).__name__
+            # Check if error type matches expectation
+            if test.expect_error in error_type or error_type in test.expect_error:
+                return True, "OK"
+            else:
+                return False, f"Expected {test.expect_error} but got {error_type}: {e}"
+
+    # Normal test (expects AL/output)
     try:
-        # Prepend stdlib if available
-        source = stdlib_source + '\n' + test.source if stdlib_source else test.source
+        # Create VM with appropriate stdlib setting
+        from soma.vm import VM
+        from soma.lexer import lex
+        from soma.parser import Parser
+        from soma.vm import compile_program
 
         # Capture stdout
         captured_output = StringIO()
         with redirect_stdout(captured_output):
-            al = run_soma_program(source)
+            # Create VM with appropriate stdlib flag
+            vm = VM(load_stdlib=load_stdlib)
+
+            # Compile and execute test code
+            tokens = lex(test.source)
+            parser = Parser(tokens)
+            ast = parser.parse()
+            compiled = compile_program(ast)
+            vm.execute(compiled)
+
+            al = vm.al
 
         output = captured_output.getvalue()
 
@@ -144,17 +192,14 @@ def run_test_file(filepath, verbose=False):
         print(f"⚠️  {filepath.name}: No tests found")
         return 0, 0
 
-    # Load stdlib if test file needs it (check for >stdlib operations)
-    stdlib_source = ''
-    if '_stdlib' in filepath.name or '02_' in filepath.name or '03_' in filepath.name:
-        stdlib_path = Path(__file__).parent.parent / 'soma' / 'stdlib.soma'
-        if stdlib_path.exists():
-            with open(stdlib_path, 'r') as f:
-                stdlib_source = f.read()
+    # Determine if stdlib should be loaded based on filename
+    # 01_* files: FFI-only tests, no stdlib
+    # 02+_* files: Tests that use stdlib
+    load_stdlib = not filepath.name.startswith('01_')
 
     print(f"\n{'='*60}")
     print(f"📄 {filepath.name}")
-    if stdlib_source:
+    if load_stdlib:
         print(f"   (with stdlib)")
     print(f"{'='*60}")
 
@@ -162,7 +207,7 @@ def run_test_file(filepath, verbose=False):
     total = len(tests)
 
     for test in tests:
-        success, message = run_test(test, verbose, stdlib_source)
+        success, message = run_test(test, verbose, load_stdlib)
 
         if success:
             print(f"  ✓ {test.name}")
