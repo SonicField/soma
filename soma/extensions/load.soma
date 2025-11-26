@@ -1,0 +1,160 @@
+) ============================================================================
+) load Extension - Pure SOMA Implementation
+) ============================================================================
+) Provides >load for loading SOMA files with path searching
+
+) Helper: Check if file exists at directory + filename
+) Input: [filename, directory, ...]
+) Output: [fullpath_or_void, exists(bool), ...]
+{
+  !_.filename !_.dir
+
+  ) Build full path using os.path.join(dir, filename)
+  Void _.dir _.filename (os.path.join) >use.python.call
+
+  >isVoid {
+    ) Success - got fullpath (exception consumed by >isVoid + ifelse)
+    ) Stack: [fullpath, ...]
+    !_.fullpath
+
+    ) Check if file exists
+    Void _.fullpath (os.path.exists) >use.python.call
+
+    ) Stack: [result, exception]
+    ) Store both to prepare for context-passing
+    !_.exception !_.result
+
+    ) Use context-passing for nested choice
+    _.                  ) Push context (including _.fullpath, _.result, _.exception)
+    _.exception >isVoid ) Test if call succeeded
+    {
+      ) Success - exists returned bool
+      >{
+        !_.      ) Restore context
+        _.fullpath _.result
+      }
+    }
+    {
+      ) Error checking exists
+      >{
+        !_.      ) Restore context
+        _.fullpath False
+      }
+    }
+    >choose >^
+  } {
+    ) Error building path
+    >drop  ) Drop Void result when call failed
+    Void False
+    ) Stack: [Void, False, ...]
+  } >ifelse
+} !load.checkpath
+
+) Main load function
+) Input: [filename, ...]
+) Searches pwd, then $SOMA_LIB, loads if found
+{
+  !_.filename
+
+  ) Get current working directory
+  Void (os.getcwd) >use.python.call
+
+  ) Store result to prepare for context-passing
+  !_.getcwd_exception !_.getcwd_result
+
+  ) Use context-passing for outer ifelse
+  _.                           ) Push context (including _.filename)
+  _.getcwd_exception >isVoid   ) Test if getcwd succeeded
+  {
+    ) Success - got pwd
+    >{
+      !_.                ) Restore context
+      _.getcwd_result !_.pwd  ) Store getcwd result as pwd
+
+      ) Check if file exists in pwd
+      _.pwd _.filename >load.checkpath
+      !_.found !_.path
+
+      ) Context-passing for nested choice
+      _.           ) Push context
+      _.found      ) Push condition
+      {
+        ) True: found in pwd - load it
+        >{
+          !_.
+          _.path >use.python.load
+        }
+      }
+      {
+        ) False: not in pwd - try $SOMA_LIB
+        >{
+          !_.
+
+          Void (SOMA_LIB) (os.getenv) >use.python.call
+          !_.getenv_exception !_.getenv_result
+
+          _.                          ) Push context
+          _.getenv_exception >isVoid  ) Test if getenv succeeded
+          {
+            ) Got SOMA_LIB value (or None)
+            >{
+              !_.
+
+              ) Check if SOMA_LIB is set (test if result is Void)
+              _.
+              _.getenv_result >isVoid
+              {
+                ) SOMA_LIB not set
+                >{
+                  !_.
+                  (Error: File not found in current directory and SOMA_LIB not set) >print
+                }
+              }
+              {
+                ) Have SOMA_LIB directory
+                >{
+                  !_.
+                  _.getenv_result !_.somalib
+
+                  _.somalib _.filename >load.checkpath
+                  !_.found2 !_.path2
+
+                  ) Nested choice for SOMA_LIB check
+                  _.
+                  _.found2
+                  {
+                    ) Found in SOMA_LIB
+                    >{ !_.  _.path2 >use.python.load }
+                  }
+                  {
+                    ) Not found anywhere
+                    >{ !_.  (Error: File not found in pwd or $SOMA_LIB) >print }
+                  }
+                  >choose >^
+                }
+              }
+              >choose >^
+            }
+          }
+          {
+            ) Error getting SOMA_LIB
+            >{
+              !_.
+              (Error: File not found in current directory) >print
+            }
+          }
+          >choose >^
+        }
+      }
+      >choose >^
+    }
+  }
+  {
+    ) Error getting pwd
+    >{
+      !_.
+      (Error: Could not get current working directory) >print
+    }
+  }
+  >choose >^
+} !load
