@@ -93,28 +93,23 @@ Void !a.b.c.      ; Delete Cell a.b.c and its entire subtree
 a.b.c             ; AL = [Void] — the Cell no longer exists
 ```
 
-### 1.3 The Void-Payload-Invariant
+### 1.3 Void as a Storable Value
 
-This rule is **normative and absolute**:
+Void can be written as a normal value:
 
-**VOID-PAYLOAD-INVARIANT:**
-> You CANNOT write Void as a payload. Writing `Void !path` (non-trailing-dot) is a **fatal error**.
-
-**However:** Cells CAN START with Void payload through auto-vivification.
-
-**Fatal error (cannot WRITE Void):**
+**Writing Void is legal:**
 ```soma
-Void !a.b         ; FATAL ERROR — cannot write Void as payload
-Void !_.x         ; FATAL ERROR — cannot write Void as payload in Register
+Void !a.b         ; LEGAL — stores Void as payload
+Void !_.x         ; LEGAL — stores Void in Register
 ```
 
-**Legal (structural deletion with trailing dot):**
+**Structural deletion (trailing dot) is also legal:**
 ```soma
 Void !a.b.        ; LEGAL — delete the cell entirely
 Void !_.x.        ; LEGAL — delete Register cell entirely
 ```
 
-**Legal (cells START as Void via auto-vivification):**
+**Cells also START as Void via auto-vivification:**
 ```soma
 42 !a.b.c         ; Creates: a (Void), a.b (Void), a.b.c (42)
                   ; Intermediate cells auto-created with Void payload
@@ -269,30 +264,30 @@ Performing an operation on a value of the wrong type.
 42 { >dup } >choose   ; Fatal: >choose requires Boolean + 2 Blocks
 ```
 
-#### 2.1.3 Void !path (Illegal Payload Write)
-Attempting to store Void as a Cell payload (non-trailing-dot write).
+#### 2.1.3 Void !path (Legal Payload Write)
+Storing Void as a Cell payload is now legal (was previously an error).
 
 **Store examples:**
 ```soma
-Void !a.b         ; Fatal: cannot write Void as payload
+Void !a.b         ; Legal: stores Void as payload
 ```
 
 **Register examples:**
 ```soma
-Void !_.x         ; Fatal: cannot write Void as payload in Register
-Void !_.temp      ; Fatal: cannot write Void as payload in Register
+Void !_.x         ; Legal: stores Void as payload in Register
+Void !_.temp      ; Legal: stores Void as payload in Register
 ```
 
-This is **illegal** because it would violate the Void-Payload-Invariant. You cannot deliberately write Void as a payload.
+Writing Void as a value is legal in both Store and Register.
 
-**IMPORTANT:** Reading Void is **NOT an error**:
+**Reading Void is also legal:**
 ```soma
 42 !a.b.c         ; Auto-vivifies a and a.b with Void payload
 a.b               ; Returns Void — this is perfectly legal!
 a                 ; Returns Void — no error, just means "never set"
 ```
 
-**Correct alternative** (structural deletion):
+**Structural deletion (trailing dot):**
 ```soma
 Void !a.b.        ; Legal: structural delete in Store
 Void !_.x.        ; Legal: structural delete in Register
@@ -1888,35 +1883,35 @@ config.theme Nil >==
 >ifelse
 ```
 
-### 7.5 Trying to Store Void as a Payload
+### 7.5 Storing Void as a Payload
 
-**Problem:** Attempting to write `Void !path` (without trailing dot).
+**Note:** Storing Void is now legal (previously was an error).
 
-**Why it fails:** The Void-Payload-Invariant forbids writing Void as a Cell payload. Void represents "never set" — you can't deliberately write it.
-
-**❌ WRONG:**
+**✅ Legal - Write Void as payload:**
 ```soma
-Void !x              ; FATAL ERROR: cannot store Void as payload
-Void !_.temp         ; FATAL ERROR: cannot store Void in Register
+Void !x              ; Legal: stores Void as payload
+Void !_.temp         ; Legal: stores Void in Register
 ```
 
-**✅ RIGHT - Use Nil for "explicitly empty":**
+**✅ Legal - Use Nil for "explicitly empty":**
 ```soma
 Nil !x               ; Legal: explicitly set to empty
 Nil !_.temp          ; Legal: Register cell set to empty
 ```
 
-**✅ RIGHT - Use trailing dot for deletion:**
+**✅ Legal - Use trailing dot for deletion:**
 ```soma
 Void !x.             ; Legal: delete Cell x entirely
 Void !_.temp.        ; Legal: delete Register Cell _.temp
 ```
 
-**✅ RIGHT - Let auto-vivification create Void:**
+**✅ Legal - Auto-vivification creates Void:**
 ```soma
 42 !a.b.c            ; Creates a (Void), a.b (Void), a.b.c (42)
 a.b                  ; Returns Void — auto-created, never explicitly set
 ```
+
+**Note:** You cannot distinguish auto-vivified Void from explicitly written Void. Both are simply Void.
 
 ### 7.6 Forgetting Register Destruction After Block Completes
 
@@ -1960,9 +1955,8 @@ SOMA's error model is intentionally minimal and explicit:
 - **Fatal errors** terminate execution when machine invariants are violated
 - **Non-fatal conditions** are represented as values and handled via explicit control flow
 - **Nil** represents explicit emptiness — a value that was deliberately set to "nothing"
-- **Void** represents "never set" — cells that exist for structure but were never explicitly given values
+- **Void** can be stored as a normal value, or represents "never set" in auto-vivified cells
 - **Auto-vivification** creates intermediate cells with Void payload (structural scaffolding)
-- **The Void-Payload-Invariant** prevents writing Void (but cells can start as Void)
 - The **! operator** creates, replaces, and deletes Cells based on path form and value type
 - **Deletion works identically for Store and Register** — both support `Void !path.` deletion
 - **CellRefs** are immutable values that provide access to Cells

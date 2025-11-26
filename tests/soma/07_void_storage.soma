@@ -1,0 +1,58 @@
+) ============================================================================
+) Void Storage Tests (TDD for Void-Payload-Invariant Removal)
+) ============================================================================
+) These tests currently FAIL because Void cannot be stored.
+) After removing the invariant, they will PASS.
+
+) TEST: Drop Void value using stdlib drop
+) EXPECT_AL: [42]
+Void >drop
+42
+
+) TEST: Store and retrieve Void from Store
+) EXPECT_AL: [Void]
+Void !mypath
+mypath
+
+) TEST: Store and retrieve Void from Register
+) EXPECT_AL: [Void]
+{ Void !_.x _.x } >chain
+
+) TEST: Overwrite value with Void
+) EXPECT_AL: [Void]
+42 !mypath
+Void !mypath
+mypath
+
+) TEST: Drop Void in sequence
+) EXPECT_AL: [1]
+1 Void 3 >drop >drop
+
+) TEST: Python FFI getResult with Void exception
+) EXPECT_AL: [1024]
+(python) >use
+Void 2 10 (pow) >use.python.call
+>use.python.getResult
+
+) TEST: Python FFI getException when result is Void
+) EXPECT_AL: [False]
+(python) >use
+Void (invalid) (int) >use.python.call
+>use.python.getException
+>isVoid
+
+) TEST: Void in nested Store path
+) EXPECT_AL: [Void]
+Void !a.b.c
+a.b.c
+
+) TEST: Auto-vivified path returns Void
+) EXPECT_AL: [Void]
+never.written.path
+
+) TEST: Cannot distinguish written Void from auto-vivified
+) EXPECT_AL: [True, True]
+) Both should be Void
+never.written >isVoid
+Void !explicit.void
+explicit.void >isVoid

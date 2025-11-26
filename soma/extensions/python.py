@@ -179,6 +179,25 @@ def get_soma_setup():
     Return SOMA setup code to run after registering builtins.
 
     Creates helper macros in the Store under use.python.* namespace.
+    This demonstrates how extensions can include SOMA code to build
+    convenience wrappers around the low-level FFI primitives.
     """
-    # Placeholder - will implement helper macros in next iteration
-    return ""
+    return """
+) Helper: Check if call succeeded (exception on stack is Void)
+) Input: exception value on top of AL
+) Output: True if Void (success), False otherwise
+{ >isVoid } !use.python.succeeded
+
+) Helper: Check if call failed (exception on stack is not Void)
+) Input: exception value on top of AL
+) Output: True if not Void (failure), False otherwise
+{ >isVoid >not } !use.python.failed
+
+) Helper: Get just the result, discard exception
+) Input: [result, exception, ...] Output: [result, ...]
+{ >drop } !use.python.getResult
+
+) Helper: Get just the exception, discard result
+) Input: [result, exception, ...] Output: [exception, ...]
+{ >swap >drop } !use.python.getException
+"""

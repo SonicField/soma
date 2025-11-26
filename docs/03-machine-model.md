@@ -1431,8 +1431,9 @@ a               ; Returns Void (auto-vivified, never set)
 ```
 
 ```soma
-) Attempt to write Void as value
-Void !a.b       ; FATAL ERROR - violates Void-Payload-Invariant
+) Writing Void as value is allowed
+Void !a.b       ; OK - stores Void as value ✓
+a.b             ; Returns Void
 ```
 
 ```soma
@@ -1573,13 +1574,13 @@ empty.node                  ; Returns Nil ✓
 Nil !path       ; Legal - set payload to Nil ✓
 ```
 
-**You CANNOT write Void:**
+**You CAN write Void:**
 
 ```soma
-Void !path      ; FATAL ERROR - violates Void-Payload-Invariant ❌
+Void !path      ; Legal - set payload to Void ✓
 ```
 
-**But you CAN use Void for structural deletion:**
+**You CAN use Void for structural deletion:**
 
 ```soma
 Void !path.     ; Legal - delete the cell ✓
@@ -1590,7 +1591,7 @@ Void !path.     ; Legal - delete the cell ✓
 | Operation | Nil | Void |
 |-----------|-----|------|
 | Push onto AL | ✓ Legal | ✓ Legal |
-| Store as value | ✓ Legal | ✗ **FATAL** |
+| Store as value | ✓ Legal | ✓ Legal |
 | Use in structural delete | ✗ No effect | ✓ Legal (`!path.`) |
 | Read from non-existent Cell | Returns Void | Returns Void |
 | Read from Cell with this value | Returns Nil | Returns Void |
@@ -1661,26 +1662,33 @@ deep.nested.path        ; Void - structural parent
 deep.nested.path.value  ; "value" - explicitly set
 ```
 
-### 6.11 Error Cases
+### 6.11 Writing Void vs Auto-vivification
 
-**Fatal error: Writing Void as value**
+**Writing Void is now legal:**
 
 ```soma
-Void !a.b       ; FATAL ERROR
+Void !a.b       ; Legal - stores Void as value ✓
 ```
 
-**Why:** Violates Void-Payload-Invariant.
+**Note:** You cannot distinguish between:
+- Auto-vivified Void (path never written)
+- Explicitly written Void (path written with Void value)
 
-**Solution:** Don't write anything (leave auto-vivified) or write Nil:
+Both are simply Void:
 
 ```soma
-) Don't write - let auto-vivification handle it
-42 !a.b.c       ; a.b has Void value automatically ✓
+) Auto-vivified
+never.written   ; Returns Void
 
-) Or write Nil explicitly
-Nil !a.b        ; Explicitly empty ✓
-42 !a.b.c       ; a.b now has Nil value, not Void
-                ; Both approaches: a.b can have children in subpaths
+) Explicitly written
+Void !explicit
+explicit        ; Returns Void
+
+) These are indistinguishable
+never.written explicit >==  ; Returns True
+```
+
+This is an acceptable tradeoff for simpler language semantics.
 ```
 
 **Not an error: Reading Void**

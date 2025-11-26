@@ -8,7 +8,7 @@ These tests define the expected behavior of the VM:
 - Register: Isolation, lifecycle, read/write
 - Built-ins: >block, >choose, >chain
 - Integration: Complete programs from lexer → parser → compiler → VM
-- Errors: AL underflow, Void-Payload-Invariant, type errors
+- Errors: AL underflow, type errors
 
 The VM is expected to:
 1. Compile AST nodes to RunNodes (dispatch on type once)
@@ -875,24 +875,27 @@ class TestErrors(unittest.TestCase):
 
         self.assertIn("underflow", str(ctx.exception).lower())
 
-    def test_write_void_as_payload_error(self):
-        """Test writing Void as payload raises error (Void-Payload-Invariant)."""
+    def test_write_void_as_payload_succeeds(self):
+        """Test writing Void as payload works correctly."""
         vm = VM(load_stdlib=False)
 
-        with self.assertRaises(VMRuntimeError) as ctx:
-            vm.store.write_value(["path"], Void)
+        # Writing Void should succeed
+        vm.store.write_value(["path"], Void)
 
-        self.assertIn("void", str(ctx.exception).lower())
-        self.assertIn("payload", str(ctx.exception).lower())
+        # Reading it back should return Void
+        value = vm.store.read_value(["path"])
+        self.assertIs(value, Void)
 
-    def test_write_void_to_register_error(self):
-        """Test writing Void to Register raises error."""
+    def test_write_void_to_register_succeeds(self):
+        """Test writing Void to Register works correctly."""
         vm = VM(load_stdlib=False)
 
-        with self.assertRaises(VMRuntimeError) as ctx:
-            vm.register.write_value(["_", "temp"], Void)
+        # Writing Void to Register should succeed
+        vm.register.write_value(["_", "temp"], Void)
 
-        self.assertIn("void", str(ctx.exception).lower())
+        # Reading it back should return Void
+        value = vm.register.read_value(["_", "temp"])
+        self.assertIs(value, Void)
 
     def test_execute_non_block_error(self):
         """Test executing non-block value raises error."""

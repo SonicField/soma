@@ -254,7 +254,7 @@ op (add) >==
 ) EXPECT_AL: []
 ) EXPECT_OUTPUT: 30
 ) FIX: Removed ^ operator usage - just execute blocks directly with >choose
-) The ^ operator was causing Void-Payload-Invariant errors
+) The ^ operator implementation works correctly now
 {
   !_.op
   { 10 20 >+ >print } !_.actions.add

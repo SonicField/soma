@@ -342,24 +342,15 @@ class Store:
         Write value to Cell at path.
 
         Auto-vivifies intermediate Cells with Void value.
-        Raises error if value is Void (Void-Payload-Invariant).
+        Void can be written as a normal value.
 
         If the current value at the path is a CellRef, writes through
         the CellRef to its target Cell.
 
         Args:
             components: List of path components
-            value: Value to write
-
-        Raises:
-            RuntimeError: If attempting to write Void as payload
+            value: Value to write (including Void)
         """
-        if isinstance(value, VoidSingleton):
-            raise RuntimeError(
-                f"Cannot write Void as payload (Void-Payload-Invariant). "
-                f"Path: {'.'.join(components)}"
-            )
-
         # Auto-vivify intermediate cells and get target cell
         cell = self._get_or_create_cell(components)
 
@@ -570,25 +561,16 @@ class Register:
         Write value to Cell at path.
 
         Auto-vivifies intermediate Cells.
-        Raises error if value is Void.
+        Void can be written as a normal value.
 
         If the current value at the path is a CellRef, writes through
         the CellRef to its target Cell.
 
         Args:
             components: List of path components
-            value: Value to write
-
-        Raises:
-            RuntimeError: If attempting to write Void as payload
+            value: Value to write (including Void)
         """
         self._validate_register_path(components)
-
-        if isinstance(value, VoidSingleton):
-            raise RuntimeError(
-                f"Cannot write Void as payload (Void-Payload-Invariant). "
-                f"Path: {'.'.join(components)}"
-            )
 
         # Auto-vivify intermediate cells and get target cell
         cell = self._get_or_create_cell(components)

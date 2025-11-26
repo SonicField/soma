@@ -3045,8 +3045,8 @@ Void !node.         ) Delete the cell structure (note the trailing .)
 node                ) Cell no longer exists
 ```
 
-**Error vs Legal:**
-- `Void !path` → **FATAL ERROR** (violates Void-Payload-Invariant)
+**All legal operations:**
+- `Void !path` → Legal (stores Void as value)
 - `Nil !path` → Legal (explicit empty)
 - `Void !path.` → Legal (structural deletion)
 
