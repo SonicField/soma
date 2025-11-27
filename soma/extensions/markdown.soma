@@ -59,18 +59,64 @@
   Void
 } !md.h3
 
-) Paragraph
+) Paragraph - each string becomes a separate paragraph
 {
-  ( ) >use.md.drain.join
+  >use.md.drain.p
   !_.text
 
   md.state.doc !_.doc
-  Void _.doc _.text (\a\\a\) (soma.extensions.soma_markdown.string_concat_all) >use.python.call
+  Void _.doc _.text (soma.extensions.soma_markdown.string_concat_all) >use.python.call
   !_.exc !_.new_doc
   _.new_doc !md.state.doc
 
   Void
 } !md.p
+
+) ============================================================================
+) Inline Formatting
+) ============================================================================
+
+) Bold - wraps text in **text**
+{
+  !_.text
+  (**) !_.prefix
+  (**) !_.suffix
+  Void _.prefix _.text _.suffix (soma.extensions.soma_markdown.string_concat_all) >use.python.call
+  !_.exc !_.result
+  _.result
+} !b
+
+) Italic - wraps text in _text_
+{
+  !_.text
+  (_) !_.prefix
+  (_) !_.suffix
+  Void _.prefix _.text _.suffix (soma.extensions.soma_markdown.string_concat_all) >use.python.call
+  !_.exc !_.result
+  _.result
+} !i
+
+) Link - creates [text](url)
+{
+  !_.url !_.text
+  ) Build [text](url) format
+  ([) !_.left
+  (]() !_.middle
+
+  ) Concatenate: [ + text + ]( + url + )
+  Void _.left _.text _.middle _.url (soma.extensions.soma_markdown.link_format) >use.python.call
+  !_.exc !_.result
+  _.result
+} !md.l
+
+) Inline text - concatenates strings (for inline use)
+{
+  () >use.md.drain.join
+} !md.t
+
+) ============================================================================
+) Lists
+) ============================================================================
 
 ) Unordered list
 {

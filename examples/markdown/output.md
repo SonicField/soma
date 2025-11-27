@@ -1,6 +1,11 @@
 # SOMA Markdown Extension Demo
 
-This document was generated using the SOMA markdown extension. It demonstrates all currently implemented features including headings, paragraphs, lists, and nested lists with arbitrary depth.
+This document was generated using the SOMA markdown extension.
+It demonstrates all currently implemented features including headings,
+paragraphs, lists, and nested lists with arbitrary depth.
+
+Each string constant passed to >md.p becomes a separate paragraph,
+making it easy to structure your document naturally.
 
 ## Heading Levels
 
@@ -12,9 +17,34 @@ This is a level 3 heading, useful for subsections.
 
 ## Paragraphs
 
-Paragraphs are the basic text blocks in markdown. They automatically get proper spacing with double newlines.
+Paragraphs are the basic text blocks in markdown.
+They automatically get proper spacing with double newlines.
 
-You can have multiple paragraphs in a document. Each one is separated for readability.
+You can have multiple paragraphs in a document.
+Each one is separated for readability.
+
+Notice how we can pass multiple string constants to a single >md.p call,
+and each becomes its own paragraph with proper spacing!
+
+## Inline Formatting
+
+SOMA supports inline formatting through simple composition.
+
+### Bold and Italic
+
+You can make text **bold** or _italic_ using >b and >i formatters.
+
+Composition works beautifully: _**bold and italic**_ text!
+
+### Links
+
+Creating links is straightforward: [click here](https://example.com)!
+
+You can even compose links with other formatting: _[an italic link](https://github.com/soma-lang)_.
+
+### Mixed Formatting
+
+Everything composes: **bold**, _italic_, and [a link](https://soma-lang.org) in one paragraph!
 
 ## Lists
 
@@ -36,12 +66,14 @@ Implementation stages completed:
 3. Stage 3: Paragraphs
 4. Stage 4: Simple Lists
 5. Stage 5: Nesting Infrastructure
+6. Stage 6: Inline Formatting
 
 ## Nested Lists
 
 ### Two-Level Nesting
 
-The extension supports arbitrary nesting depth. Here's an example with unordered outer and ordered inner:
+The extension supports arbitrary nesting depth.
+Here's an example with unordered outer and ordered inner:
 
 - Core Features
 - Advanced Features
@@ -112,7 +144,11 @@ The extension has comprehensive test coverage:
 
 ## Summary
 
-This document demonstrates all features of the SOMA markdown extension. The syntax is lightweight and readable while remaining pure SOMA code. The nesting stack architecture enables arbitrary depth nesting with mixed list types, making it suitable for complex document structures.
+This document demonstrates all features of the SOMA markdown extension.
+The syntax is lightweight and readable while remaining pure SOMA code.
+The nesting stack architecture enables arbitrary depth nesting with mixed list types,
+making it suitable for complex document structures.
 
-Next steps include additional block elements like code blocks, blockquotes, and horizontal rules.
+Next steps include additional block elements like code blocks,
+blockquotes, and horizontal rules.
 

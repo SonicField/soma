@@ -107,7 +107,7 @@ This ensures local files override library versions.
 (constants.soma) >load
 
 ) Define functions using constants
-{ !_.r  _.r >square math.pi >* } !circle.area
+{ >square math.pi >* } !circle.area
 ```
 
 **app.soma:**

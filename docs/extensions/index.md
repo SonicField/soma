@@ -85,6 +85,40 @@ The `>python` builtin provides a universal gateway to Python code, enabling:
 
 See [Python-Interface.md](Python-Interface.md) for complete specification and examples.
 
+### [Load Extension](Load.md)
+
+**Implementation:** Python Reference Implementation
+**Status:** Complete (v1.0)
+**Dependencies:** Python FFI Extension
+
+The `load` extension provides file loading and path searching for SOMA programs, enabling modular code organization.
+
+**Key Innovation:** Implemented entirely in pure SOMA code - adds **zero Python builtins**.
+
+**Key Features:**
+- Single public function: `>load`
+- Path searching: current directory → `$SOMA_LIB`
+- Clear error messages
+- Pure SOMA implementation using Python FFI primitives
+- Demonstrates context-passing idiom throughout
+
+**Use Cases:**
+- Splitting code across multiple files
+- Creating reusable library modules
+- Sharing common code via `$SOMA_LIB`
+- Building modular applications
+
+**Example:**
+```soma
+(python) >use
+(load) >use
+
+(my_library.soma) >load
+my_library.function
+```
+
+See [Load.md](Load.md) for complete documentation and implementation details.
+
 ---
 
 ## Future Extensions

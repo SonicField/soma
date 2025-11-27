@@ -18,9 +18,12 @@
 (SOMA Markdown Extension Demo)
 >md.h1
 
-(This document was generated using the SOMA markdown extension.)
-(It demonstrates all currently implemented features including headings,)
-(paragraphs, lists, and nested lists with arbitrary depth.)
+(This document was generated using the SOMA markdown extension.
+It demonstrates all currently implemented features including headings,
+paragraphs, lists, and nested lists with arbitrary depth.)
+
+(Each string constant passed to >md.p becomes a separate paragraph,
+making it easy to structure your document naturally.)
 >md.p
 
 ) ============================================================================
@@ -46,12 +49,50 @@
 (Paragraphs)
 >md.h2
 
-(Paragraphs are the basic text blocks in markdown.)
-(They automatically get proper spacing with double newlines.)
+(Paragraphs are the basic text blocks in markdown.
+They automatically get proper spacing with double newlines.)
+
+(You can have multiple paragraphs in a document.
+Each one is separated for readability.)
+
+(Notice how we can pass multiple string constants to a single >md.p call,
+and each becomes its own paragraph with proper spacing!)
 >md.p
 
-(You can have multiple paragraphs in a document.)
-(Each one is separated for readability.)
+) ============================================================================
+) Inline Formatting
+) ============================================================================
+
+(Inline Formatting)
+>md.h2
+
+(SOMA supports inline formatting through simple composition.)
+>md.p
+
+(Bold and Italic)
+>md.h3
+
+(You can make text ) (bold) >b ( or ) (italic) >i ( using >b and >i formatters.) >md.t
+>md.p
+
+(Composition works beautifully: ) (bold and italic) >b >i ( text!) >md.t
+>md.p
+
+(Links)
+>md.h3
+
+(Creating links is straightforward: ) (click here) (https://example.com) >md.l (!) >md.t
+>md.p
+
+(You can even compose links with other formatting: )
+(an italic link) (https://github.com/soma-lang) >md.l >i (.)
+>md.t
+>md.p
+
+(Mixed Formatting)
+>md.h3
+
+(Everything composes: ) (bold) >b (, ) (italic) >i (, and ) (a link) (https://soma-lang.org) >md.l ( in one paragraph!) >md.t
 >md.p
 
 ) ============================================================================
@@ -84,6 +125,7 @@
 (Stage 3: Paragraphs)
 (Stage 4: Simple Lists)
 (Stage 5: Nesting Infrastructure)
+(Stage 6: Inline Formatting)
 >md.ol
 
 ) ============================================================================
@@ -96,8 +138,8 @@
 (Two-Level Nesting)
 >md.h3
 
-(The extension supports arbitrary nesting depth.)
-(Here's an example with unordered outer and ordered inner:)
+(The extension supports arbitrary nesting depth.
+Here's an example with unordered outer and ordered inner:)
 >md.p
 
 (Core Features)
@@ -129,8 +171,7 @@
 (Three-Level Nesting)
 >md.h3
 
-(The nesting stack supports arbitrary depth.)
-(Here's a three-level example:)
+(The nesting stack supports arbitrary depth. Here's a three-level example:)
 >md.p
 
 (Project Structure)
@@ -214,14 +255,13 @@
 (Summary)
 >md.h2
 
-(This document demonstrates all features of the SOMA markdown extension.)
-(The syntax is lightweight and readable while remaining pure SOMA code.)
-(The nesting stack architecture enables arbitrary depth nesting with)
-(mixed list types, making it suitable for complex document structures.)
->md.p
+(This document demonstrates all features of the SOMA markdown extension.
+The syntax is lightweight and readable while remaining pure SOMA code.
+The nesting stack architecture enables arbitrary depth nesting with mixed list types,
+making it suitable for complex document structures.)
 
-(Next steps include additional block elements like code blocks,)
-(blockquotes, and horizontal rules.)
+(Next steps include additional block elements like code blocks,
+blockquotes, and horizontal rules.)
 >md.p
 
 ) ============================================================================

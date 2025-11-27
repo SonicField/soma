@@ -202,7 +202,7 @@ class TestMarkdownStage3(unittest.TestCase):
             os.unlink(temp_path)
 
     def test_multi_word_paragraph(self):
-        """Test that paragraph drains all items until Void."""
+        """Test that paragraph treats each string as a separate paragraph."""
         with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False) as f:
             temp_path = f.name
 
@@ -219,7 +219,9 @@ class TestMarkdownStage3(unittest.TestCase):
             run_soma_program(code)
 
             content = Path(temp_path).read_text()
-            self.assertEqual(content, "This is a multi-word paragraph.\n\n")
+            # Each string becomes a separate paragraph
+            expected = "This\n\nis\n\na\n\nmulti-word\n\nparagraph.\n\n"
+            self.assertEqual(content, expected)
         finally:
             os.unlink(temp_path)
 
@@ -513,6 +515,142 @@ class TestMarkdownStage5(unittest.TestCase):
                 "- Task 2\n\n"
             )
             self.assertEqual(content, expected)
+        finally:
+            os.unlink(temp_path)
+
+
+class TestMarkdownStage6(unittest.TestCase):
+    """Test cases for markdown extension - Stage 6: Inline Formatting."""
+
+    def test_bold_text(self):
+        """Test bold inline formatting."""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False) as f:
+            temp_path = f.name
+
+        try:
+            code = f"""
+            (python) >use
+            (markdown) >use
+
+            >md.start
+            (This is ) (bold text) >b (!) >md.t
+            >md.p
+            ({temp_path}) >md.render
+            """
+            run_soma_program(code)
+
+            content = Path(temp_path).read_text()
+            self.assertEqual(content, "This is **bold text**!\n\n")
+        finally:
+            os.unlink(temp_path)
+
+    def test_italic_text(self):
+        """Test italic inline formatting."""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False) as f:
+            temp_path = f.name
+
+        try:
+            code = f"""
+            (python) >use
+            (markdown) >use
+
+            >md.start
+            (This is ) (italic text) >i (!) >md.t
+            >md.p
+            ({temp_path}) >md.render
+            """
+            run_soma_program(code)
+
+            content = Path(temp_path).read_text()
+            self.assertEqual(content, "This is _italic text_!\n\n")
+        finally:
+            os.unlink(temp_path)
+
+    def test_link(self):
+        """Test link creation."""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False) as f:
+            temp_path = f.name
+
+        try:
+            code = f"""
+            (python) >use
+            (markdown) >use
+
+            >md.start
+            (Check out ) (this link) (https://example.com) >md.l (!) >md.t
+            >md.p
+            ({temp_path}) >md.render
+            """
+            run_soma_program(code)
+
+            content = Path(temp_path).read_text()
+            self.assertEqual(content, "Check out [this link](https://example.com)!\n\n")
+        finally:
+            os.unlink(temp_path)
+
+    def test_bold_and_italic_composition(self):
+        """Test composing bold and italic."""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False) as f:
+            temp_path = f.name
+
+        try:
+            code = f"""
+            (python) >use
+            (markdown) >use
+
+            >md.start
+            (This is ) (bold and italic) >b >i ( text!) >md.t
+            >md.p
+            ({temp_path}) >md.render
+            """
+            run_soma_program(code)
+
+            content = Path(temp_path).read_text()
+            self.assertEqual(content, "This is _**bold and italic**_ text!\n\n")
+        finally:
+            os.unlink(temp_path)
+
+    def test_link_with_italic(self):
+        """Test link composed with italic."""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False) as f:
+            temp_path = f.name
+
+        try:
+            code = f"""
+            (python) >use
+            (markdown) >use
+
+            >md.start
+            (Here is an ) (italic link) (https://example.com) >md.l >i ( in text.) >md.t
+            >md.p
+            ({temp_path}) >md.render
+            """
+            run_soma_program(code)
+
+            content = Path(temp_path).read_text()
+            self.assertEqual(content, "Here is an _[italic link](https://example.com)_ in text.\n\n")
+        finally:
+            os.unlink(temp_path)
+
+    def test_mixed_inline_formatting(self):
+        """Test multiple inline formats in one paragraph."""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False) as f:
+            temp_path = f.name
+
+        try:
+            code = f"""
+            (python) >use
+            (markdown) >use
+
+            >md.start
+            (This has ) (bold) >b ( and ) (italic) >i ( and a ) (link) (https://example.com) >md.l (!) >md.t
+            >md.p
+            ({temp_path}) >md.render
+            """
+            run_soma_program(code)
+
+            content = Path(temp_path).read_text()
+            self.assertEqual(content, "This has **bold** and _italic_ and a [link](https://example.com)!\n\n")
         finally:
             os.unlink(temp_path)
 

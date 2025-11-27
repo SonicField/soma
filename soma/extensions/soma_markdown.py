@@ -106,6 +106,11 @@ def is_list(value):
     return isinstance(value, list)
 
 
+def link_format(left_bracket, text, middle, url):
+    """Format a markdown link: [text](url)"""
+    return f"{left_bracket}{text}{middle}{url})"
+
+
 def write_file(filename, content):
     """Write content to file."""
     with open(str(filename), 'w') as f:

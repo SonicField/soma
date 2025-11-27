@@ -254,7 +254,8 @@ class TestTypeConversions(unittest.TestCase):
         """
         al = run_soma_program(code)
         result = al[-2]
-        self.assertEqual(result, True)  # SOMA True
+        from soma.vm import True_
+        self.assertIs(result, True_)  # SOMA True
 
     def test_python_int_to_soma(self):
         """Test Python int → SOMA integer."""

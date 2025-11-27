@@ -87,6 +87,13 @@ def call_builtin(vm):
         # Convert None → Void
         if result is None:
             result = Void
+        # Convert Python bool → SOMA bool
+        elif result is True:
+            from soma.vm import True_
+            result = True_
+        elif result is False:
+            from soma.vm import False_
+            result = False_
 
         # Push result and Void exception
         vm.al.append(result)
