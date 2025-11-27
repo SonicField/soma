@@ -15,6 +15,10 @@ The markdown extension supports multiple heading levels.
 
 This is a level 3 heading, useful for subsections.
 
+#### H4 Example
+
+This is a level 4 heading, useful for detailed technical sections.
+
 ## Paragraphs
 
 Paragraphs are the basic text blocks in markdown.
@@ -117,6 +121,39 @@ You can have multiple nested sections in the same list:
   - Database layer
 - Testing
 
+## Tables
+
+### Basic Tables
+
+Tables organize data into rows and columns using simple syntax:
+
+| Name  | Age | Role     |
+|-------|-----|----------|
+| Alice | 30  | Engineer |
+| Bob   | 25  | Designer |
+| Carol | 28  | Manager  |
+
+### Tables with Alignment
+
+You can specify column alignment using alignment markers:
+
+| Feature     | Status   | Priority |
+|:------------|:--------:|---------:|
+| Tables      | Complete | High     |
+| Nesting     | Complete | High     |
+| Code blocks | Planned  | Medium   |
+
+### Tables with Inline Formatting
+
+Table cells can contain inline formatting:
+
+| Item     | Description              | Link                                 |
+|----------|--------------------------|--------------------------------------|
+| SOMA     | **Stack-based language** | [repo](https://github.com/soma-lang) |
+| Markdown | _Document generation_    | [docs](https://example.com/docs)     |
+
+---
+
 ## Technical Implementation
 
 ### Architecture
@@ -137,7 +174,9 @@ The implementation uses several key patterns:
 
 The extension has comprehensive test coverage:
 
-- 17 total tests passing
+- 28 total tests passing
+- 5 table tests covering all table features
+- 6 inline formatting tests
 - 5 nesting tests covering complex scenarios
 - 100% of implemented features tested
 - TDD approach throughout development

@@ -17,6 +17,35 @@ Comprehensive documentation is available in the `docs/` folder:
 
 The `examples/` directory contains complete, runnable SOMA programs demonstrating real-world applications:
 
+### Markdown Extension (`examples/markdown/`)
+
+A complete markdown document generator showcasing:
+- **Extension system** - Pure SOMA implementation with Python FFI builtins
+- **State machine architecture** - Document building via Store-based state
+- **Void sentinel pattern** - Clean AL draining without explicit terminators
+- **Nesting stack** - Arbitrary depth list nesting with two-phase rendering
+- **Stack-based composition** - Inline formatters naturally compose
+
+**Features:**
+- Headings (H1, H2, H3, H4)
+- Paragraphs with multi-line support
+- Lists (ordered & unordered) with arbitrary nesting
+- Inline formatting (bold, italic, links)
+- Tables with column alignment
+- Horizontal rules
+
+```bash
+python3 examples/markdown/run_example.py
+```
+
+**Generated Output:** See `examples/markdown/output.md` for a comprehensive demo document
+
+See `examples/markdown/README.md` for complete documentation including:
+- All supported markdown features
+- SOMA syntax examples
+- Architecture patterns and design decisions
+- Test coverage (30 tests, 100% passing)
+
 ### Sin Calculator (`examples/sin_calculator/`)
 
 A Taylor series implementation of `sin(x)` showcasing:

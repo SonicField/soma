@@ -16,6 +16,13 @@
 
   0 !md.state.depth       ) Nesting depth starts at 0
 
+  ) Initialize table state
+  Void (soma.extensions.soma_markdown.list_new) >use.python.call
+  !_.exception !_.empty_list
+  _.empty_list !md.state.table.header
+  _.empty_list !md.state.table.rows
+  _.empty_list !md.state.table.alignment
+
   Void                     ) Push Void sentinel to bottom of AL
 } !md.start
 
@@ -59,6 +66,19 @@
   Void
 } !md.h3
 
+) H4 heading
+{
+  ( ) >use.md.drain.join
+  !_.text
+
+  md.state.doc !_.doc
+  Void _.doc (#### ) _.text (\a\\a\) (soma.extensions.soma_markdown.string_concat_all) >use.python.call
+  !_.exc !_.new_doc
+  _.new_doc !md.state.doc
+
+  Void
+} !md.h4
+
 ) Paragraph - each string becomes a separate paragraph
 {
   >use.md.drain.p
@@ -71,6 +91,16 @@
 
   Void
 } !md.p
+
+) Horizontal rule - inserts --- separator
+{
+  md.state.doc !_.doc
+  Void _.doc (---\a\\a\) (soma.extensions.soma_markdown.string_concat_all) >use.python.call
+  !_.exc !_.new_doc
+  _.new_doc !md.state.doc
+
+  Void
+} !md.hr
 
 ) ============================================================================
 ) Inline Formatting
@@ -113,6 +143,78 @@
 {
   () >use.md.drain.join
 } !md.t
+
+) ============================================================================
+) Tables
+) ============================================================================
+
+) Table alignment markers
+{
+  (left)
+} !md.table.left
+
+{
+  (centre)
+} !md.table.centre
+
+{
+  (right)
+} !md.table.right
+
+) Table header - drains AL and saves cells as array
+{
+  >use.md.table.drain.cells
+  !_.cells
+  _.cells !md.state.table.header
+  Void
+} !md.table.header
+
+) Table alignment - drains AL and saves alignment array
+{
+  >use.md.table.drain.cells
+  !_.alignments
+  _.alignments !md.state.table.alignment
+  Void
+} !md.table.align
+
+) Table row - drains AL and appends row to table
+{
+  >use.md.table.drain.cells
+  !_.row
+
+  md.state.table.rows !_.rows
+  Void _.rows _.row (soma.extensions.soma_markdown.list_append) >use.python.call
+  !_.exc !_.new_rows
+  _.new_rows !md.state.table.rows
+
+  Void
+} !md.table.row
+
+) Table - renders complete table and clears state
+{
+  md.state.table.header !_.header
+  md.state.table.rows !_.rows
+  md.state.table.alignment !_.alignment
+
+  ) Render table using Python builtin
+  Void _.header _.rows _.alignment (soma.extensions.soma_markdown.render_table) >use.python.call
+  !_.exc !_.table_text
+
+  ) Append to document
+  md.state.doc !_.doc
+  Void _.doc _.table_text (soma.extensions.soma_markdown.string_concat_all) >use.python.call
+  !_.exc !_.new_doc
+  _.new_doc !md.state.doc
+
+  ) Clear table state
+  Void (soma.extensions.soma_markdown.list_new) >use.python.call
+  !_.exc !_.empty
+  _.empty !md.state.table.header
+  _.empty !md.state.table.rows
+  _.empty !md.state.table.alignment
+
+  Void
+} !md.table
 
 ) ============================================================================
 ) Lists

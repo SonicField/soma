@@ -379,6 +379,36 @@ def nest_builtin(vm):
     vm.al.append(Void)
 
 
+def drain_and_collect_cells_builtin(vm):
+    """
+    >use.md.table.drain.cells builtin - Drain AL until Void, return items as list.
+
+    AL before: [void, item1, item2, ..., itemN, ...]
+    AL after: [[item1, item2, ..., itemN], void, ...]
+    """
+    from soma.vm import Void, VoidSingleton
+
+    # Pop items until Void
+    items = []
+    while True:
+        if len(vm.al) < 1:
+            raise RuntimeError("AL underflow: table.drain.cells requires Void terminator")
+
+        item = vm.al.pop()
+
+        if isinstance(item, VoidSingleton):
+            break
+
+        items.append(str(item))
+
+    # Items are in reverse order (LIFO), so reverse them
+    items.reverse()
+
+    # Push Void back first, then the list
+    vm.al.append(Void)
+    vm.al.append(items)
+
+
 def register(vm):
     """Register markdown builtins."""
     # Register drain_and_join as a builtin under use.* namespace
@@ -387,6 +417,7 @@ def register(vm):
     vm.register_extension_builtin('use.md.drain.ol', drain_and_format_ol_builtin)
     vm.register_extension_builtin('use.md.drain.p', drain_and_format_paragraphs_builtin)
     vm.register_extension_builtin('use.md.nest', nest_builtin)
+    vm.register_extension_builtin('use.md.table.drain.cells', drain_and_collect_cells_builtin)
 
 
 def get_soma_setup():

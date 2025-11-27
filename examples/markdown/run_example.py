@@ -38,10 +38,19 @@ def main():
     with open(soma_file, 'r') as f:
         code = f.read()
 
-    # Execute it
+    # Execute it (change to example directory so output.md goes to the right place)
     print("Executing SOMA program...")
     try:
-        run_soma_program(code)
+        # Save current directory and change to example directory
+        original_dir = os.getcwd()
+        os.chdir(example_dir)
+
+        try:
+            run_soma_program(code)
+        finally:
+            # Restore original directory
+            os.chdir(original_dir)
+
         print("✓ Execution complete!")
         print()
 

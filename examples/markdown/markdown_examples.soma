@@ -42,6 +42,12 @@ making it easy to structure your document naturally.)
 (This is a level 3 heading, useful for subsections.)
 >md.p
 
+(H4 Example)
+>md.h4
+
+(This is a level 4 heading, useful for detailed technical sections.)
+>md.p
+
 ) ============================================================================
 ) Paragraphs
 ) ============================================================================
@@ -207,6 +213,63 @@ Here's an example with unordered outer and ordered inner:)
 >md.ul
 
 ) ============================================================================
+) Tables
+) ============================================================================
+
+(Tables)
+>md.h2
+
+(Basic Tables)
+>md.h3
+
+(Tables organize data into rows and columns using simple syntax:)
+>md.p
+
+(Name) (Age) (Role)
+>md.table.header
+(Alice) (30) (Engineer)
+>md.table.row
+(Bob) (25) (Designer)
+>md.table.row
+(Carol) (28) (Manager)
+>md.table.row
+>md.table
+
+(Tables with Alignment)
+>md.h3
+
+(You can specify column alignment using alignment markers:)
+>md.p
+
+(Feature) (Status) (Priority)
+>md.table.header
+>md.table.left >md.table.centre >md.table.right
+>md.table.align
+(Tables) (Complete) (High)
+>md.table.row
+(Nesting) (Complete) (High)
+>md.table.row
+(Code blocks) (Planned) (Medium)
+>md.table.row
+>md.table
+
+(Tables with Inline Formatting)
+>md.h3
+
+(Table cells can contain inline formatting:)
+>md.p
+
+(Item) (Description) (Link)
+>md.table.header
+(SOMA) (Stack-based language) >b (repo) (https://github.com/soma-lang) >md.l
+>md.table.row
+(Markdown) (Document generation) >i (docs) (https://example.com/docs) >md.l
+>md.table.row
+>md.table
+
+>md.hr
+
+) ============================================================================
 ) Technical Details
 ) ============================================================================
 
@@ -242,7 +305,9 @@ Here's an example with unordered outer and ordered inner:)
 (The extension has comprehensive test coverage:)
 >md.p
 
-(17 total tests passing)
+(28 total tests passing)
+(5 table tests covering all table features)
+(6 inline formatting tests)
 (5 nesting tests covering complex scenarios)
 (100% of implemented features tested)
 (TDD approach throughout development)

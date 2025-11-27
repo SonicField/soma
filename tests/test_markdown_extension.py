@@ -118,6 +118,35 @@ class TestMarkdownStage2(unittest.TestCase):
         finally:
             os.unlink(temp_path)
 
+    def test_h4_heading(self):
+        """Test H4 heading level."""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False) as f:
+            temp_path = f.name
+
+        try:
+            code = f"""
+            (python) >use
+            (markdown) >use
+
+            >md.start
+            (Main)
+            >md.h1
+            (Section)
+            >md.h2
+            (Subsection)
+            >md.h3
+            (Detail Level)
+            >md.h4
+            ({temp_path}) >md.render
+            """
+            run_soma_program(code)
+
+            content = Path(temp_path).read_text()
+            expected = "# Main\n\n## Section\n\n### Subsection\n\n#### Detail Level\n\n"
+            self.assertEqual(content, expected)
+        finally:
+            os.unlink(temp_path)
+
     def test_heading_drains_until_void(self):
         """Test that heading consumes all items until Void."""
         with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False) as f:
@@ -651,6 +680,283 @@ class TestMarkdownStage6(unittest.TestCase):
 
             content = Path(temp_path).read_text()
             self.assertEqual(content, "This has **bold** and _italic_ and a [link](https://example.com)!\n\n")
+        finally:
+            os.unlink(temp_path)
+
+
+class TestMarkdownStage7(unittest.TestCase):
+    """Test cases for markdown extension - Stage 7: Tables."""
+
+    def test_basic_table(self):
+        """Test basic table without alignment."""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False) as f:
+            temp_path = f.name
+
+        try:
+            code = f"""
+            (python) >use
+            (markdown) >use
+
+            >md.start
+            (Name) (Age) (Status)
+            >md.table.header
+            (Alice) (30) (Active)
+            >md.table.row
+            (Bob) (25) (Pending)
+            >md.table.row
+            >md.table
+            ({temp_path}) >md.render
+            """
+            run_soma_program(code)
+
+            content = Path(temp_path).read_text()
+            expected = (
+                "| Name  | Age | Status  |\n"
+                "|-------|-----|---------|\n"
+                "| Alice | 30  | Active  |\n"
+                "| Bob   | 25  | Pending |\n\n"
+            )
+            self.assertEqual(content, expected)
+        finally:
+            os.unlink(temp_path)
+
+    def test_table_with_alignment(self):
+        """Test table with column alignment."""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False) as f:
+            temp_path = f.name
+
+        try:
+            code = f"""
+            (python) >use
+            (markdown) >use
+
+            >md.start
+            (Name) (Age) (Status)
+            >md.table.header
+            >md.table.left >md.table.centre >md.table.right
+            >md.table.align
+            (Alice) (30) (Active)
+            >md.table.row
+            (Bob) (25) (Pending)
+            >md.table.row
+            >md.table
+            ({temp_path}) >md.render
+            """
+            run_soma_program(code)
+
+            content = Path(temp_path).read_text()
+            expected = (
+                "| Name  | Age | Status  |\n"
+                "|:------|:---:|--------:|\n"
+                "| Alice | 30  | Active  |\n"
+                "| Bob   | 25  | Pending |\n\n"
+            )
+            self.assertEqual(content, expected)
+        finally:
+            os.unlink(temp_path)
+
+    def test_table_with_inline_formatting(self):
+        """Test table cells with inline formatting."""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False) as f:
+            temp_path = f.name
+
+        try:
+            code = f"""
+            (python) >use
+            (markdown) >use
+
+            >md.start
+            (Feature) (Status) (Link)
+            >md.table.header
+            (Bold text) >b (Complete) (docs) (https://example.com) >md.l
+            >md.table.row
+            >md.table
+            ({temp_path}) >md.render
+            """
+            run_soma_program(code)
+
+            content = Path(temp_path).read_text()
+            # Check that the table contains the expected content with inline formatting
+            self.assertIn("**Bold text**", content)
+            self.assertIn("Complete", content)
+            self.assertIn("[docs](https://example.com)", content)
+            self.assertIn("| Feature", content)
+            self.assertIn("| Status", content)
+            self.assertIn("| Link", content)
+        finally:
+            os.unlink(temp_path)
+
+    def test_multiple_tables(self):
+        """Test multiple tables in same document."""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False) as f:
+            temp_path = f.name
+
+        try:
+            code = f"""
+            (python) >use
+            (markdown) >use
+
+            >md.start
+            (Table 1)
+            >md.h3
+            (A) (B)
+            >md.table.header
+            (1) (2)
+            >md.table.row
+            >md.table
+
+            (Table 2)
+            >md.h3
+            (X) (Y)
+            >md.table.header
+            (3) (4)
+            >md.table.row
+            >md.table
+            ({temp_path}) >md.render
+            """
+            run_soma_program(code)
+
+            content = Path(temp_path).read_text()
+            self.assertIn("### Table 1", content)
+            self.assertIn("| A | B |", content)
+            self.assertIn("| 1 | 2 |", content)
+            self.assertIn("### Table 2", content)
+            self.assertIn("| X | Y |", content)
+            self.assertIn("| 3 | 4 |", content)
+        finally:
+            os.unlink(temp_path)
+
+    def test_table_with_header_only(self):
+        """Test table with just header, no rows."""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False) as f:
+            temp_path = f.name
+
+        try:
+            code = f"""
+            (python) >use
+            (markdown) >use
+
+            >md.start
+            (Column 1) (Column 2) (Column 3)
+            >md.table.header
+            >md.table
+            ({temp_path}) >md.render
+            """
+            run_soma_program(code)
+
+            content = Path(temp_path).read_text()
+            expected = (
+                "| Column 1 | Column 2 | Column 3 |\n"
+                "|----------|----------|----------|\n\n"
+            )
+            self.assertEqual(content, expected)
+        finally:
+            os.unlink(temp_path)
+
+
+class TestMarkdownStage8(unittest.TestCase):
+    """Test cases for markdown extension - Stage 8: Horizontal Rules."""
+
+    def test_horizontal_rule(self):
+        """Test horizontal rule creates --- separator."""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False) as f:
+            temp_path = f.name
+
+        try:
+            code = f"""
+            (python) >use
+            (markdown) >use
+
+            >md.start
+            (Section 1)
+            >md.h2
+            (Some content)
+            >md.p
+            >md.hr
+            (Section 2)
+            >md.h2
+            ({temp_path}) >md.render
+            """
+            run_soma_program(code)
+
+            content = Path(temp_path).read_text()
+            expected = (
+                "## Section 1\n\n"
+                "Some content\n\n"
+                "---\n\n"
+                "## Section 2\n\n"
+            )
+            self.assertEqual(content, expected)
+        finally:
+            os.unlink(temp_path)
+
+    def test_multiple_horizontal_rules(self):
+        """Test multiple horizontal rules in document."""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False) as f:
+            temp_path = f.name
+
+        try:
+            code = f"""
+            (python) >use
+            (markdown) >use
+
+            >md.start
+            (Part 1)
+            >md.p
+            >md.hr
+            (Part 2)
+            >md.p
+            >md.hr
+            (Part 3)
+            >md.p
+            ({temp_path}) >md.render
+            """
+            run_soma_program(code)
+
+            content = Path(temp_path).read_text()
+            self.assertEqual(content.count("---\n\n"), 2)
+            self.assertIn("Part 1\n\n---\n\nPart 2\n\n---\n\nPart 3", content)
+        finally:
+            os.unlink(temp_path)
+
+    def test_table_separator_format(self):
+        """Test that table separator rows have correct pipe format (no double pipes)."""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False) as f:
+            temp_path = f.name
+
+        try:
+            code = f"""
+            (python) >use
+            (markdown) >use
+
+            >md.start
+            (Col1) (Col2) (Col3)
+            >md.table.header
+            (A) (B) (C)
+            >md.table.row
+            >md.table
+            ({temp_path}) >md.render
+            """
+            run_soma_program(code)
+
+            content = Path(temp_path).read_text()
+            lines = content.split('\n')
+            separator_line = lines[1]  # Second line is separator
+
+            # Separator should not have double pipes
+            self.assertNotIn('||', separator_line,
+                "Table separator row should not contain double pipes '||'")
+
+            # Separator should start and end with single pipe
+            self.assertTrue(separator_line.startswith('|'),
+                "Table separator should start with '|'")
+            self.assertTrue(separator_line.endswith('|'),
+                "Table separator should end with '|'")
+
+            # Count pipes - should be num_cols + 1 (one before each column, one at end)
+            pipe_count = separator_line.count('|')
+            self.assertEqual(pipe_count, 4,  # 3 columns + 1 = 4 pipes
+                f"Expected 4 pipes in separator, got {pipe_count}")
         finally:
             os.unlink(temp_path)
 
