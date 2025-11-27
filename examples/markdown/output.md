@@ -48,7 +48,9 @@ You can even compose links with other formatting: _[an italic link](https://gith
 
 ### Mixed Formatting
 
-Everything composes: **bold**, _italic_, and [a link](https://soma-lang.org) in one paragraph!
+Everything composes: **bold**, _italic_, `code`, and [a link](https://soma-lang.org) in one paragraph!
+
+You can use `inline code` to reference `variable names` or `function calls` in text.
 
 ## Lists
 
@@ -152,6 +154,50 @@ Table cells can contain inline formatting:
 | SOMA     | **Stack-based language** | [repo](https://github.com/soma-lang) |
 | Markdown | _Document generation_    | [docs](https://example.com/docs)     |
 
+## Blockquotes
+
+### Simple Blockquote
+
+Blockquotes are great for highlighting important information:
+
+> This is a notable quote or important callout.
+
+### Multi-line Blockquotes
+
+You can create longer blockquotes with multiple lines:
+
+> The SOMA markdown extension makes document generation simple.
+> Each line becomes part of the same blockquote block.
+> Perfect for extended quotes or callouts.
+
+## Code Blocks
+
+### Code Without Language
+
+For generic code snippets without syntax highlighting:
+
+```
+function greet
+  echo Hello World
+```
+
+### Code With Language
+
+Specify the language for proper syntax highlighting:
+
+```ruby
+def fibonacci n
+  return 1 if n <= 1
+  fibonacci n-1 plus fibonacci n-2
+```
+
+Another example in Python:
+
+```python
+def factorial n
+  return 1 if n == 0 else n times factorial n-1
+```
+
 ---
 
 ## Technical Implementation
@@ -174,10 +220,13 @@ The implementation uses several key patterns:
 
 The extension has comprehensive test coverage:
 
-- 28 total tests passing
+- 38 total tests passing
 - 5 table tests covering all table features
-- 6 inline formatting tests
+- 7 inline formatting tests including inline code
 - 5 nesting tests covering complex scenarios
+- 2 blockquote tests
+- 3 code block tests with and without language
+- 2 horizontal rule tests
 - 100% of implemented features tested
 - TDD approach throughout development
 
@@ -185,9 +234,7 @@ The extension has comprehensive test coverage:
 
 This document demonstrates all features of the SOMA markdown extension.
 The syntax is lightweight and readable while remaining pure SOMA code.
-The nesting stack architecture enables arbitrary depth nesting with mixed list types,
-making it suitable for complex document structures.
-
-Next steps include additional block elements like code blocks,
-blockquotes, and horizontal rules.
+The extension supports headings, paragraphs, lists with arbitrary nesting,
+inline formatting including code, blockquotes, code blocks with syntax highlighting,
+tables with alignment, and horizontal rules - everything needed for rich technical documentation.
 

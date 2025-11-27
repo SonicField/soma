@@ -43,6 +43,7 @@ The example showcases all currently implemented features:
 ### ✅ Inline Formatting
 - **Bold text** using `>b`
 - _Italic text_ using `>i`
+- `Inline code` using `>c`
 - [Links](https://example.com) using `>md.l`
 - Composition: `(text) >b >i` → `_**text**_`
 - Inline text concatenation with `>md.t`
@@ -57,6 +58,17 @@ The example showcases all currently implemented features:
 - **Three-level nesting** - Demonstrating arbitrary depth
 - **Mixed nesting types** - UL inside OL, OL inside UL
 - **Multiple nests** - Multiple nested sections at the same level
+
+### ✅ Blockquotes
+- Simple blockquotes using `>md.q`
+- Multi-line blockquotes
+- Perfect for callouts and quoted text
+
+### ✅ Code Blocks
+- **Without language**: `(line1) (line2) Nil >md.code`
+- **With language**: `(line1) (line2) (python) >md.code`
+- Supports syntax highlighting when language specified
+- Multi-line strings allowed
 
 ### ✅ Tables
 - **Basic tables** - Headers and rows
@@ -129,10 +141,12 @@ The implementation uses several innovative patterns:
 ## Test Coverage
 
 All features demonstrated in this example are covered by the test suite:
-- **30 total tests** (100% passing)
+- **38 total tests** (100% passing)
 - 5 comprehensive nesting tests
-- 6 inline formatting tests
+- 7 inline formatting tests (including inline code)
 - 5 table tests
+- 2 blockquote tests
+- 3 code block tests
 - 2 horizontal rule tests
 - TDD approach throughout development
 

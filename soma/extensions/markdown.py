@@ -332,6 +332,108 @@ def drain_and_format_paragraphs_builtin(vm):
     vm.al.append(result)
 
 
+def drain_and_format_blockquote_builtin(vm):
+    """
+    >use.md.drain.q builtin - Drain AL until Void, format as blockquote.
+
+    AL before: [void, item1, item2, ..., itemN, ...]
+    AL after: ["> item1\n> item2\n...\n\n", void, ...]
+
+    Each string becomes a blockquote line prefixed with "> ".
+    """
+    from soma.vm import Void, VoidSingleton
+
+    # Pop items until Void
+    items = []
+    while True:
+        if len(vm.al) < 1:
+            raise RuntimeError("AL underflow: md.drain.q requires Void terminator")
+
+        item = vm.al.pop()
+
+        if isinstance(item, VoidSingleton):
+            break
+
+        items.append(str(item))
+
+    # Items are in reverse order (LIFO), so reverse them
+    items.reverse()
+
+    # Format each item as a blockquote line
+    result_parts = []
+    for item in items:
+        result_parts.append(f"> {item}\n")
+
+    result = ''.join(result_parts)
+
+    # Add final blank line
+    result += "\n"
+
+    # Push Void sentinel back first, then result (LIFO order)
+    vm.al.append(Void)
+    vm.al.append(result)
+
+
+def drain_and_format_code_block_builtin(vm):
+    """
+    >use.md.drain.code builtin - Drain AL until Void, format as code block.
+
+    AL before: [void, line1, line2, ..., lineN, language, ...]
+    AL after: ["```lang\nline1\nline2\n...\n```\n\n", void, ...]
+
+    Language can be Nil or empty string for no language specification.
+    """
+    from soma.vm import Void, VoidSingleton, NilSingleton
+
+    # Pop language parameter
+    if len(vm.al) < 1:
+        raise RuntimeError("AL underflow: md.code requires language parameter")
+    language = vm.al.pop()
+
+    # Check if language is Nil or empty
+    is_nil = isinstance(language, NilSingleton)
+    is_empty = (not is_nil) and (str(language) == "")
+    has_language = not (is_nil or is_empty)
+
+    # Pop lines until Void
+    lines = []
+    while True:
+        if len(vm.al) < 1:
+            raise RuntimeError("AL underflow: md.code requires Void terminator")
+
+        item = vm.al.pop()
+
+        if isinstance(item, VoidSingleton):
+            break
+
+        lines.append(str(item))
+
+    # Lines are in reverse order (LIFO), so reverse them
+    lines.reverse()
+
+    # Build code block
+    result_parts = []
+
+    # Opening triple backticks with optional language
+    if has_language:
+        result_parts.append(f"```{language}\n")
+    else:
+        result_parts.append("```\n")
+
+    # Add each line
+    for line in lines:
+        result_parts.append(f"{line}\n")
+
+    # Closing triple backticks
+    result_parts.append("```\n\n")
+
+    result = ''.join(result_parts)
+
+    # Push Void sentinel back first, then result (LIFO order)
+    vm.al.append(Void)
+    vm.al.append(result)
+
+
 def nest_builtin(vm):
     """
     >use.md.nest builtin - Push current items onto nesting stack and increase depth.
@@ -416,6 +518,8 @@ def register(vm):
     vm.register_extension_builtin('use.md.drain.ul', drain_and_format_ul_builtin)
     vm.register_extension_builtin('use.md.drain.ol', drain_and_format_ol_builtin)
     vm.register_extension_builtin('use.md.drain.p', drain_and_format_paragraphs_builtin)
+    vm.register_extension_builtin('use.md.drain.q', drain_and_format_blockquote_builtin)
+    vm.register_extension_builtin('use.md.drain.code', drain_and_format_code_block_builtin)
     vm.register_extension_builtin('use.md.nest', nest_builtin)
     vm.register_extension_builtin('use.md.table.drain.cells', drain_and_collect_cells_builtin)
 

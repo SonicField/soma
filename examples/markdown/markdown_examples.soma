@@ -98,7 +98,10 @@ and each becomes its own paragraph with proper spacing!)
 (Mixed Formatting)
 >md.h3
 
-(Everything composes: ) (bold) >b (, ) (italic) >i (, and ) (a link) (https://soma-lang.org) >md.l ( in one paragraph!) >md.t
+(Everything composes: ) (bold) >b (, ) (italic) >i (, ) (code) >c (, and ) (a link) (https://soma-lang.org) >md.l ( in one paragraph!) >md.t
+>md.p
+
+(You can use ) (inline code) >c ( to reference ) (variable names) >c ( or ) (function calls) >c ( in text.) >md.t
 >md.p
 
 ) ============================================================================
@@ -267,6 +270,68 @@ Here's an example with unordered outer and ordered inner:)
 >md.table.row
 >md.table
 
+) ============================================================================
+) Blockquotes
+) ============================================================================
+
+(Blockquotes)
+>md.h2
+
+(Simple Blockquote)
+>md.h3
+
+(Blockquotes are great for highlighting important information:)
+>md.p
+
+(This is a notable quote or important callout.)
+>md.q
+
+(Multi-line Blockquotes)
+>md.h3
+
+(You can create longer blockquotes with multiple lines:)
+>md.p
+
+(The SOMA markdown extension makes document generation simple.)
+(Each line becomes part of the same blockquote block.)
+(Perfect for extended quotes or callouts.)
+>md.q
+
+) ============================================================================
+) Code Blocks
+) ============================================================================
+
+(Code Blocks)
+>md.h2
+
+(Code Without Language)
+>md.h3
+
+(For generic code snippets without syntax highlighting:)
+>md.p
+
+(function greet)
+(  echo Hello World)
+Nil >md.code
+
+(Code With Language)
+>md.h3
+
+(Specify the language for proper syntax highlighting:)
+>md.p
+
+(def fibonacci n)
+(  return 1 if n <= 1)
+(  fibonacci n-1 plus fibonacci n-2)
+(ruby) >md.code
+
+(Another example in Python:)
+>md.p
+
+(def factorial n)
+(  return 1 if n == 0 else n times factorial n-1)
+(python) >md.code
+
 >md.hr
 
 ) ============================================================================
@@ -305,10 +370,13 @@ Here's an example with unordered outer and ordered inner:)
 (The extension has comprehensive test coverage:)
 >md.p
 
-(28 total tests passing)
+(38 total tests passing)
 (5 table tests covering all table features)
-(6 inline formatting tests)
+(7 inline formatting tests including inline code)
 (5 nesting tests covering complex scenarios)
+(2 blockquote tests)
+(3 code block tests with and without language)
+(2 horizontal rule tests)
 (100% of implemented features tested)
 (TDD approach throughout development)
 >md.ul
@@ -322,11 +390,9 @@ Here's an example with unordered outer and ordered inner:)
 
 (This document demonstrates all features of the SOMA markdown extension.
 The syntax is lightweight and readable while remaining pure SOMA code.
-The nesting stack architecture enables arbitrary depth nesting with mixed list types,
-making it suitable for complex document structures.)
-
-(Next steps include additional block elements like code blocks,
-blockquotes, and horizontal rules.)
+The extension supports headings, paragraphs, lists with arbitrary nesting,
+inline formatting including code, blockquotes, code blocks with syntax highlighting,
+tables with alignment, and horizontal rules - everything needed for rich technical documentation.)
 >md.p
 
 ) ============================================================================

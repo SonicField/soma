@@ -92,6 +92,32 @@
   Void
 } !md.p
 
+) Blockquote - each string becomes a quoted line
+{
+  >use.md.drain.q
+  !_.text
+
+  md.state.doc !_.doc
+  Void _.doc _.text (soma.extensions.soma_markdown.string_concat_all) >use.python.call
+  !_.exc !_.new_doc
+  _.new_doc !md.state.doc
+
+  Void
+} !md.q
+
+) Code block - formats lines as fenced code block with optional language
+{
+  >use.md.drain.code
+  !_.text
+
+  md.state.doc !_.doc
+  Void _.doc _.text (soma.extensions.soma_markdown.string_concat_all) >use.python.call
+  !_.exc !_.new_doc
+  _.new_doc !md.state.doc
+
+  Void
+} !md.code
+
 ) Horizontal rule - inserts --- separator
 {
   md.state.doc !_.doc
@@ -125,6 +151,16 @@
   !_.exc !_.result
   _.result
 } !i
+
+) Inline code - wraps text in `text`
+{
+  !_.text
+  (`) !_.prefix
+  (`) !_.suffix
+  Void _.prefix _.text _.suffix (soma.extensions.soma_markdown.string_concat_all) >use.python.call
+  !_.exc !_.result
+  _.result
+} !c
 
 ) Link - creates [text](url)
 {

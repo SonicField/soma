@@ -683,6 +683,28 @@ class TestMarkdownStage6(unittest.TestCase):
         finally:
             os.unlink(temp_path)
 
+    def test_inline_code(self):
+        """Test inline code formatting."""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False) as f:
+            temp_path = f.name
+
+        try:
+            code = f"""
+            (python) >use
+            (markdown) >use
+
+            >md.start
+            (Use the ) (print) >c ( function in Python.) >md.t
+            >md.p
+            ({temp_path}) >md.render
+            """
+            run_soma_program(code)
+
+            content = Path(temp_path).read_text()
+            self.assertEqual(content, "Use the `print` function in Python.\n\n")
+        finally:
+            os.unlink(temp_path)
+
 
 class TestMarkdownStage7(unittest.TestCase):
     """Test cases for markdown extension - Stage 7: Tables."""
@@ -957,6 +979,147 @@ class TestMarkdownStage8(unittest.TestCase):
             pipe_count = separator_line.count('|')
             self.assertEqual(pipe_count, 4,  # 3 columns + 1 = 4 pipes
                 f"Expected 4 pipes in separator, got {pipe_count}")
+        finally:
+            os.unlink(temp_path)
+
+
+class TestMarkdownStage9(unittest.TestCase):
+    """Test cases for markdown extension - Stage 9: Blockquotes and Code Blocks."""
+
+    def test_simple_blockquote(self):
+        """Test simple blockquote."""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False) as f:
+            temp_path = f.name
+
+        try:
+            code = f"""
+            (python) >use
+            (markdown) >use
+
+            >md.start
+            (This is a quote.) >md.q
+            ({temp_path}) >md.render
+            """
+            run_soma_program(code)
+
+            content = Path(temp_path).read_text()
+            self.assertEqual(content, "> This is a quote.\n\n")
+        finally:
+            os.unlink(temp_path)
+
+    def test_multi_line_blockquote(self):
+        """Test blockquote with multiple lines."""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False) as f:
+            temp_path = f.name
+
+        try:
+            code = f"""
+            (python) >use
+            (markdown) >use
+
+            >md.start
+            (First line of quote)
+            (Second line of quote)
+            (Third line of quote)
+            >md.q
+            ({temp_path}) >md.render
+            """
+            run_soma_program(code)
+
+            content = Path(temp_path).read_text()
+            expected = (
+                "> First line of quote\n"
+                "> Second line of quote\n"
+                "> Third line of quote\n\n"
+            )
+            self.assertEqual(content, expected)
+        finally:
+            os.unlink(temp_path)
+
+    def test_code_block_no_language(self):
+        """Test code block without language specification."""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False) as f:
+            temp_path = f.name
+
+        try:
+            code = f"""
+            (python) >use
+            (markdown) >use
+
+            >md.start
+            (def hello)
+            (  return 42)
+            Nil >md.code
+            ({temp_path}) >md.render
+            """
+            run_soma_program(code)
+
+            content = Path(temp_path).read_text()
+            expected = (
+                "```\n"
+                "def hello\n"
+                "  return 42\n"
+                "```\n\n"
+            )
+            self.assertEqual(content, expected)
+        finally:
+            os.unlink(temp_path)
+
+    def test_code_block_with_language(self):
+        """Test code block with language specification."""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False) as f:
+            temp_path = f.name
+
+        try:
+            code = f"""
+            (python) >use
+            (markdown) >use
+
+            >md.start
+            (def greet name)
+            (  puts "Hello")
+            (ruby) >md.code
+            ({temp_path}) >md.render
+            """
+            run_soma_program(code)
+
+            content = Path(temp_path).read_text()
+            expected = (
+                "```ruby\n"
+                "def greet name\n"
+                "  puts \"Hello\"\n"
+                "```\n\n"
+            )
+            self.assertEqual(content, expected)
+        finally:
+            os.unlink(temp_path)
+
+    def test_code_block_empty_string_language(self):
+        """Test code block with empty string for language (same as Nil)."""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False) as f:
+            temp_path = f.name
+
+        try:
+            code = f"""
+            (python) >use
+            (markdown) >use
+
+            >md.start
+            (line 1)
+            (line 2)
+            () >md.code
+            ({temp_path}) >md.render
+            """
+            run_soma_program(code)
+
+            content = Path(temp_path).read_text()
+            expected = (
+                "```\n"
+                "line 1\n"
+                "line 2\n"
+                "```\n\n"
+            )
+            self.assertEqual(content, expected)
         finally:
             os.unlink(temp_path)
 

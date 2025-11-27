@@ -30,7 +30,9 @@ A complete markdown document generator showcasing:
 - Headings (H1, H2, H3, H4)
 - Paragraphs with multi-line support
 - Lists (ordered & unordered) with arbitrary nesting
-- Inline formatting (bold, italic, links)
+- Inline formatting (bold, italic, inline code, links)
+- Blockquotes (single and multi-line)
+- Code blocks (with optional syntax highlighting)
 - Tables with column alignment
 - Horizontal rules
 
