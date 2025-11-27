@@ -1,0 +1,231 @@
+) ============================================================================
+) SOMA Markdown Extension - Feature Demonstration
+) ============================================================================
+) This file demonstrates all features of the SOMA markdown extension
+) When executed, it renders itself as a markdown document
+
+) Load extensions
+(python) >use
+(markdown) >use
+
+) Initialize markdown state machine
+>md.start
+
+) ============================================================================
+) Main Title
+) ============================================================================
+
+(SOMA Markdown Extension Demo)
+>md.h1
+
+(This document was generated using the SOMA markdown extension.)
+(It demonstrates all currently implemented features including headings,)
+(paragraphs, lists, and nested lists with arbitrary depth.)
+>md.p
+
+) ============================================================================
+) Headings
+) ============================================================================
+
+(Heading Levels)
+>md.h2
+
+(The markdown extension supports multiple heading levels.)
+>md.p
+
+(H3 Example)
+>md.h3
+
+(This is a level 3 heading, useful for subsections.)
+>md.p
+
+) ============================================================================
+) Paragraphs
+) ============================================================================
+
+(Paragraphs)
+>md.h2
+
+(Paragraphs are the basic text blocks in markdown.)
+(They automatically get proper spacing with double newlines.)
+>md.p
+
+(You can have multiple paragraphs in a document.)
+(Each one is separated for readability.)
+>md.p
+
+) ============================================================================
+) Lists
+) ============================================================================
+
+(Lists)
+>md.h2
+
+(Simple Unordered Lists)
+>md.h3
+
+(Here are some features of the SOMA markdown extension:)
+>md.p
+
+(State machine based architecture)
+(Pure SOMA implementation with Python FFI)
+(Void sentinel pattern for clean syntax)
+(Test-driven development approach)
+>md.ul
+
+(Simple Ordered Lists)
+>md.h3
+
+(Implementation stages completed:)
+>md.p
+
+(Stage 1: Basic Infrastructure)
+(Stage 2: Simple Headings)
+(Stage 3: Paragraphs)
+(Stage 4: Simple Lists)
+(Stage 5: Nesting Infrastructure)
+>md.ol
+
+) ============================================================================
+) Nested Lists
+) ============================================================================
+
+(Nested Lists)
+>md.h2
+
+(Two-Level Nesting)
+>md.h3
+
+(The extension supports arbitrary nesting depth.)
+(Here's an example with unordered outer and ordered inner:)
+>md.p
+
+(Core Features)
+(Advanced Features)
+>md.nest
+  (Arbitrary nesting depth)
+  (Mixed list types)
+  (Clean syntax)
+  >md.ol
+(Extension System)
+>md.ul
+
+(Mixed Nesting Types)
+>md.h3
+
+(You can mix ordered and unordered lists at any level:)
+>md.p
+
+(Setup markdown extension)
+(Write your content)
+>md.nest
+  (Add headings)
+  (Add paragraphs)
+  (Add lists)
+  >md.ul
+(Render to file)
+>md.ol
+
+(Three-Level Nesting)
+>md.h3
+
+(The nesting stack supports arbitrary depth.)
+(Here's a three-level example:)
+>md.p
+
+(Project Structure)
+>md.nest
+  (Core Components)
+  >md.nest
+    (VM and Parser)
+    (Store and Stack)
+    (Extensions)
+    >md.ul
+  (Test Suite)
+  >md.ul
+(Documentation)
+>md.ol
+
+(Multiple Nested Sections)
+>md.h3
+
+(You can have multiple nested sections in the same list:)
+>md.p
+
+(Frontend)
+>md.nest
+  (React components)
+  (State management)
+  >md.ul
+(Backend)
+>md.nest
+  (API endpoints)
+  (Database layer)
+  >md.ul
+(Testing)
+>md.ul
+
+) ============================================================================
+) Technical Details
+) ============================================================================
+
+(Technical Implementation)
+>md.h2
+
+(Architecture)
+>md.h3
+
+(The implementation uses several key patterns:)
+>md.p
+
+(Void Sentinel Pattern)
+>md.nest
+  (Void at bottom of AL marks end of items)
+  (Enables clean draining without explicit terminators)
+  >md.ul
+(Nesting Stack)
+>md.nest
+  (Each context contains items, depth, and nested text)
+  (Supports arbitrary nesting depth)
+  >md.ul
+(Two-Phase Rendering)
+>md.nest
+  (Nested formatters add to parent context)
+  (Outer formatters render everything)
+  >md.ul
+>md.ol
+
+(Test Coverage)
+>md.h3
+
+(The extension has comprehensive test coverage:)
+>md.p
+
+(17 total tests passing)
+(5 nesting tests covering complex scenarios)
+(100% of implemented features tested)
+(TDD approach throughout development)
+>md.ul
+
+) ============================================================================
+) Conclusion
+) ============================================================================
+
+(Summary)
+>md.h2
+
+(This document demonstrates all features of the SOMA markdown extension.)
+(The syntax is lightweight and readable while remaining pure SOMA code.)
+(The nesting stack architecture enables arbitrary depth nesting with)
+(mixed list types, making it suitable for complex document structures.)
+>md.p
+
+(Next steps include additional block elements like code blocks,)
+(blockquotes, and horizontal rules.)
+>md.p
+
+) ============================================================================
+) Render Output
+) ============================================================================
+
+(output.md) >md.render

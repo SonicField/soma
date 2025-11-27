@@ -1,0 +1,160 @@
+) ============================================================================
+) Markdown Extension - Pure SOMA Implementation
+) ============================================================================
+) Provides markdown generation with state machine and nesting support
+
+) Note: >md.drain.join is registered as a Python builtin in markdown.py
+
+) Initialize state machine and push Void sentinel
+{
+  () !md.state.doc        ) Accumulated document (empty string)
+
+  ) Create empty stack for nesting
+  Void (soma.extensions.soma_markdown.list_new) >use.python.call
+  !_.exception !_.stack
+  _.stack !md.state.stack
+
+  0 !md.state.depth       ) Nesting depth starts at 0
+
+  Void                     ) Push Void sentinel to bottom of AL
+} !md.start
+
+) H1 heading
+{
+  ( ) >use.md.drain.join
+  !_.text
+
+  ) Create markdown: "# text\n\n"
+  md.state.doc !_.doc
+  Void _.doc (# ) _.text (\a\\a\) (soma.extensions.soma_markdown.string_concat_all) >use.python.call
+  !_.exc !_.new_doc
+  _.new_doc !md.state.doc
+
+  Void  ) Push sentinel back
+} !md.h1
+
+) H2 heading
+{
+  ( ) >use.md.drain.join
+  !_.text
+
+  md.state.doc !_.doc
+  Void _.doc (## ) _.text (\a\\a\) (soma.extensions.soma_markdown.string_concat_all) >use.python.call
+  !_.exc !_.new_doc
+  _.new_doc !md.state.doc
+
+  Void
+} !md.h2
+
+) H3 heading
+{
+  ( ) >use.md.drain.join
+  !_.text
+
+  md.state.doc !_.doc
+  Void _.doc (### ) _.text (\a\\a\) (soma.extensions.soma_markdown.string_concat_all) >use.python.call
+  !_.exc !_.new_doc
+  _.new_doc !md.state.doc
+
+  Void
+} !md.h3
+
+) Paragraph
+{
+  ( ) >use.md.drain.join
+  !_.text
+
+  md.state.doc !_.doc
+  Void _.doc _.text (\a\\a\) (soma.extensions.soma_markdown.string_concat_all) >use.python.call
+  !_.exc !_.new_doc
+  _.new_doc !md.state.doc
+
+  Void
+} !md.p
+
+) Unordered list
+{
+  ) Push depth and stack onto AL for builtin
+  md.state.depth md.state.stack
+  >use.md.drain.ul
+  !_.list_text !_.new_depth !_.new_stack
+
+  ) Update state with new depth and stack
+  _.new_depth !md.state.depth
+  _.new_stack !md.state.stack
+
+  ) Append list text to document
+  md.state.doc !_.doc
+  Void _.doc _.list_text (soma.extensions.soma_markdown.string_concat_all) >use.python.call
+  !_.exc !_.new_doc
+  _.new_doc !md.state.doc
+
+  Void
+} !md.ul
+
+) Ordered list
+{
+  ) Push depth and stack onto AL for builtin
+  md.state.depth md.state.stack
+  >use.md.drain.ol
+  !_.list_text !_.new_depth !_.new_stack
+
+  ) Update state with new depth and stack
+  _.new_depth !md.state.depth
+  _.new_stack !md.state.stack
+
+  ) Append list text to document
+  md.state.doc !_.doc
+  Void _.doc _.list_text (soma.extensions.soma_markdown.string_concat_all) >use.python.call
+  !_.exc !_.new_doc
+  _.new_doc !md.state.doc
+
+  Void
+} !md.ol
+
+) Nesting - saves items as pending and increases depth (GENERIC - does not render)
+{
+  >use.md.nest
+  ) Builtin handles everything: drains AL, saves to md.state.pending, increases md.state.depth
+  ) Void is already back on AL
+} !md.nest
+
+) Render final document to file
+{
+  !_.filename
+
+  ) Get accumulated document
+  md.state.doc
+  !_.content
+
+  ) Write to file using Python FFI
+  Void _.filename _.content (soma.extensions.soma_markdown.write_file) >use.python.call
+  !_.exception !_.result
+
+  ) Check if write succeeded
+  _.
+  _.exception >isVoid
+  {
+    ) Success - clean up state
+    >{
+      !_.
+      () !md.state.doc
+
+      Void (soma.extensions.soma_markdown.list_new) >use.python.call
+      !_.exc !_.empty_list
+      _.empty_list !md.state.stack
+
+      0 !md.state.depth
+    }
+  }
+  {
+    ) Error
+    >{
+      !_.
+      (Error writing markdown file: ) >print
+      _.exception >print
+      _.exception >drop
+    }
+  }
+  >choose >^
+} !md.render
