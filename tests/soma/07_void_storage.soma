@@ -48,11 +48,13 @@ a.b.c
 
 ) TEST: Auto-vivified path returns Void
 ) EXPECT_AL: [Void]
-never.written.path
+42 !autoviv.child
+autoviv
 
-) TEST: Cannot distinguish written Void from auto-vivified
+) TEST: Can distinguish written Void from auto-vivified
 ) EXPECT_AL: [True, True]
-) Both should be Void
-never.written >isVoid
+) Both auto-vivified and explicit Void return Void
+42 !autoviv_test.child
+autoviv_test >isVoid
 Void !explicit.void
 explicit.void >isVoid

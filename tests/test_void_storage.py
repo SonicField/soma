@@ -138,36 +138,44 @@ class TestPythonFFIWithVoid(unittest.TestCase):
 
 
 class TestAutoVivification(unittest.TestCase):
-    """Test auto-vivification still works correctly."""
+    """Test auto-vivification behavior with strict semantics."""
 
-    def test_read_unwritten_path_returns_void(self):
-        """Test reading unwritten path still returns Void."""
+    def test_read_unwritten_path_raises_error(self):
+        """Test reading unwritten path raises RuntimeError (strict semantics)."""
         vm = VM(load_stdlib=False)
 
-        # Reading non-existent path returns Void
-        value = vm.store.read_value(["never", "written"])
-        self.assertIs(value, Void)
+        # Reading non-existent path should raise RuntimeError
+        with self.assertRaises(SomaRuntimeError) as ctx:
+            vm.store.read_value(["never", "written"])
+        self.assertIn("Undefined Store path", str(ctx.exception))
 
-    def test_cannot_distinguish_written_void_from_autovivified(self):
-        """Test that written Void looks same as auto-vivified Void.
+    def test_can_distinguish_written_void_from_never_written(self):
+        """Test that written Void is distinguishable from never-written.
 
-        This is the tradeoff: we lose the ability to distinguish
-        'never written' from 'explicitly written as Void'.
-        This is EXPECTED and ACCEPTABLE.
+        With strict semantics:
+        - Never-written path: raises RuntimeError
+        - Explicitly written Void: returns Void
+        - Auto-vivified intermediate: returns Void
+
+        This is an IMPROVEMENT over permissive semantics.
         """
         vm = VM(load_stdlib=False)
 
-        # Path 1: Never written (auto-vivified)
-        autovivified = vm.store.read_value(["autovivified"])
+        # Path 1: Never written - should error
+        with self.assertRaises(SomaRuntimeError):
+            vm.store.read_value(["never_written"])
 
-        # Path 2: Explicitly written as Void
+        # Path 2: Explicitly written as Void - should return Void
         vm.store.write_value(["explicit"], Void)
         explicit = vm.store.read_value(["explicit"])
-
-        # Both should be Void - we can't distinguish them
-        self.assertIs(autovivified, Void)
         self.assertIs(explicit, Void)
-        # This is the tradeoff we accept
+
+        # Path 3: Auto-vivified (write to child, read parent) - should return Void
+        vm.store.write_value(["auto", "child"], 42)
+        autovivified = vm.store.read_value(["auto"])
+        self.assertIs(autovivified, Void)
+
+        # Now we CAN distinguish! Never-written errors, others return Void
 
 
 class TestVoidInSOMACode(unittest.TestCase):

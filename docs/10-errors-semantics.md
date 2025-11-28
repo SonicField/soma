@@ -204,8 +204,10 @@ Nil !person.middle_name         ; Explicitly no middle name
 person.middle_name              ; Nil — explicitly set to empty
 person.middle_name >isVoid      ; False — has been set
 
-person.spouse                   ; Void — never set
-person.spouse >isVoid           ; True — never initialized
+; To check for undefined fields, initialize first:
+Nil !person.spouse              ; Initialize as Nil (no spouse)
+person.spouse                   ; Nil — can now read safely
+person.spouse >isVoid           ; False — has been set (to Nil)
 ```
 
 **Key insight:** Auto-vivification creates **structural scaffolding** with Void payload. You can later set these cells explicitly if needed, changing them from Void to whatever value you choose.
@@ -241,6 +243,9 @@ The following conditions cause **fatal errors**:
 | Register Access After Block Ends | Accessing Register after block completes | `>{23 !_.x} _.x >print` |
 | Malformed Token | Invalid syntax | `"unterminated` |
 | Invalid Built-in Contract | Built-in called with wrong AL state | `>dup` when AL is empty |
+| Undefined Path Read | Reading path that was never created | `x.y.z` when x was never written |
+
+**Note on strict read semantics:** SOMA now errors when reading undefined paths. Auto-vivified paths (created during writes) CAN be read and return Void. See Section 3.1 for details.
 
 #### 2.1.1 AL Underflow
 Attempting to pop a value when the AL is empty, or when fewer values are present than required by an operation.
@@ -451,47 +456,208 @@ When a block completes execution, its Register is destroyed. Attempting to read 
 - Store blocks/values in the Store (global state): `{ ... } !my_function`
 - Return values via the AL before block completes
 
+#### 2.1.10 Undefined Path Read (Strict Semantics)
+
+SOMA uses **strict read semantics**: Reading a path that was never created is a fatal error.
+
+**Store path example:**
+```soma
+x.y.z             ; Fatal: RuntimeError: "Undefined Store path: 'x'"
+                  ; Path 'x' was never created
+```
+
+**Register path example:**
+```soma
+>{
+  _.counter       ; Fatal: RuntimeError: "Undefined Register path: '_.counter'"
+                  ; Register path '_.counter' was never written
+}
+```
+
+**Auto-vivified paths are NOT errors:**
+```soma
+42 !a.b.c         ; Auto-vivifies a and a.b with Void payload
+a.b               ; NOT an error — returns Void (cell was auto-created)
+a                 ; NOT an error — returns Void (cell was auto-created)
+```
+
+**Key distinction:**
+- Reading **undefined path** (never created) → Fatal error
+- Reading **auto-vivified path** (created during write) → Returns Void (no error)
+
+**Error messages are helpful:**
+```
+RuntimeError: Undefined Store path: 'config.theme'
+  Path was never set. Did you mean to:
+    - Initialize it first: () !config.theme
+    - Set a nested value: <value> !config.theme.<child>
+```
+
+**Why this is an error:**
+- Catches typos immediately (e.g., `config.timout` vs `config.timeout`)
+- Makes uninitialized access explicit (no silent Void returns)
+- Forces proper initialization patterns
+
+**Correct alternatives** (see Section 3.1 for details):
+- Initialize paths before reading: `Nil !config.theme`
+- Write to nested paths (auto-vivifies parents): `42 !data.nested.value`
+
 ## 3. Non-Fatal Conditions
 
 The following conditions are **NOT fatal** and must be handled by program logic:
 
+**Note:** Reading undefined paths (paths that were never created) is now a **fatal error** (see Section 2.1.10). Only auto-vivified cells can be read and return Void.
+
 ### 3.1 Reading Void (Never-Set Cells)
 
-Reading a path that was never explicitly set returns Void. This is a **normal, non-error operation**.
+**SOMA uses strict read semantics**: Reading a path that was never created raises a **RuntimeError**.
 
-This includes:
-- Reading paths that don't exist: `x.y.z` when x.y.z was never created
-- Reading auto-vivified intermediate cells: `a.b` after `42 !a.b.c`
+However, **auto-vivified cells CAN be read** and return Void. Auto-vivification happens when you write to a nested path — intermediate cells are created with Void payload.
+
+**Two cases:**
+
+1. **Undefined path (never created)** → RuntimeError
+2. **Auto-vivified path (created during write)** → Returns Void
+
+#### 3.1.1 Reading Undefined Paths (Error)
+
+Attempting to read a path that was never created raises a helpful error:
 
 ```soma
 ; Reading non-existent path
-x.y.z             ; If x.y.z doesn't exist, AL = [Void]
-                  ; No error — Void is a valid value on the AL
+x.y.z             ; RuntimeError: "Undefined Store path: 'x'"
+                  ; Path was never set. Did you mean to:
+                  ;   - Initialize it first: () !x
+                  ;   - Set a nested value: <value> !x.y.z
 
-; Reading auto-vivified cell
-42 !a.b.c         ; Creates a (Void), a.b (Void), a.b.c (42)
-a.b               ; AL = [Void] — no error, just means "never set"
-a                 ; AL = [Void] — no error
+; This catches typos:
+42 !config.timeout
+config.timout     ; RuntimeError: "Undefined Store path: 'config.timout'"
+                  ; (typo: 'timout' vs 'timeout')
 ```
 
-This allows programs to test for existence and distinguish "never set" from "set to empty":
+**Register paths also error on undefined reads:**
 
 ```soma
-config.user.name
-Void >==
-  { (No user configured) >print }
-  { config.user.name >toString >print }
+>{
+  _.counter       ; RuntimeError: "Undefined Register path: '_.counter'"
+                  ; Register paths must be written before reading.
+                  ; Did you forget: <value> !_.counter?
+}
+```
+
+#### 3.1.2 Reading Auto-Vivified Cells (Returns Void)
+
+When you write to a nested path, SOMA creates intermediate cells automatically. These **auto-vivified cells can be read** and return Void:
+
+```soma
+; Writing to nested path auto-vivifies parents
+42 !a.b.c         ; Creates a (Void), a.b (Void), a.b.c (42)
+
+; Auto-vivified cells CAN be read (they exist!)
+a.b               ; AL = [Void] — auto-vivified, never explicitly set
+a                 ; AL = [Void] — auto-vivified, never explicitly set
+a.b.c             ; AL = [42] — explicitly set
+```
+
+**The key distinction:**
+- `x.y.z` where `x` was never created → **RuntimeError**
+- `a.b` where `a.b.c` was written → **Returns Void** (a and a.b were auto-vivified)
+
+#### 3.1.3 Safe Patterns for Optional Values
+
+**Pattern 1: Initialize before reading**
+```soma
+; Always initialize optional paths
+Nil !config.theme         ; Explicitly set to empty
+config.theme              ; AL = [Nil] — safe to read
+```
+
+**Pattern 2: Write nested values (auto-vivifies parents)**
+```soma
+; Writing nested values makes parents readable
+() !user.profile.email    ; Auto-vivifies 'user' and 'user.profile'
+
+user.profile              ; AL = [Void] — safe, was auto-vivified
+user.profile.email        ; AL = [()] — explicitly set
+```
+
+**Pattern 3: Check with >isVoid before reading**
+```soma
+; This pattern NO LONGER WORKS (can't read undefined path)
+; config.theme >isVoid    ; ERROR if config.theme was never created!
+
+; CORRECT: Write a default first, then check
+Nil !config.theme         ; Initialize with Nil
+config.theme >isVoid      ; Safe to check (path exists)
+  { (default-theme) !config.theme }
+  { }
 >ifelse
 ```
 
-**Key distinction:**
+**Key distinction between Nil and Void:**
 ```soma
-Nil !settings.theme         ; Explicitly set to empty
-settings.theme              ; AL = [Nil] — was set (to empty)
+Nil !settings.theme       ; Explicitly set to empty
+settings.theme            ; AL = [Nil] — was set (to empty)
+settings.theme >isVoid    ; False — has been set
 
-unset.path                  ; Never set
-unset.path                  ; AL = [Void] — never initialized
+; Auto-vivified (from writing to child)
+42 !data.nested.value
+data.nested               ; AL = [Void] — auto-vivified
+data.nested >isVoid       ; True — never explicitly set
 ```
+
+### 3.1.4 When Strict Read Errors Occur
+
+**Error case summary:**
+
+| Operation | Path Status | Result |
+|-----------|-------------|--------|
+| `x` | Never created | RuntimeError: "Undefined Store path: 'x'" |
+| `x.y` | x never created | RuntimeError: "Undefined Store path: 'x'" |
+| `x.y` | x auto-vivified | Returns Void (x exists from prior write) |
+| `_.x` | Register, never written | RuntimeError: "Undefined Register path: '_.x'" |
+| `_.x` | Register, auto-vivified | Returns Void (_.x exists from prior write) |
+
+**Error message format (Store):**
+```
+RuntimeError: Undefined Store path: 'config.theme'
+  Path was never set. Did you mean to:
+    - Initialize it first: () !config.theme
+    - Set a nested value: <value> !config.theme.<child>
+```
+
+**Error message format (Register):**
+```
+RuntimeError: Undefined Register path: '_.counter'
+  Register paths must be written before reading.
+  Did you forget: <value> !_.counter?
+```
+
+**How to fix undefined path errors:**
+
+1. **Initialize the path before reading:**
+   ```soma
+   Nil !config.optional_field    ; Initialize with Nil
+   config.optional_field          ; Safe to read now
+   ```
+
+2. **Write to a child path (auto-vivifies parent):**
+   ```soma
+   42 !data.nested.value          ; Auto-vivifies data and data.nested
+   data.nested                    ; Safe to read (was auto-vivified)
+   ```
+
+3. **Check your spelling (typos cause these errors):**
+   ```soma
+   42 !config.timeout
+   config.timout                  ; ERROR - typo detected!
+   ```
+
+**Why strict reads help:**
+- Catches typos immediately (e.g., `config.timout` vs `config.timeout`)
+- Makes uninitialized access explicit (no silent Void returns)
+- Auto-vivified paths still work (sparse structures preserved)
 
 ### 3.2 Nil Values
 Reading a Cell that contains Nil returns Nil. This is a **valid payload** and not an error.
@@ -905,13 +1071,19 @@ Effect:        AL' = [Cell(path).value, ...]
                (subpaths are NOT read or affected)
 ```
 
-**Rule R2: Value Read (Cell Does Not Exist)**
+**Rule R2: Value Read (Cell Does Not Exist) — STRICT SEMANTICS**
 ```
 Precondition:  Cell(path) does not exist
 Token:         path (Store)
                _.path (Register)
-Effect:        AL' = [Void, ...]
-               No error
+Effect:        RuntimeError: "Undefined Store path: '{path}'"
+            or RuntimeError: "Undefined Register path: '_.{path}'"
+               Thread halts immediately
+               No AL modification
+
+Note: This is a FATAL ERROR, not a non-fatal condition.
+      Reading undefined paths is now an error (strict semantics).
+      Auto-vivified cells CAN be read (they exist, return Void).
 ```
 
 **Rule R3: CellRef Read (Cell Exists)**
@@ -922,13 +1094,18 @@ Token:         path. (Store)
 Effect:        AL' = [CellRef(path), ...]
 ```
 
-**Rule R4: CellRef Read (Cell Does Not Exist)**
+**Rule R4: CellRef Read (Cell Does Not Exist) — STRICT SEMANTICS**
 ```
 Precondition:  Cell(path) does not exist
 Token:         path. (Store)
                _.path. (Register)
-Effect:        AL' = [Void, ...]
-               No error
+Effect:        RuntimeError: "Undefined Store path: '{path}'"
+            or RuntimeError: "Undefined Register path: '_.{path}'"
+               Thread halts immediately
+               No AL modification
+
+Note: This is a FATAL ERROR, not a non-fatal condition.
+      CellRef operations on undefined paths also error (strict semantics).
 ```
 
 ### 5.3 Cell Creation Rules
@@ -1079,15 +1256,23 @@ config.theme Nil >==
 >ifelse
 ```
 
-### 6.2 Correct: Using Void for Existence Testing
+### 6.2 Correct: Testing for Auto-Vivified Paths
 
 ```soma
-; Test if a path exists
-user.profile.avatar
-Void >==
-  { (No avatar set) >print }
+; First, create nested structure
+(default.png) !user.profile.avatar
+
+; Parent was auto-vivified, can test it
+user.profile >isVoid
+  { (Profile never set) >print }
+  { (Profile exists) >print }
+>ifelse                          ; Prints "Profile exists" (was auto-vivified)
+
+; Child was explicitly set
+user.profile.avatar >isVoid
+  { (No avatar) >print }
   { user.profile.avatar >display }
->ifelse
+>ifelse                          ; Displays the avatar
 ```
 
 ### 6.3 Correct: Structural Deletion
@@ -1840,20 +2025,25 @@ counter 10 ><
 
 **Why it matters:**
 - **Nil** = "This was set, but to nothing" (explicit emptiness)
-- **Void** = "This was never set" (absence/uninitialized)
+- **Void** = "This was never set" (absence/uninitialized) — **only exists for auto-vivified cells**
 
-**❌ WRONG - Testing existence incorrectly:**
+**❌ WRONG - Reading undefined paths:**
 ```soma
-Nil !config.theme             ; Explicitly set to empty
-config.theme Void >==         ; False! It was set (to Nil)
+config.theme >isVoid         ; RuntimeError if config.theme was never created!
+                             ; Can't check if path exists without creating it first
 ```
 
-**✅ RIGHT - Use `>isVoid` to test "never set":**
+**✅ RIGHT - Initialize first, then check:**
 ```soma
+; Initialize optional field with Nil
 Nil !config.theme             ; Explicitly set to empty
-config.theme >isVoid          ; False — has been set
+config.theme >isVoid          ; False — has been set (to Nil)
 
-unset.path >isVoid            ; True — never initialized
+; Or write to a child to auto-vivify parent
+() !config.theme.dark.background
+config.theme >isVoid          ; True — auto-vivified (never explicitly set)
+config.theme.dark >isVoid     ; True — auto-vivified
+config.theme.dark.background >isVoid  ; False — explicitly set
 ```
 
 **✅ RIGHT - Distinguish Nil from Void:**
@@ -1863,17 +2053,20 @@ Nil !person.middle_name
 person.middle_name >isVoid    ; False (was set to Nil)
 person.middle_name Nil >==    ; True
 
-; Optional field never set
-person.spouse                 ; Never stored
-person.spouse >isVoid         ; True (never initialized)
-person.spouse Nil >==         ; False (Void ≠ Nil)
+; Auto-vivified parent (from writing to child)
+() !person.contact.email
+person.contact                ; Void — auto-vivified
+person.contact >isVoid        ; True (never explicitly set)
+person.contact Nil >==        ; False (Void ≠ Nil)
 ```
 
-**Common pattern - test then handle:**
+**Common pattern - initialize then check:**
 ```soma
+; Always initialize optional paths before checking
+Nil !config.theme             ; Default to Nil
 config.theme >isVoid
-  { (default-theme) !config.theme }    ; Never set: use default
-  { }                                  ; Was set: keep current value
+  { (default-theme) !config.theme }    ; Was Void: shouldn't happen (initialized to Nil)
+  { }                                  ; Has value or Nil: keep it
 >ifelse
 
 ; Or check for explicit Nil
@@ -1954,6 +2147,8 @@ SOMA's error model is intentionally minimal and explicit:
 
 - **Fatal errors** terminate execution when machine invariants are violated
 - **Non-fatal conditions** are represented as values and handled via explicit control flow
+- **Strict read semantics** — reading undefined paths raises RuntimeError (catches typos, forces initialization)
+- **Auto-vivified paths can be read** — writing to nested paths creates intermediate cells with Void
 - **Nil** represents explicit emptiness — a value that was deliberately set to "nothing"
 - **Void** can be stored as a normal value, or represents "never set" in auto-vivified cells
 - **Auto-vivification** creates intermediate cells with Void payload (structural scaffolding)
@@ -1974,11 +2169,13 @@ SOMA's error model is intentionally minimal and explicit:
 
 This model forces programmers to handle error conditions explicitly through state inspection and branching, reflecting SOMA's philosophy that computation is observable state transformation, not hidden symbolic reduction.
 
-By preserving the strict distinction between Nil (explicitly empty) and Void (never set), ensuring Cells have independent lifetime from paths, and defining a flexible but systematic concurrency model, SOMA enables:
-- **Sparse data structures** where unset values don't consume explicit storage
-- **Semantic clarity** distinguishing "no value yet" from "intentionally empty"
-- **Inspectable state** where presence, absence, and emptiness are all observable concepts
-- **Detached data structures** that persist beyond their creation context (via CellRefs)
-- **Safe aliasing** where multiple references can coexist without dangling pointer issues
-- **Flexible concurrency** where implementations can choose appropriate memory models for their platform
+By preserving the strict distinction between Nil (explicitly empty) and Void (never set), enforcing strict reads while allowing auto-vivification, ensuring Cells have independent lifetime from paths, and defining a flexible but systematic concurrency model, SOMA enables:
+- **Typo detection** — undefined path reads immediately error, catching misspellings
+- **Explicit initialization** — paths must be written before reading (no silent undefined behavior)
+- **Sparse data structures** — auto-vivification still works, unset values don't consume explicit storage
+- **Semantic clarity** — distinguishing "no value yet" from "intentionally empty"
+- **Inspectable state** — presence, absence, and emptiness are all observable concepts
+- **Detached data structures** — persist beyond their creation context (via CellRefs)
+- **Safe aliasing** — multiple references can coexist without dangling pointer issues
+- **Flexible concurrency** — implementations can choose appropriate memory models for their platform
 

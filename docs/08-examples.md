@@ -519,10 +519,9 @@ Let's make this explicit:
 1. Outer block: `1 !_.n` stores 1 in outer Register
 2. Inner block executes with **fresh, empty Register**
 3. Inner block: `_.n` tries to read from inner Register
-4. Inner Register has no `_.n` → resolves to **Void**
-5. `>print` tries to execute Void → **FATAL ERROR**
+4. Inner Register has no `_.n` → **RuntimeError: reading undefined path**
 
-**Error:** Cannot execute Void.
+**Error:** Reading undefined Register path raises RuntimeError (strict auto-vivification).
 
 ### 6.4 ✅ RIGHT - Pass via AL
 
@@ -681,7 +680,7 @@ Let's make this explicit:
 } >chain
 ```
 
-**Problem:** Each loop iteration is a fresh block execution with fresh Register. `_.i` is reset to Void each time (or doesn't exist), causing errors.
+**Problem:** Each loop iteration is a fresh block execution with fresh Register. The inner block tries to read `_.i` which doesn't exist in its Register, causing **RuntimeError: reading undefined path**.
 
 ✅ **RIGHT - Counter in Store:**
 
@@ -1042,8 +1041,8 @@ This works for ANY value type:
 ```soma
 ) Void with children (auto-vivification)
 42 !a.b.c
-a               ) Void (auto-vivified, never explicitly set)
-a.b.c           ) 42 (traverses through Void cells)
+a               ) Void (auto-vivified by write to child, readable)
+a.b.c           ) 42 (traverses through auto-vivified Void cells)
 
 ) Int with children
 42 !node
@@ -1882,7 +1881,7 @@ You can delete Register cells using `Void !_.path.` (note the trailing dot):
   _.temp >print     ) Prints: 23
 
   Void !_.temp.     ) Delete Register cell
-  _.temp            ) Returns Void (Cell no longer accessible)
+  ) _.temp          ) RuntimeError: reading undefined path
 } >chain
 ```
 
@@ -1896,9 +1895,9 @@ You can delete Register cells using `Void !_.path.` (note the trailing dot):
 1. `23 !_.temp` creates Cell in Register with value 23
 2. `_.temp >print` reads and prints 23
 3. `Void !_.temp.` deletes the path `_.temp` from Register tree
-4. `_.temp` now returns Void (Cell no longer accessible via this path)
+4. Reading `_.temp` now raises RuntimeError (path no longer exists)
 
-**Key insight:** Register deletion uses the same syntax as Store deletion - `Void !path.` with trailing dot.
+**Key insight:** Register deletion uses the same syntax as Store deletion - `Void !path.` with trailing dot. After deletion, the path is undefined.
 
 ### 11.2 Register Deletion with CellRef
 
@@ -1977,7 +1976,7 @@ Delete entire subtrees while preserving other parts:
 
   _.tree.value >print        ) Root value still exists: 3
   _.tree.right.value >print  ) Right subtree still exists: 2
-  _.tree.left                ) Left subtree gone: Void
+  ) _.tree.left              ) RuntimeError: path deleted, undefined
 } >chain
 ```
 
@@ -1992,7 +1991,7 @@ Delete entire subtrees while preserving other parts:
 1. Built tree structure in Register with root and two subtrees
 2. `Void !_.tree.left.` deleted the entire left subtree
 3. Root (`_.tree.value`) and right subtree (`_.tree.right.value`) persist
-4. `_.tree.left` now returns Void
+4. Reading `_.tree.left` now raises RuntimeError (path was deleted)
 
 **Pattern:** Selective subtree deletion allows you to prune parts of a data structure while keeping other parts intact.
 
@@ -2004,7 +2003,7 @@ The deletion semantics are identical - only the namespace differs:
 ) Store deletion
 42 !a.b
 Void !a.b.      ) Delete path a.b from Store tree
-a.b             ) Void (Cell no longer accessible via this path)
+) a.b           ) RuntimeError: reading undefined path (deleted)
 ```
 
 ```soma
@@ -2012,11 +2011,11 @@ a.b             ) Void (Cell no longer accessible via this path)
   ) Register deletion
   42 !_.x
   Void !_.x.      ) Delete path _.x from Register tree
-  _.x             ) Void (Cell no longer accessible via this path)
+  ) _.x           ) RuntimeError: reading undefined path (deleted)
 } >chain
 ```
 
-**Key principle:** Store and Register have identical Cell structure, so all Cell operations (read, write, delete) work the same way in both.
+**Key principle:** Store and Register have identical Cell structure, so all Cell operations (read, write, delete) work the same way in both. After deletion, paths are undefined.
 
 ### 11.6 Temporary Object Pattern with Cleanup
 
@@ -2099,7 +2098,7 @@ Cache is empty
   Void !_.temp.         ) Explicitly mark as done
 
   ) Later in block...
-  _.temp >print         ) Would catch bug: prints Void
+  ) _.temp >print       ) RuntimeError: catches accidental reuse bug
 } >chain
 ```
 
@@ -2108,7 +2107,7 @@ Cache is empty
 42
 ```
 
-**Note:** The second `_.temp >print` would attempt to print Void, causing an error if Void execution isn't handled, catching the accidental reuse bug.
+**Note:** The second `_.temp >print` would raise RuntimeError (reading undefined path), immediately catching the accidental reuse bug. This is a defensive programming pattern.
 
 ### 11.9 Register Deletion Summary
 
@@ -2122,7 +2121,7 @@ Void !_.path.       ) Delete Register path
 **Both delete the path from the tree structure:**
 - Remove the edge in the tree
 - Cell persists if accessible via other paths or CellRefs
-- Returns Void when reading deleted path
+- Raises RuntimeError when reading deleted path (strict auto-vivification)
 
 **When to use Register deletion:**
 - Temporary workspace cleanup
@@ -2850,7 +2849,12 @@ Share via Store (globals) or AL (arguments/returns).
 - **Void** = "This cell has never been explicitly set" (absence, uninitialized)
 - **Nil** = "This cell has been explicitly set to empty/nothing" (presence of emptiness)
 
-### 17.1 Auto-Vivification Creates Void
+### 17.1 Auto-Vivification: Strict Semantics
+
+**CRITICAL:** SOMA uses **strict auto-vivification** semantics:
+- **Reading undefined paths raises RuntimeError**
+- **Writing to deep paths auto-vivifies intermediate cells** (creates them with Void payload)
+- **Auto-vivified cells CAN be read** and return Void
 
 When you write to a deep path, SOMA automatically creates intermediate cells with **Void** payload:
 
@@ -2859,25 +2863,39 @@ When you write to a deep path, SOMA automatically creates intermediate cells wit
 
 ) What are the payloads?
 a.b.c >print    ) Prints: 42 (explicitly set)
-a.b             ) Returns: Void (auto-vivified, never set)
-a               ) Returns: Void (auto-vivified, never set)
+a.b             ) Returns: Void (auto-vivified by write to a.b.c)
+a               ) Returns: Void (auto-vivified by write to a.b.c)
 ```
 
 **Execution trace:**
 
 1. Write `42` to path `a.b.c`
-2. Cell `a` doesn't exist → create with **Void** payload
-3. Cell `a.b` doesn't exist → create with **Void** payload
+2. Cell `a` doesn't exist → create with **Void** payload (auto-vivified)
+3. Cell `a.b` doesn't exist → create with **Void** payload (auto-vivified)
 4. Cell `a.b.c` created with payload **42**
 
 **Store state:**
 ```
-a → Cell(payload: Void, children: {...})
-  └─ b → Cell(payload: Void, children: {...})
-       └─ c → Cell(payload: 42, children: {})
+a → Cell(payload: Void, children: {...})     [auto-vivified, readable]
+  └─ b → Cell(payload: Void, children: {...}) [auto-vivified, readable]
+       └─ c → Cell(payload: 42, children: {})  [explicitly set]
 ```
 
-**Key insight:** You didn't write Void (which would be an error). SOMA created intermediate cells with Void automatically.
+**Key insights:**
+- You didn't write Void (which would be an error). SOMA created intermediate cells with Void automatically.
+- Reading `a` or `a.b` succeeds because they were auto-vivified by the write to `a.b.c`.
+- Reading a path that was never written to (directly or via child) raises RuntimeError.
+
+**Example of strict semantics (error case):**
+
+```soma
+) Try to read undefined path
+undefined_path >print    ) RuntimeError: reading undefined path
+
+) But auto-vivified paths are readable
+42 !config.deep.value
+config.deep >print       ) Void (auto-vivified, not an error)
+```
 
 ### 17.2 Void vs Nil Detection
 
@@ -2920,7 +2938,7 @@ Has been set
 
 ### 17.3 Sparse Arrays
 
-Void enables efficient sparse data structures:
+**IMPORTANT:** With strict auto-vivification, you must initialize the array structure before reading undefined indices:
 
 ```soma
 ) Create sparse array with only certain indices
@@ -2928,20 +2946,44 @@ Void enables efficient sparse data structures:
 200 !array.5
 300 !array.100
 
-) Read unset indices
-array.1             ) Returns Void (never set)
-array.2             ) Returns Void (never set)
-array.50            ) Returns Void (never set)
+) Now the array cell is auto-vivified and can be read
+array >print           ) Void (auto-vivified by writes to children)
 
-) Detect unset vs set-to-empty
+) But unset indices (that were never written) raise errors
+array.1 >print         ) RuntimeError: reading undefined path
+
+) To safely check unset indices, use defensive pattern:
+array.1 >isVoid
+  { (Index 1 is uninitialized) >print }
+  { array.1 >print }
+>ifelse
+```
+
+**Better pattern: Initialize array structure explicitly**
+
+```soma
+) Initialize array structure to enable safe sparse access
+Void !array        ) Create array cell explicitly
+
+) Now set sparse indices
+100 !array.0
+200 !array.5
+300 !array.100
+
+) Auto-vivified intermediate paths are readable
+array >print       ) Void (explicitly set)
+
+) But still can't directly read undefined children
+) array.1 >print  ) RuntimeError: reading undefined path
+
+) Safe access pattern with >isVoid check:
 array.1 >isVoid
   { (Index 1 is uninitialized) >print }
   { array.1 >print }
 >ifelse
 
-) Now explicitly set an index to Nil
+) Or initialize to Nil for "set but empty" semantics
 Nil !array.2
-
 array.2 >isVoid
   { (Index 2 is uninitialized) >print }
   { (Index 2 is explicitly Nil) >print }
@@ -2950,27 +2992,135 @@ array.2 >isVoid
 
 **Output:**
 ```
+Void
 Index 1 is uninitialized
 Index 2 is explicitly Nil
 ```
 
-**Key insight:** Unset indices return **Void** (not Nil), allowing you to distinguish "never set" from "set to empty".
+**Key patterns for sparse arrays:**
+
+1. **Auto-vivification on write:** Writing `!array.0` auto-vivifies `array`, making it readable
+2. **Undefined reads error:** Reading `array.1` (never written) raises RuntimeError
+3. **Defensive access:** Always use `>isVoid` check before reading potentially undefined paths
+4. **Explicit initialization:** Consider `Void !array` to establish structure upfront
+
+### 17.3.1 Strict Semantics: Error Cases and Defensive Patterns
+
+**Example 1: Error - Reading completely undefined path**
+
+```soma
+) This raises RuntimeError (nothing written yet):
+) unknown_var >print         ) RuntimeError: reading undefined path
+```
+
+**Example 2: Auto-vivification makes parents readable**
+
+```soma
+) Write to deep path
+100 !config.server.port
+
+) Parent paths are now auto-vivified and readable:
+config >print               ) Void (auto-vivified, legal)
+config.server >print        ) Void (auto-vivified, legal)
+config.server.port >print   ) 100 (explicitly set)
+
+) But undefined siblings still error:
+) config.client >print      ) RuntimeError: undefined path
+) config.server.host >print ) RuntimeError: undefined path
+```
+
+**Example 3: Defensive pattern with >isVoid**
+
+```soma
+) Safe sparse array access helper
+{
+  !_.index
+  array._.index >isVoid
+    { 0 }                   ) Default value for unset indices
+    { array._.index }       ) Return actual value
+  >choose
+} !safe_get
+
+) Initialize sparse array
+10 !array.0
+20 !array.3
+30 !array.7
+
+) Safe access (no errors)
+0 safe_get >chain >print    ) 10
+1 safe_get >chain >print    ) 0 (default)
+3 safe_get >chain >print    ) 20
+5 safe_get >chain >print    ) 0 (default)
+```
+
+**Output:**
+```
+Void
+Void
+100
+10
+0
+20
+0
+```
+
+**Example 4: Proper initialization pattern**
+
+```soma
+) Pattern 1: Initialize parent explicitly
+Void !data                  ) Create parent structure
+100 !data.field1
+200 !data.field2
+
+) Now can safely check children
+data.field3 >isVoid
+  { (Field 3 not set) >print }
+  { data.field3 >print }
+>ifelse
+
+) Pattern 2: Use first write to auto-vivify
+99 !cache.items.0           ) Auto-vivifies cache and cache.items
+cache >print                ) Void (auto-vivified)
+cache.items >print          ) Void (auto-vivified)
+
+) Now safe to check other indices
+cache.items.1 >isVoid
+  { (Cache index 1 empty) >print }
+  { cache.items.1 >print }
+>ifelse
+```
+
+**Output:**
+```
+Field 3 not set
+Void
+Void
+Cache index 1 empty
+```
+
+**Best practices:**
+- **Never assume paths exist** - always check with `>isVoid` first
+- **Initialize structures early** - use `Void !parent` to establish hierarchy
+- **Document auto-vivification** - make it clear which paths are auto-vivified
+- **Use defensive helpers** - wrap unsafe accesses in safe getter functions
 
 ### 17.4 Optional Fields Pattern
 
-Void vs Nil creates a three-way distinction for data:
+**IMPORTANT:** With strict auto-vivification, reading undefined fields raises RuntimeError. Use defensive patterns:
 
 ```soma
 (John) !person.name
 42 !person.age
 Nil !person.middle_name     ) Explicitly no middle name
 
-) Check fields
-person.name                 ) (John) - has value
-person.middle_name          ) Nil - explicitly empty
-person.spouse               ) Void - never set (different meaning!)
+) These reads succeed (fields were written):
+person.name >print          ) (John) - has value
+person.middle_name >print   ) Nil - explicitly empty
 
-) You can use this for validation
+) This would raise RuntimeError (field never written):
+) person.spouse >print      ) RuntimeError: reading undefined path
+
+) Safe defensive pattern with >isVoid check:
 person.middle_name >isVoid
   { (Middle name not provided) >print }
   {
@@ -2994,61 +3144,93 @@ person.spouse >isVoid
 
 **Output:**
 ```
+John
+Nil
 No middle name
 Spouse information not provided
 ```
 
-**Three states:**
-- **Has value:** Cell was set to a non-Nil value
-- **Explicitly empty (Nil):** Cell was set to Nil (intentional absence)
-- **Uninitialized (Void):** Cell was never set (unknown/not provided)
+**Three states with strict semantics:**
+- **Has value:** Cell was set to a non-Nil value → can read directly
+- **Explicitly empty (Nil):** Cell was set to Nil → can read, returns Nil
+- **Never written:** Reading raises RuntimeError → must check with `>isVoid` first
 
-### 17.5 Path Traversal Through Void
+**Best practice:** Always use `>isVoid` check before reading fields that might not exist.
 
-Void intermediate cells allow path traversal - you can read through them:
+### 17.5 Path Traversal Through Auto-Vivified Cells
+
+**CRITICAL:** Auto-vivified cells (created by writes to children) can be read and return Void:
 
 ```soma
 (value) !deep.nested.path.data
 
-) All these reads succeed:
-deep                          ) Void - but you can traverse through it
-deep.nested                   ) Void - traversal continues
-deep.nested.path              ) Void - traversal continues
-deep.nested.path.data         ) (value) - final value
+) All these reads succeed because they were auto-vivified by the write:
+deep >print                   ) Void (auto-vivified by write to child)
+deep.nested >print            ) Void (auto-vivified by write to child)
+deep.nested.path >print       ) Void (auto-vivified by write to child)
+deep.nested.path.data >print  ) (value) (explicitly set)
 ```
 
-**Key behavior:** Reading Void is not an error. You can traverse through Void cells to reach deeper values.
+**Key behavior:** Reading **auto-vivified** Void cells is legal. They were created by writes to their children.
+
+**Contrast with undefined paths (error):**
+
+```soma
+) Try to read a completely undefined path:
+) undefined_root >print       ) RuntimeError: reading undefined path
+) undefined_root.child >print ) RuntimeError: reading undefined path
+
+) Write creates auto-vivification:
+1 !defined_root.child
+defined_root >print           ) Void (now auto-vivified, readable)
+defined_root.child >print     ) 1 (explicitly set)
+
+) But siblings of defined paths are still undefined:
+) defined_root.other_child >print  ) RuntimeError: reading undefined path
+```
+
+**Summary:**
+- **Auto-vivified paths (created by writes to descendants):** Readable, return Void
+- **Undefined paths (never written, directly or via descendants):** RuntimeError on read
+- **Traversal through auto-vivified cells:** Legal and required for deep path access
 
 ### 17.6 Writing Void vs Nil
 
-**You CANNOT write Void as a payload:**
+**Writing Void is allowed:**
 
 ```soma
-Void !bad_path      ) FATAL ERROR - cannot write Void as payload
+Void !path          ) Legal - explicitly sets cell to Void
+path >print         ) Void
+path >isVoid        ) True
 ```
 
-**But you CAN write Nil:**
+**Writing Nil is also allowed:**
 
 ```soma
-Nil !good_path      ) Legal - explicitly set to Nil
-good_path           ) Returns Nil ✓
-good_path >isVoid   ) Returns False (it was set)
+Nil !path           ) Legal - explicitly set to Nil
+path >print         ) Nil
+path >isVoid        ) False (it was explicitly set)
+path >isNil         ) True
 ```
 
-**You CAN use Void for structural deletion:**
+**Structural deletion with trailing dot:**
 
 ```soma
 42 !node
 node >print         ) Prints: 42
 
 Void !node.         ) Delete the cell structure (note the trailing .)
-node                ) Cell no longer exists
+) node >print       ) RuntimeError: reading undefined path (cell deleted)
 ```
 
-**All legal operations:**
-- `Void !path` → Legal (stores Void as value)
-- `Nil !path` → Legal (explicit empty)
-- `Void !path.` → Legal (structural deletion)
+**All legal write operations:**
+- `Void !path` → Legal (stores Void as value, cell exists and is readable)
+- `Nil !path` → Legal (stores Nil as value)
+- `Void !path.` → Legal (structural deletion, removes cell from tree)
+
+**Key distinction:**
+- `Void !path` - Creates/updates cell with Void value (cell exists, readable)
+- `Void !path.` - Deletes cell structure (cell removed, reading raises RuntimeError)
 
 ### 17.7 Nested Structures with Void
 
@@ -3117,20 +3299,27 @@ actual_value
 
 **Note:** The first test using `>ToPath` is commented out as this operation doesn't exist in SOMA v1.0.
 
-### 17.9 Reading Void is Not an Error
+### 17.9 Reading Void: Legal vs Error Cases
 
-Unlike some operations, reading Void is perfectly legal:
+**CRITICAL:** The distinction between reading Void values and reading undefined paths:
+
+**Legal: Reading Void from existing cells**
 
 ```soma
 ) Create auto-vivified cells
 100 !data.leaf
 
-) Reading Void is fine
+) Reading auto-vivified Void is fine
 data !_.intermediate
 _.intermediate >isVoid
   { (Yes, it's Void) >print }
   { (No, it was set) >print }
 >ifelse
+
+) Explicitly writing Void is also fine to read
+Void !explicit_void
+explicit_void >print        ) Prints nothing (Void), but doesn't error
+explicit_void >isVoid       ) True
 ```
 
 **Output:**
@@ -3138,32 +3327,51 @@ _.intermediate >isVoid
 Yes, it's Void
 ```
 
+**Error: Reading undefined paths**
+
+```soma
+) This raises RuntimeError (path never written):
+) undefined_path >print     ) RuntimeError: reading undefined path
+) never_set.child >print    ) RuntimeError: reading undefined path
+```
+
 **Legal operations with Void:**
-- Reading Void from Store: ✓ Legal
+- Reading Void from auto-vivified cells: ✓ Legal
+- Reading Void from explicitly set cells (`Void !path`): ✓ Legal
 - Having Void on AL: ✓ Legal (result of reading)
 - Passing Void to `>isVoid`: ✓ Legal
-- Traversing through Void cells: ✓ Legal
+- Traversing through auto-vivified Void cells: ✓ Legal
 
-**Illegal operations with Void:**
-- Writing Void as payload: ✗ FATAL ERROR
-- Passing Void to most operations: ✗ ERROR (e.g., `Void >print`)
+**Error operations:**
+- Reading undefined paths (never written): ✗ RuntimeError
+- Passing Void to most operations: ✗ ERROR (e.g., `Void >print` prints nothing but is technically legal)
+- Reading deleted paths (`Void !path.` then reading `path`): ✗ RuntimeError
+
+**Key insight:** "Reading Void" means reading a cell that exists and has Void as its value. "Reading undefined" means trying to read a cell that doesn't exist.
 
 ### 17.10 Void vs Nil Summary
 
 | Aspect | Void | Nil |
 |--------|------|-----|
-| **Meaning** | "Never set" | "Set to empty" |
-| **Created by** | Auto-vivification | Explicit write |
-| **Can write?** | No (FATAL ERROR) | Yes |
-| **Can read?** | Yes (returns Void) | Yes (returns Nil) |
+| **Meaning** | "Never explicitly set" or "explicitly set to Void" | "Set to empty/nothing" |
+| **Created by** | Auto-vivification OR explicit `Void !path` | Explicit write `Nil !path` |
+| **Can write?** | Yes (`Void !path`) | Yes (`Nil !path`) |
+| **Can read?** | Yes if cell exists (auto-vivified or explicit write) | Yes (returns Nil) |
+| **Reading undefined** | RuntimeError if path never written | RuntimeError if path never written |
 | **>isVoid** | True | False |
 | **>isNil** | False | True |
-| **Use case** | Sparse structures, uninitialized | Optional fields, explicit empty |
-| **Traversable?** | Yes | Yes |
+| **Use case** | Sparse structures, uninitialized, structural placeholders | Optional fields, explicit empty |
+| **Traversable?** | Yes (if auto-vivified) | Yes |
 
 **Mental model:**
-- **Void** = "This cell exists for structural reasons but has no value"
-- **Nil** = "This cell has the value 'nothing'"
+- **Void** = "This cell exists but has no meaningful value" OR "created as structural parent"
+- **Nil** = "This cell has the value 'nothing'" (intentional emptiness)
+- **Undefined** = "This cell doesn't exist at all" (reading causes RuntimeError)
+
+**Key distinction with strict semantics:**
+- Auto-vivified Void cells (created by writes to children): **Readable, return Void**
+- Explicitly written Void cells (`Void !path`): **Readable, return Void**
+- Undefined paths (never written): **RuntimeError on read**
 
 ---
 

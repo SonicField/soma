@@ -28,11 +28,12 @@
   >choose
 } >chain
 
-) TEST: Choose selector with values
+) TEST: Choose selector with auto-vivified values
 ) EXPECT_AL: [Nil]
-undefined_path >isVoid
+42 !autoviv.child
+autoviv >isVoid
   Nil
-  undefined_path
+  autoviv
 >choose
 
 ) TEST: Conditional pattern from cookbook

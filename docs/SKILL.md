@@ -177,7 +177,8 @@ _.x         ) Read from register
 - Global hierarchical namespace
 - Persistent across execution
 - Tree structure: `a.b.c` creates cells
-- Auto-vivification: reading undefined path returns Void
+- **Auto-vivification on writes**: Writing `!a.b.c` creates intermediate cells `a` and `a.b` (with Void)
+- **Strict reads**: Reading undefined paths raises RuntimeError (must initialize first)
 
 **Register:**
 - Block-local temporary storage
@@ -385,6 +386,58 @@ This is the idiomatic way to write loops in SOMA using `>chain` and context-pass
 3. **Always push context:** Before condition check in each iteration
 4. **Clean up after >chain:** Add `>drop` when test expects empty AL
 
+### Initialization Patterns
+
+**Why initialize?** SOMA uses strict auto-vivification: reading undefined paths raises RuntimeError. Always initialize before reading.
+
+**Simple initialization:**
+```soma
+0 !counter           ) Initialize with integer
+() !name             ) Initialize with empty string
+Nil !result          ) Initialize with Nil
+False !flag          ) Initialize with boolean
+```
+
+**Auto-vivification on writes:**
+```soma
+) Writing nested paths auto-creates intermediate cells
+42 !config.db.port   ) Creates: config, config.db, config.db.port
+
+) Auto-vivified intermediate cells CAN be read (contain Void)
+config >isVoid       ) Pushes: True (auto-vivified, contains Void)
+config.db >isVoid    ) Pushes: True (auto-vivified, contains Void)
+config.db.port       ) Pushes: 42 (was explicitly written)
+
+) But non-existent paths CANNOT be read
+config.web           ) ERROR: Undefined Store path 'config.web'
+```
+
+**Conditional initialization (check before read):**
+```soma
+) Pattern: Initialize if needed, then use
+counter >isVoid      ) ERROR! counter doesn't exist yet
+
+) CORRECT - Initialize first, then check
+0 !counter           ) Always initialize first
+counter >isVoid      ) Now safe to read
+  0                  ) Default if Void
+  counter            ) Use existing value
+>choose
+!counter
+```
+
+**Register initialization:**
+```soma
+>{
+  0 !_.count         ) Initialize Register fields before use
+  () !_.name
+
+  _.count >print     ) Safe - initialized above
+}
+```
+
+**Best practice:** Initialize all paths at the start of your program or block.
+
 ### Counter (Simple)
 ```soma
 0 !counter
@@ -395,12 +448,14 @@ counter >print
 ### Conditional Execution
 ```soma
 ) Using >ifelse (stdlib - choose + execute)
+5 !x                ) Initialize first
 x 10 ><
   { (small) >print }
   { (large) >print }
 >ifelse
 
 ) Or using >choose + >^ directly
+15 !x               ) Initialize first
 x 10 ><
   { (small) >print }
   { (large) >print }
@@ -640,17 +695,53 @@ loop >chain
 5 3 >+          ) Two values on AL
 ```
 
-**Error: "Cannot write Void as payload"**
+**Error: "Undefined Store path" or "Undefined Register path"**
 ```soma
 ) WRONG:
-undefined_path !x    ) undefined_path is Void, can't store
+counter >print  ) Reading before initialization
 
-) CORRECT:
-undefined_path >isVoid
-  Nil
-  undefined_path
->choose
-!x
+) CORRECT - Initialize first:
+0 !counter      ) Initialize with a value
+counter >print
+
+) AUTO-VIVIFICATION EXAMPLE:
+42 !a.b.c       ) Creates a, a.b, and a.b.c
+a >print        ) OK! Auto-vivified 'a' exists (contains Void)
+a.b >print      ) OK! Auto-vivified 'a.b' exists (contains Void)
+a.b.c >print    ) Prints: 42
+
+dogs >print     ) ERROR! Never written, not auto-vivified
+```
+
+**Error message format (Store):**
+```
+Undefined Store path: 'myvar'
+  Path was never set. Did you mean to:
+    - Initialize it first: () !myvar
+    - Set a nested value: <value> !myvar.<child>
+    - Check a different path?
+  Hint: Auto-vivified intermediate paths can be read after writing to children.
+        Example: 42 !a.b.c creates 'a' and 'a.b' with Void, which can be read.
+```
+
+**Error message format (Register):**
+```
+Undefined Register path: '_.myvar'
+  Register paths must be written before reading.
+  Did you forget: <value> !_.myvar?
+```
+
+**Error: "Cannot write Void as payload"**
+```soma
+) WRONG - Reading undefined path (raises error before reaching !x):
+nonexistent !x       ) ERROR: Undefined Store path 'nonexistent'
+
+) CORRECT - Check if exists or use Nil:
+Nil !x               ) Store Nil explicitly
+
+) CORRECT - Handle undefined gracefully with a default:
+() !x                ) Initialize with empty string
+x                    ) Read it (safe now)
 ```
 
 **Error: Register isolation gotcha**
@@ -896,18 +987,20 @@ result >toString >print
 
 ## Key Reminders
 
-1. **Execution scope, not lexical:** Blocks get fresh Registers - use `_.` → `!_.` to pass context
-2. **Strings use parentheses:** `(text)` not `"text"`
-3. **Execute with >:** `>operation` not just `operation`
-4. **Register is isolated:** Each block gets fresh, empty Register - no automatic access to parent
-5. **Blocks are values:** They don't execute until you use `>`
-6. **AL is LIFO:** Last pushed is first popped
-7. **Store is global:** Visible to all blocks
-8. **Void can't be stored:** Use Nil instead
-9. **Comments use ):** Not `//` or `#` or `;`
-10. **>chain for loops/tail-calls:** Use `>{ }` or `>func` for single execution
-11. **>choose selects, doesn't execute:** Use `>^` or `>ifelse` to execute the result
-12. **Context-passing is key:** See `docs/09-idioms.md` for the full pattern
+1. **Initialize before reading:** Reading undefined paths raises RuntimeError - always initialize first
+2. **Auto-vivification on writes only:** Writing `!a.b.c` creates intermediate paths that CAN be read
+3. **Execution scope, not lexical:** Blocks get fresh Registers - use `_.` → `!_.` to pass context
+4. **Strings use parentheses:** `(text)` not `"text"`
+5. **Execute with >:** `>operation` not just `operation`
+6. **Register is isolated:** Each block gets fresh, empty Register - no automatic access to parent
+7. **Blocks are values:** They don't execute until you use `>`
+8. **AL is LIFO:** Last pushed is first popped
+9. **Store is global:** Visible to all blocks
+10. **Void can't be stored:** Use Nil instead
+11. **Comments use ):** Not `//` or `#` or `;`
+12. **>chain for loops/tail-calls:** Use `>{ }` or `>func` for single execution
+13. **>choose selects, doesn't execute:** Use `>^` or `>ifelse` to execute the result
+14. **Context-passing is key:** See `docs/09-idioms.md` for the full pattern
 
 ---
 

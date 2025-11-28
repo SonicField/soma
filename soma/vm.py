@@ -311,16 +311,32 @@ class Store:
         """
         Read Cell value at path.
 
-        Returns Void if path doesn't exist (auto-vivification never happened).
+        Raises RuntimeError if path doesn't exist (was never set or auto-vivified).
+        Auto-vivified intermediate cells (created during nested writes) can be read
+        and return Void.
 
         Args:
             components: List of path components (e.g., ["a", "b", "c"])
 
         Returns:
-            The value at the path, or Void if path doesn't exist
+            The value at the path
+
+        Raises:
+            RuntimeError: If path doesn't exist
         """
         cell = self._get_cell(components)
-        return cell.value if cell else Void
+        if cell is None:
+            path_str = '.'.join(str(c) for c in components)
+            raise RuntimeError(
+                f"Undefined Store path: '{path_str}'\n"
+                f"  Path was never set. Did you mean to:\n"
+                f"    - Initialize it first: () !{path_str}\n"
+                f"    - Set a nested value: <value> !{path_str}.<child>\n"
+                f"    - Check a different path?\n"
+                f"  Hint: Auto-vivified intermediate paths can be read after writing to children.\n"
+                f"        Example: 42 !a.b.c creates 'a' and 'a.b' with Void, which can be read."
+            )
+        return cell.value
 
     def read_ref(self, components: List[str]) -> CellRef:
         """
@@ -528,17 +544,32 @@ class Register:
         """
         Read Cell value at path.
 
-        Returns Void if path doesn't exist.
+        Raises RuntimeError if path doesn't exist (was never set or auto-vivified).
 
         Args:
             components: List of path components
 
         Returns:
-            The value at the path, or Void if path doesn't exist
+            The value at the path
+
+        Raises:
+            RuntimeError: If path doesn't exist
         """
         self._validate_register_path(components)
         cell = self._get_cell(components)
-        return cell.value if cell else Void
+        if cell is None:
+            # Format path nicely (skip the "_" root for display)
+            if len(components) > 1:
+                path_str = '.'.join(components[1:])
+            else:
+                path_str = ""
+
+            raise RuntimeError(
+                f"Undefined Register path: '_.{path_str}'\n"
+                f"  Register paths must be written before reading.\n"
+                f"  Did you forget: <value> !_.{path_str}?"
+            )
+        return cell.value
 
     def read_ref(self, components: List[str]) -> CellRef:
         """

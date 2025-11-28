@@ -93,9 +93,10 @@ Nil >isNil
 ) EXPECT_AL: [False]
 Void >isNil
 
-) TEST: IsVoid on undefined path
+) TEST: IsVoid on auto-vivified path
 ) EXPECT_AL: [True]
-undefined_path >isVoid
+42 !autoviv.child
+autoviv >isVoid
 
 ) TEST: Print output
 ) EXPECT_OUTPUT: Hello

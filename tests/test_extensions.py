@@ -9,8 +9,14 @@ from soma.vm import VM, run_soma_program, Void, RuntimeError as SomaRuntimeError
 
 
 def path_exists(store, path):
-    """Helper: Check if a Store path exists (value is not Void)."""
-    return store.read_value(path) is not Void
+    """Helper: Check if a Store path exists (strict semantics)."""
+    try:
+        value = store.read_value(path)
+        # Path exists if we can read it (even if value is Void from auto-vivification)
+        return True
+    except SomaRuntimeError:
+        # Undefined path raises RuntimeError under strict semantics
+        return False
 
 
 class TestStdlibAutoLoad(unittest.TestCase):

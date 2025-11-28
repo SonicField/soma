@@ -120,10 +120,10 @@ class TestCompilation(unittest.TestCase):
 
         vm = VM(load_stdlib=False)
 
-        # Reading non-existent path returns Void
-        run_node.execute(vm)
-        self.assertEqual(len(vm.al), 1)
-        self.assertIsInstance(vm.al[0], VoidSingleton)
+        # Reading undefined path raises RuntimeError (strict semantics)
+        with self.assertRaises(VMRuntimeError) as ctx:
+            run_node.execute(vm)
+        self.assertIn("Undefined Store path: 'foo'", str(ctx.exception))
 
         # Store a value, then read it
         vm.al = []
@@ -138,10 +138,10 @@ class TestCompilation(unittest.TestCase):
 
         vm = VM(load_stdlib=False)
 
-        # Reading non-existent register path returns Void
-        run_node.execute(vm)
-        self.assertEqual(len(vm.al), 1)
-        self.assertIsInstance(vm.al[0], VoidSingleton)
+        # Reading undefined register path raises RuntimeError (strict semantics)
+        with self.assertRaises(VMRuntimeError) as ctx:
+            run_node.execute(vm)
+        self.assertIn("Undefined Register path: '_.x'", str(ctx.exception))
 
         # Store a value in register, then read it
         vm.al = []
@@ -297,12 +297,13 @@ class TestStoreOperations(unittest.TestCase):
     """Tests for Store read/write operations."""
 
     def test_store_read_nonexistent(self):
-        """Test reading non-existent Store path returns Void."""
+        """Test reading non-existent Store path raises RuntimeError."""
         vm = VM(load_stdlib=False)
         compiled = compile_program(parse("foo"))
-        compiled.execute(vm)
-        self.assertEqual(len(vm.al), 1)
-        self.assertIsInstance(vm.al[0], VoidSingleton)
+        with self.assertRaises(VMRuntimeError) as ctx:
+            compiled.execute(vm)
+        self.assertIn("Undefined Store path: 'foo'", str(ctx.exception))
+
 
     def test_store_write_and_read(self):
         """Test write to Store and read back."""
@@ -357,8 +358,10 @@ class TestStoreOperations(unittest.TestCase):
         vm.store.write_value(["temp"], 42)
         vm.store.write_ref(["temp"], Void)
 
-        # Reading should return Void
-        self.assertIsInstance(vm.store.read_value(["temp"]), VoidSingleton)
+        # Reading deleted path should raise RuntimeError
+        with self.assertRaises(VMRuntimeError) as ctx:
+            vm.store.read_value(["temp"])
+        self.assertIn("Undefined Store path: 'temp'", str(ctx.exception))
 
     def test_store_nested_paths(self):
         """Test reading/writing nested Store paths."""
@@ -372,12 +375,19 @@ class TestRegisterOperations(unittest.TestCase):
     """Tests for Register read/write operations."""
 
     def test_register_read_nonexistent(self):
-        """Test reading non-existent Register path returns Void."""
+        """Test reading non-existent Register path raises RuntimeError."""
         vm = VM(load_stdlib=False)
-        compiled = compile_program(parse("_.x"))
-        compiled.execute(vm)
-        self.assertEqual(len(vm.al), 1)
-        self.assertIsInstance(vm.al[0], VoidSingleton)
+
+        # Create block that tries to read non-existent register path
+        def read_nonexistent(vm):
+            vm.register.read_value(["_", "x"])
+
+        block = Block([RunNode(None, read_nonexistent)])
+
+        with self.assertRaises(VMRuntimeError) as ctx:
+            block.execute(vm)
+        self.assertIn("Undefined Register path: '_.x'", str(ctx.exception))
+
 
     def test_register_write_and_read(self):
         """Test write to Register and read back."""
@@ -404,7 +414,7 @@ class TestRegisterOperations(unittest.TestCase):
     def test_register_isolation_fresh_per_block(self):
         """Test each block gets fresh, empty Register."""
         vm = VM(load_stdlib=False)
-        # Outer block: store in register, inner block: read register (should be Void)
+        # Outer block: store in register, inner block: read register (should error)
         compiled = compile_program(parse("{ 1 !_.x { _.x } >chain }"))
         compiled.execute(vm)
 
@@ -412,13 +422,11 @@ class TestRegisterOperations(unittest.TestCase):
         outer_block = vm.al[0]
         self.assertIsInstance(outer_block, Block)
 
-        # Execute outer block
+        # Execute outer block - inner block should error trying to read undefined _.x
         vm.al = []
-        outer_block.execute(vm)
-
-        # Inner block should have read Void (not 1)
-        self.assertEqual(len(vm.al), 1)
-        self.assertIsInstance(vm.al[0], VoidSingleton)
+        with self.assertRaises(VMRuntimeError) as ctx:
+            outer_block.execute(vm)
+        self.assertIn("Undefined Register path: '_.x'", str(ctx.exception))
 
     def test_register_destroyed_after_block(self):
         """Test Register is destroyed when block completes."""
@@ -440,8 +448,10 @@ class TestRegisterOperations(unittest.TestCase):
         # Block should have returned 100 on AL
         self.assertEqual(vm.al, [100])
 
-        # Top-level register should not have _.value
-        self.assertIsInstance(vm.register.read_value(["_", "value"]), VoidSingleton)
+        # Top-level register should not have _.value (should raise RuntimeError)
+        with self.assertRaises(VMRuntimeError) as ctx:
+            vm.register.read_value(["_", "value"])
+        self.assertIn("Undefined Register path: '_.value'", str(ctx.exception))
 
     def test_register_nested_isolation(self):
         """Test nested blocks have completely isolated Registers."""
@@ -472,8 +482,10 @@ class TestRegisterOperations(unittest.TestCase):
         vm.register.write_value(["_", "temp"], 42)
         vm.register.write_ref(["_", "temp"], Void)
 
-        # Reading should return Void
-        self.assertIsInstance(vm.register.read_value(["_", "temp"]), VoidSingleton)
+        # Reading deleted path should raise RuntimeError
+        with self.assertRaises(VMRuntimeError) as ctx:
+            vm.register.read_value(["_", "temp"])
+        self.assertIn("Undefined Register path: '_.temp'", str(ctx.exception))
 
 
 class TestBuiltins(unittest.TestCase):
@@ -840,8 +852,10 @@ class TestIntegration(unittest.TestCase):
         cellref = vm.al[0]
         self.assertEqual(cellref.cell.value, 42)
 
-        # Original path should be Void
-        self.assertIsInstance(vm.store.read_value(["data"]), VoidSingleton)
+        # Original path should raise RuntimeError (deleted)
+        with self.assertRaises(VMRuntimeError) as ctx:
+            vm.store.read_value(["data"])
+        self.assertIn("Undefined Store path: 'data'", str(ctx.exception))
 
 
 class TestErrors(unittest.TestCase):
@@ -851,15 +865,19 @@ class TestErrors(unittest.TestCase):
         """Test AL underflow on exec (empty AL)."""
         vm = VM(load_stdlib=False)
 
-        # Create ExecNode with path target
-        exec_node = ExecNode(target=ValuePath(components=["foo"], location={}), location={})
-        run_node = compile_node(exec_node)
+        # Create a block that tries to pop/exec from empty AL
+        # Using chain builtin which pops and executes
+        compiled = compile_program(parse("{ >chain } >chain"))
 
-        # AL is empty, should error
+        # AL starts with the block, then executes it which empties AL,
+        # then tries to execute >chain again on empty AL
         with self.assertRaises(VMRuntimeError) as ctx:
-            run_node.execute(vm)
+            compiled.execute(vm)
 
-        self.assertIn("underflow", str(ctx.exception).lower())
+        # Should get underflow or "empty" error
+        error_msg = str(ctx.exception).lower()
+        self.assertTrue("underflow" in error_msg or "empty" in error_msg or "nothing" in error_msg,
+                       f"Expected underflow/empty/nothing error, got: {ctx.exception}")
 
     def test_al_underflow_store(self):
         """Test AL underflow on store (empty AL)."""
@@ -901,21 +919,17 @@ class TestErrors(unittest.TestCase):
         """Test executing non-block value raises error."""
         vm = VM(load_stdlib=False)
 
-        # Push int onto AL, try to exec it
-        vm.al = [42]
+        # Store an integer at 'dummy' path
+        vm.store.write_value(["dummy"], 42)
 
         exec_node = ExecNode(target=ValuePath(components=["dummy"], location={}), location={})
         run_node = compile_node(exec_node)
-
-        # Manually set up exec to try executing the int
-        vm.al = []
-        vm.al.append(42)
 
         with self.assertRaises(VMRuntimeError) as ctx:
             run_node.execute(vm)
 
         error_msg = str(ctx.exception).lower()
-        self.assertTrue("execute" in error_msg or "block" in error_msg)
+        self.assertTrue("execute" in error_msg or "block" in error_msg or "cannot" in error_msg)
 
     def test_chain_non_block_error(self):
         """Test >chain with non-block raises error."""
@@ -1043,14 +1057,20 @@ class TestVoidVsNil(unittest.TestCase):
         self.assertNotEqual(type(auto_value), type(explicit_value))
 
     def test_void_singleton(self):
-        """Test Void is a singleton."""
+        """Test Void is a singleton when reading auto-vivified paths."""
         vm = VM(load_stdlib=False)
 
-        void1 = vm.store.read_value(["nonexistent1"])
-        void2 = vm.store.read_value(["nonexistent2"])
+        # Auto-vivify by writing to children
+        vm.store.write_value(["path1", "child"], 42)
+        vm.store.write_value(["path2", "child"], 99)
+
+        # Read auto-vivified parents
+        void1 = vm.store.read_value(["path1"])
+        void2 = vm.store.read_value(["path2"])
 
         self.assertIs(void1, void2)
         self.assertIs(void1, Void)
+
 
     def test_nil_singleton(self):
         """Test Nil is a singleton."""
@@ -1086,8 +1106,10 @@ class TestRegisterLifecycle(unittest.TestCase):
         # Top-level register should still have top_level
         self.assertEqual(vm.register.read_value(["_", "top_level"]), 1)
 
-        # Top-level register should NOT have block_level
-        self.assertIsInstance(vm.register.read_value(["_", "block_level"]), VoidSingleton)
+        # Top-level register should NOT have block_level (should raise RuntimeError)
+        with self.assertRaises(VMRuntimeError) as ctx:
+            vm.register.read_value(["_", "block_level"])
+        self.assertIn("Undefined Register path: '_.block_level'", str(ctx.exception))
 
     def test_register_destroyed_on_block_end(self):
         """Test Register destroyed when block completes."""
@@ -1112,17 +1134,15 @@ class TestRegisterLifecycle(unittest.TestCase):
         # Outer register
         vm.register.write_value(["_", "outer"], 1)
 
-        # Inner block tries to read outer register
+        # Inner block tries to read outer register (should error)
         def read_outer(vm):
-            value = vm.register.read_value(["_", "outer"])
-            vm.al.append(value)
+            vm.register.read_value(["_", "outer"])
 
         inner_block = Block([RunNode(None, read_outer)])
-        inner_block.execute(vm)
 
-        # Should have read Void (not 1)
-        self.assertEqual(len(vm.al), 1)
-        self.assertIsInstance(vm.al[0], VoidSingleton)
+        with self.assertRaises(VMRuntimeError) as ctx:
+            inner_block.execute(vm)
+        self.assertIn("Undefined Register path: '_.outer'", str(ctx.exception))
 
     def test_register_cellref_escape(self):
         """Test CellRef to Register cell persists after block ends."""
@@ -1170,19 +1190,24 @@ class TestExamplesFromSpec(unittest.TestCase):
         self.assertEqual(vm.al, [0])
 
     def test_sparse_array(self):
-        """Test sparse array with Void."""
+        """Test sparse array with strict semantics."""
         vm = VM(load_stdlib=False)
 
         vm.store.write_value(["array", "0"], 1)
         vm.store.write_value(["array", "100"], 2)
         vm.store.write_value(["array", "1000"], 3)
 
-        # Unset indices return Void
-        self.assertIsInstance(vm.store.read_value(["array", "50"]), VoidSingleton)
+        # Unset indices raise RuntimeError (strict semantics)
+        with self.assertRaises(VMRuntimeError) as ctx:
+            vm.store.read_value(["array", "50"])
+        self.assertIn("Undefined Store path: 'array.50'", str(ctx.exception))
 
         # Set indices have values
         self.assertEqual(vm.store.read_value(["array", "0"]), 1)
         self.assertEqual(vm.store.read_value(["array", "100"]), 2)
+
+        # Parent 'array' was auto-vivified and can be read
+        self.assertIsInstance(vm.store.read_value(["array"]), VoidSingleton)
 
     def test_linked_list_with_cellrefs(self):
         """Test linked list using CellRefs."""

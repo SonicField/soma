@@ -110,12 +110,13 @@ list.next.next >print
 
 ) TEST: Simple register deletion
 ) EXPECT_OUTPUT: 23
-) EXPECT_AL: [Void]
+) EXPECT_AL: []
 {
   23 !_.temp
   _.temp >print
   Void !_.temp.
-  _.temp
+  ) After deletion, _.temp is undefined (strict semantics)
+  ) Reading it would raise RuntimeError
 } >chain
 
 ) TEST: Register cleanup pattern
