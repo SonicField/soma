@@ -78,14 +78,15 @@ Run: `python3 tests/run_soma_tests.py`
 
 ### Literals
 ```soma
-42          ) Integer
--17         ) Negative integer
-(Hello)     ) String (parentheses, not quotes!)
-True        ) Boolean true
-False       ) Boolean false
-Nil         ) Explicit null/none
-Void        ) Undefined/missing value
-{ code }    ) Block (unevaluated code)
+42                     ) Integer
+-17                    ) Negative integer
+True                   ) Boolean true
+False                  ) Boolean false
+Nil                    ) Explicit null/none
+Void                   ) Undefined/missing value
+{ code }               ) Block (unevaluated code)
+(Hello)                ) String (parentheses, not quotes!)
+(Hello (world\29\\52\) ) ) and \ must be escaped in strings
 ```
 
 ### Operators and Modifiers
