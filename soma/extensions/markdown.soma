@@ -140,7 +140,7 @@
   Void _.prefix _.text _.suffix (soma.extensions.soma_markdown.string_concat_all) >use.python.call
   !_.exc !_.result
   _.result
-} !b
+} !md.b
 
 ) Italic - wraps text in _text_
 {
@@ -150,7 +150,7 @@
   Void _.prefix _.text _.suffix (soma.extensions.soma_markdown.string_concat_all) >use.python.call
   !_.exc !_.result
   _.result
-} !i
+} !md.i
 
 ) Inline code - wraps text in `text`
 {
@@ -160,7 +160,7 @@
   Void _.prefix _.text _.suffix (soma.extensions.soma_markdown.string_concat_all) >use.python.call
   !_.exc !_.result
   _.result
-} !c
+} !md.c
 
 ) Link - creates [text](url)
 {
@@ -342,3 +342,19 @@
   }
   >choose >^
 } !md.render
+
+) Print document to stdout - outputs generated markdown and cleans up state
+{
+  md.state.doc >print
+
+  ) Clean up state
+  () !md.state.doc
+
+  Void (soma.extensions.soma_markdown.list_new) >use.python.call
+  !_.exc !_.empty_list
+  _.empty_list !md.state.stack
+
+  0 !md.state.depth
+
+  Void
+} !md.print

@@ -36,7 +36,7 @@ SOMA supports inline formatting through simple composition.
 
 ### Bold and Italic
 
-You can make text **bold** or _italic_ using >b and >i formatters.
+You can make text **bold** or _italic_ using >md.b and >md.i formatters.
 
 Composition works beautifully: _**bold and italic**_ text!
 

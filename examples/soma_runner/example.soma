@@ -1,0 +1,25 @@
+(python) >use
+(markdown) >use
+
+>md.start
+
+(SOMA Runner Example) >md.h1
+
+(This document was generated using the SOMA runner script.) >md.p
+
+(Features) >md.h2
+
+(Clean stdin/stdout interface)
+(UTF-8 encoding support)
+(Pipeline friendly)
+>md.ul
+
+(Example Code) >md.h2
+
+(Here's how to use it:) >md.p
+
+(cat document.soma pipe python3 soma.py)
+(bash) >md.code
+
+) Output the generated markdown to stdout
+>md.print

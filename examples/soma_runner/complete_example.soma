@@ -1,0 +1,68 @@
+(python) >use
+(markdown) >use
+
+>md.start
+
+(Complete Markdown Example) >md.h1
+
+(This demonstrates all markdown features available through the SOMA runner.) >md.p
+
+(Inline Formatting) >md.h2
+
+(You can use ) (bold) >md.b (, ) (italic) >md.i (, ) (inline code) >md.c (, and ) (links) (https://example.com) >md.l ( in your text.) >md.t
+>md.p
+
+(Lists) >md.h2
+
+(Unordered list:) >md.p
+
+(First item)
+(Second item)
+(Third item)
+>md.ul
+
+(Ordered list:) >md.p
+
+(Step one)
+(Step two)
+(Step three)
+>md.ol
+
+(Blockquote) >md.h2
+
+(Here is an important quote:) >md.p
+
+(This is a blockquote.)
+(It can span multiple lines.)
+>md.q
+
+(Code Block) >md.h2
+
+(Example Python code:) >md.p
+
+(def hello world)
+(  print hello)
+(python) >md.code
+
+(Table) >md.h2
+
+(Feature) (Status) (Priority)
+>md.table.header
+>md.table.left >md.table.centre >md.table.right
+>md.table.align
+(Inline formatting) (Complete) >md.b (High)
+>md.table.row
+(Code blocks) (Complete) >md.b (High)
+>md.table.row
+(Tables) (Complete) >md.b (Medium)
+>md.table.row
+>md.table
+
+>md.hr
+
+(Conclusion) >md.h2
+
+(This markdown was generated entirely from SOMA code!) >md.p
+
+) Output to stdout
+>md.print

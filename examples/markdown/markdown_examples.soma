@@ -78,10 +78,10 @@ and each becomes its own paragraph with proper spacing!)
 (Bold and Italic)
 >md.h3
 
-(You can make text ) (bold) >b ( or ) (italic) >i ( using >b and >i formatters.) >md.t
+(You can make text ) (bold) >md.b ( or ) (italic) >md.i ( using >md.b and >md.i formatters.) >md.t
 >md.p
 
-(Composition works beautifully: ) (bold and italic) >b >i ( text!) >md.t
+(Composition works beautifully: ) (bold and italic) >md.b >md.i ( text!) >md.t
 >md.p
 
 (Links)
@@ -91,17 +91,17 @@ and each becomes its own paragraph with proper spacing!)
 >md.p
 
 (You can even compose links with other formatting: )
-(an italic link) (https://github.com/soma-lang) >md.l >i (.)
+(an italic link) (https://github.com/soma-lang) >md.l >md.i (.)
 >md.t
 >md.p
 
 (Mixed Formatting)
 >md.h3
 
-(Everything composes: ) (bold) >b (, ) (italic) >i (, ) (code) >c (, and ) (a link) (https://soma-lang.org) >md.l ( in one paragraph!) >md.t
+(Everything composes: ) (bold) >md.b (, ) (italic) >md.i (, ) (code) >md.c (, and ) (a link) (https://soma-lang.org) >md.l ( in one paragraph!) >md.t
 >md.p
 
-(You can use ) (inline code) >c ( to reference ) (variable names) >c ( or ) (function calls) >c ( in text.) >md.t
+(You can use ) (inline code) >md.c ( to reference ) (variable names) >md.c ( or ) (function calls) >md.c ( in text.) >md.t
 >md.p
 
 ) ============================================================================
@@ -264,9 +264,9 @@ Here's an example with unordered outer and ordered inner:)
 
 (Item) (Description) (Link)
 >md.table.header
-(SOMA) (Stack-based language) >b (repo) (https://github.com/soma-lang) >md.l
+(SOMA) (Stack-based language) >md.b (repo) (https://github.com/soma-lang) >md.l
 >md.table.row
-(Markdown) (Document generation) >i (docs) (https://example.com/docs) >md.l
+(Markdown) (Document generation) >md.i (docs) (https://example.com/docs) >md.l
 >md.table.row
 >md.table
 

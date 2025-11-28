@@ -64,6 +64,8 @@ variable        ) Retrieve value
 ) ... your content here ...
 
 (output.md) >md.render ) Write to file
+) OR
+>md.print              ) Print to stdout
 ```
 
 ### Headings (H1-H4)
@@ -134,19 +136,19 @@ variable        ) Retrieve value
 
 **Bold:**
 ```soma
-(bold text) >b
+(bold text) >md.b
 ) Produces: **bold text**
 ```
 
 **Italic:**
 ```soma
-(italic text) >i
+(italic text) >md.i
 ) Produces: _italic text_
 ```
 
 **Inline Code:**
 ```soma
-(code text) >c
+(code text) >md.c
 ) Produces: `code text`
 ```
 
@@ -158,19 +160,19 @@ variable        ) Retrieve value
 
 **Composition:**
 ```soma
-(bold and italic) >b >i
+(bold and italic) >md.b >md.i
 ) Produces: _**bold and italic**_
 
-(link) (https://example.com) >md.l >i
+(link) (https://example.com) >md.l >md.i
 ) Produces: _[link](https://example.com)_
 ```
 
 **Inline Text Concatenation:**
 ```soma
-(This has ) (bold) >b ( and ) (italic) >i ( text) >md.t
+(This has ) (bold) >md.b ( and ) (italic) >md.i ( text) >md.t
 ) Produces: This has **bold** and _italic_ text
 
-(This has ) (bold) >b ( and ) (italic) >i ( text) >md.t
+(This has ) (bold) >md.b ( and ) (italic) >md.i ( text) >md.t
 >md.p
 ) Makes it a paragraph
 ```
@@ -263,7 +265,7 @@ Nil >md.code
 ```soma
 (Feature) (Status) (Link)
 >md.table.header
-(SOMA) (In Development) >b (docs) (https://soma.org) >md.l
+(SOMA) (In Development) >md.b (docs) (https://soma.org) >md.l
 >md.table.row
 >md.table
 ```
@@ -400,7 +402,7 @@ vm.execute_string('(out.md) >md.render')
 >md.table.row
 (Users) (1) (5) (Unlimited)
 >md.table.row
-(Support) (Email) (Priority) >b (24/7 Phone) >b
+(Support) (Email) (Priority) >md.b (24/7 Phone) >md.b
 >md.table.row
 >md.table
 
@@ -501,11 +503,11 @@ vm.execute_string('(out.md) >md.render')
 
 (Name) (Task) (Due Date)
 >md.table.header
-(Alice) (Design API v2) >b (2024-12-15)
+(Alice) (Design API v2) >md.b (2024-12-15)
 >md.table.row
-(Bob) (Create mobile mockups) >b (2024-12-10)
+(Bob) (Create mobile mockups) >md.b (2024-12-10)
 >md.table.row
-(Carol) (Write requirements doc) >b (2024-12-05)
+(Carol) (Write requirements doc) >md.b (2024-12-05)
 >md.table.row
 >md.table
 
@@ -526,7 +528,7 @@ Begin with basic structure, then add formatting:
 (output.md) >md.render
 
 ) Then enhance:
-(Bold text) >b >md.p
+(Bold text) >md.b >md.p
 ```
 
 ### 2. **One Concept at a Time**
@@ -584,21 +586,21 @@ If output is wrong, check:
 
 ```
 SETUP:           (python) >use (markdown) >use >md.start
-TEARDOWN:        (filename.md) >md.render
+TEARDOWN:        (filename.md) >md.render  OR  >md.print
 
 HEADINGS:        (text) >md.h1/h2/h3/h4
 PARAGRAPHS:      (text) (text) >md.p
 BLOCKQUOTES:     (text) (text) >md.q
 LISTS:           (i1) (i2) (i3) >md.ul/ol
 NESTING:         >md.nest ... >md.ul/ol ... >md.ul/ol
-INLINE:          (text) >b >i >c >md.l
+INLINE:          (text) >md.b >md.i >md.c >md.l
 TABLES:          (h1) >md.table.header (r1) >md.table.row >md.table
 ALIGNMENT:       >md.table.left/centre/right >md.table.align
 CODE BLOCKS:     (line1) (line2) Nil/>md.code  OR  (line1) (python) >md.code
 SEPARATOR:       >md.hr
 
-COMPOSITION:     (text) >b >i → _**text**_
-CONCATENATION:   (a) (b) >b (c) >md.t → a**b**c
+COMPOSITION:     (text) >md.b >md.i → _**text**_
+CONCATENATION:   (a) (b) >md.b (c) >md.t → a**b**c
 ```
 
 ---
@@ -629,7 +631,7 @@ markdown documents using a simple, stack-based API.)
 
 (Advanced Features) >md.h3
 
-(Inline formatting) >b
+(Inline formatting) >md.b
 >md.nest
   (Bold text)
   (Italic text)
@@ -683,7 +685,7 @@ This generates a complete, well-structured README file!
 **To help a user generate markdown with SOMA:**
 
 1. **Understand their document structure** (outline, sections, data)
-2. **Start with skeleton** (`>md.start`, headings, `>md.render`)
+2. **Start with skeleton** (`>md.start`, headings, `>md.render` or `>md.print`)
 3. **Add content incrementally** (paragraphs, lists, tables)
 4. **Apply formatting** (bold, italic, links)
 5. **Test and iterate** (run code, check output, refine)

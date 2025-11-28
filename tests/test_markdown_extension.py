@@ -562,7 +562,7 @@ class TestMarkdownStage6(unittest.TestCase):
             (markdown) >use
 
             >md.start
-            (This is ) (bold text) >b (!) >md.t
+            (This is ) (bold text) >md.b (!) >md.t
             >md.p
             ({temp_path}) >md.render
             """
@@ -584,7 +584,7 @@ class TestMarkdownStage6(unittest.TestCase):
             (markdown) >use
 
             >md.start
-            (This is ) (italic text) >i (!) >md.t
+            (This is ) (italic text) >md.i (!) >md.t
             >md.p
             ({temp_path}) >md.render
             """
@@ -628,7 +628,7 @@ class TestMarkdownStage6(unittest.TestCase):
             (markdown) >use
 
             >md.start
-            (This is ) (bold and italic) >b >i ( text!) >md.t
+            (This is ) (bold and italic) >md.b >md.i ( text!) >md.t
             >md.p
             ({temp_path}) >md.render
             """
@@ -650,7 +650,7 @@ class TestMarkdownStage6(unittest.TestCase):
             (markdown) >use
 
             >md.start
-            (Here is an ) (italic link) (https://example.com) >md.l >i ( in text.) >md.t
+            (Here is an ) (italic link) (https://example.com) >md.l >md.i ( in text.) >md.t
             >md.p
             ({temp_path}) >md.render
             """
@@ -672,7 +672,7 @@ class TestMarkdownStage6(unittest.TestCase):
             (markdown) >use
 
             >md.start
-            (This has ) (bold) >b ( and ) (italic) >i ( and a ) (link) (https://example.com) >md.l (!) >md.t
+            (This has ) (bold) >md.b ( and ) (italic) >md.i ( and a ) (link) (https://example.com) >md.l (!) >md.t
             >md.p
             ({temp_path}) >md.render
             """
@@ -694,7 +694,7 @@ class TestMarkdownStage6(unittest.TestCase):
             (markdown) >use
 
             >md.start
-            (Use the ) (print) >c ( function in Python.) >md.t
+            (Use the ) (print) >md.c ( function in Python.) >md.t
             >md.p
             ({temp_path}) >md.render
             """
@@ -790,7 +790,7 @@ class TestMarkdownStage7(unittest.TestCase):
             >md.start
             (Feature) (Status) (Link)
             >md.table.header
-            (Bold text) >b (Complete) (docs) (https://example.com) >md.l
+            (Bold text) >md.b (Complete) (docs) (https://example.com) >md.l
             >md.table.row
             >md.table
             ({temp_path}) >md.render

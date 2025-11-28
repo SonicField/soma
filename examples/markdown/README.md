@@ -41,11 +41,11 @@ The example showcases all currently implemented features:
 - Mixed with other elements
 
 ### ✅ Inline Formatting
-- **Bold text** using `>b`
-- _Italic text_ using `>i`
-- `Inline code` using `>c`
+- **Bold text** using `>md.b`
+- _Italic text_ using `>md.i`
+- `Inline code` using `>md.c`
 - [Links](https://example.com) using `>md.l`
-- Composition: `(text) >b >i` → `_**text**_`
+- Composition: `(text) >md.b >md.i` → `_**text**_`
 - Inline text concatenation with `>md.t`
 
 ### ✅ Lists
@@ -96,7 +96,7 @@ Here's a taste of what the SOMA code looks like:
 (This is a paragraph of text.)
 >md.p
 
-(You can make text ) (bold) >b ( or ) (italic) >i (!) >md.t
+(You can make text ) (bold) >md.b ( or ) (italic) >md.i (!) >md.t
 >md.p
 
 (Core Features)
@@ -116,7 +116,9 @@ Here's a taste of what the SOMA code looks like:
 
 >md.hr
 
-(output.md) >md.render
+(output.md) >md.render  ) Write to file
+) OR
+>md.print                ) Print to stdout
 ```
 
 ## Output
@@ -135,7 +137,7 @@ The implementation uses several innovative patterns:
 2. **Nesting Stack** - Enables arbitrary depth nesting
 3. **Two-Phase Rendering** - Nested formatters add to parent context, outer formatters render everything
 4. **Generic Nesting** - `>md.nest` doesn't know list type, making it truly generic
-5. **Stack-Based Composition** - Inline formatters naturally compose: `(text) >b >i` → `_**text**_`
+5. **Stack-Based Composition** - Inline formatters naturally compose: `(text) >md.b >md.i` → `_**text**_`
 6. **Column-Width-Aware Tables** - Automatically calculates widths for readable output
 
 ## Test Coverage
