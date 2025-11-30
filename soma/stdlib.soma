@@ -171,15 +171,16 @@
     _.current >isVoid                   ) Check: AL=[bool, CTX, ...rest]
     {
       ) Void - cleanup and stop
-      >drop                             ) Drop context
+      !_.                               ) Pop context
+      _.persistent                      ) Leave persistent on AL
       Nil                               ) Stop chain
     }
     {
       ) Not void - process and continue
       !_.                               ) Pop context
-      _.current _.persistent _.todo >^  ) Execute action with args
-      _.persistent _.todo               ) Push state for next iteration
-      al.drain#loop                     ) AL=[loop, todo, persistent, ...rest]
+      _.current _.persistent _.todo >^  ) Execute action: AL=[persistent, current, ...]
+      _.todo                            ) Just push todo (new_persistent already on AL)
+      al.drain.#loop                    ) AL=[loop, todo, new_persistent, ...rest]
     }
     >choose
   } !al.drain.#loop
@@ -196,7 +197,7 @@
 ) Uses al.drain with list.cons to build list from AL items
 ) Preserves AL order: Void (a) (b) (c) -> list (a,b,c)
 {
-  Nil { !_.persistent !_.current _.current _.persistent >list.cons } >al.drain
+  >list.new { !_.persistent !_.current _.current _.persistent >list.cons } >al.drain
 } !list.from_al
 
 ) list.to_al: Push list items onto AL
@@ -204,29 +205,26 @@
 ) Traverses list, pushes each .value onto AL
 ) Preserves order: list (a,b,c) -> AL: [(a), (b), (c)]
 {
-  !_.list
   {
-    !_.
-    _.
-    _.list >isNil
+    !_.list                       ) Pop list node from AL
+    _.list                        ) Save for isNil check
+    _.list >isNil                 ) Check if Nil: AL=[bool, list_node]
     {
-      ) End of list
-      !_.
-      Nil
+      ) True branch: list is Nil
+      !_.                         ) Pop the list_node
+      Nil                         ) Return Nil to stop chain
     }
     {
-      ) Not empty - push value and continue
-      !_.
-      _.list.value                ) Push value onto AL
-      _.list.next !_.list         ) Move to next
-      _.
-      list.to_al.#loop
+      ) False branch: list is not Nil
+      !_.node                      ) Pop and save the list_node
+      _.node.value                ) Get value and push to AL
+      _.node.next                 ) Get next node and push to AL
+      list.to_al.#loop            ) Push loop block for next iteration
     }
     >choose
   } !list.to_al.#loop
 
-  _.
-  list.to_al.#loop >^
+  list.to_al.#loop
   >chain
   >drop
 } !list.to_al
@@ -236,33 +234,28 @@
 ) Traverses original, conses onto new list
 ) Reverses order: (a,b,c) -> (c,b,a)
 {
-  !_.old_list
-  Nil !_.new_list
-
+  Nil                             ) Push initial reversed list (empty)
   {
-    !_.
-    _.
-    _.old_list >isNil
+    !_.new_list !_.old_list       ) Pop new_list and old_list from AL
+    _.old_list                    ) Save for isNil check
+    _.old_list >isNil             ) Check: AL=[bool, old_list_node]
     {
       ) End - return accumulated list
-      !_.
-      _.new_list
-      Nil
+      !_.                         ) Pop old_list
+      _.new_list                  ) Return new_list
+      Nil                         ) Stop chain
     }
     {
       ) Not empty - cons value onto new list
-      !_.
-      _.old_list.value _.new_list >list.cons
-      !_.new_list
-      _.old_list.next !_.old_list
-      _.
-      list.reverse.#loop
+      !_.node                     ) Pop and save old_list node
+      _.node.value _.new_list >list.cons  ) Cons value onto new_list
+      _.node.next                 ) Push old_list.next
+      list.reverse.#loop          ) Push loop block
     }
     >choose
   } !list.reverse.#loop
 
-  _.
-  list.reverse.#loop >^
+  list.reverse.#loop
   >chain
   >drop
 } !list.reverse

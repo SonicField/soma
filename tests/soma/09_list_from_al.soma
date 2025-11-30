@@ -43,9 +43,10 @@ Nil >list.to_al
 (b) >swap >list.cons
 (a) >swap >list.cons
 >list.to_al
-(a) >==
->swap (b) >==
->swap (c) >==
+!_.c !_.b !_.a
+_.a (a) >==
+_.b (b) >==
+_.c (c) >==
 
 ) ==================== list.reverse Tests ====================
 

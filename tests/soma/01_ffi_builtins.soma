@@ -58,11 +58,11 @@ Void
 10 3 >%
 
 ) TEST: String concatenation
-) EXPECT_AL: ["Hello World"]
+) EXPECT_AL: [(Hello World)]
 (Hello ) (World) >concat
 
 ) TEST: Integer to string
-) EXPECT_AL: ["42"]
+) EXPECT_AL: [(42)]
 42 >toString
 
 ) TEST: String to int (success)

@@ -15,9 +15,9 @@ Void (a) Nil { !_.persistent !_.current _.current >print _.persistent } >al.drai
 ) EXPECT_AL: [True, True, True]
 Void (a) (b) (c) Nil { !_.persistent !_.current _.current _.persistent >list.cons } >al.drain
 !my_list
-my_list.value (c) >==
+my_list.value (a) >==
 my_list.next.value (b) >==
-my_list.next.next.value (a) >==
+my_list.next.next.value (c) >==
 
 ) TEST: Drain AL with counter - count items
 ) EXPECT_AL: [3]

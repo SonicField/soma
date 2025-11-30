@@ -95,7 +95,7 @@ def repr_al(al):
         if type_name == 'int':
             items.append(str(item))
         elif type_name == 'str':
-            items.append(f'"{item}"')
+            items.append(f'({item})')
         elif type_name in ['TrueSingleton', 'FalseSingleton', 'NilSingleton', 'VoidSingleton']:
             items.append(type_name.replace('Singleton', ''))
         elif type_name == 'Block':

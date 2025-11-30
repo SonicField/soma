@@ -127,9 +127,10 @@ When loops need to maintain state across iterations:
 | list.cons | 2 | ✅ Pass |
 | list.from_al | 3 | ✅ Pass |
 | list.to_al | 3 | ✅ Pass |
-| list.reverse | 3 | ✅ Pass |
+| list.reverse | 3 | ⚠️ Has bugs (Register access) |
 | al.drain | 5 | ✅ Pass |
-| **Total** | **76** | **✅ All Pass** |
+| **Phase 1+2 Total** | **17** | **14/17 Pass** |
+| **Overall Total** | **348/354** | **98.3% Pass** |
 
 ## Documentation Status
 
@@ -160,9 +161,19 @@ When loops need to maintain state across iterations:
 ---
 
 **Last Updated**: 2025-11-30
-**Status**: Phase 2 Complete (6/6 operations restored after compact), Phase 3 Next
+**Status**: Phase 2 mostly complete (list.reverse has bugs), ready for Phase 3
 
 ## Recent Changes
+
+### 2025-11-30 - al.drain argument order fix and test infrastructure improvements
+- Fixed `al.drain` argument order: actions now receive `[persistent, current, ...]` on AL (stdlib.soma:181)
+- Fixed test expectation in `10_al_drain.soma` to expect (a,b,c) instead of (c,b,a) due to LIFO double-reversal
+- Fixed test runner `repr_al()` to use SOMA string format `(string)` instead of Python format `"string"`
+- Updated FFI tests to use SOMA string format
+- Fixed `list.to_al` test to use clean Register pattern instead of problematic stack manipulation
+- Tests: 348/354 passing (98.3%)
+- Remaining failures: 3 list.reverse (Register access bug), 3 list.map (not implemented)
+- Committed in: [pending]
 
 ### 2025-11-30 - Phase 2 Restoration
 - Restored `list.from_al`, `list.to_al`, and `list.reverse` operations that were lost during compact
