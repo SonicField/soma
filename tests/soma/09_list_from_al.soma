@@ -1,9 +1,11 @@
 ) ============================================================================
-) AL Draining Tests - Phase 2
-) Testing list.from_al implementation
+) Linked List Transformation Tests
+) Testing list.from_al, list.to_al, and list.reverse
 ) ============================================================================
 
-) TEST: Build list from AL - empty
+) ==================== list.from_al Tests ====================
+
+) TEST: Build list from empty AL
 ) EXPECT_AL: [True]
 Void >list.from_al >isNil
 
@@ -22,3 +24,51 @@ my_list.value (a) >==
 my_list.next.value (b) >==
 my_list.next.next.value (c) >==
 my_list.next.next.next >isNil
+
+) ==================== list.to_al Tests ====================
+
+) TEST: Empty list to AL
+) EXPECT_AL: []
+Nil >list.to_al
+
+) TEST: Single item list to AL
+) EXPECT_AL: [True]
+(a) Nil >list.cons
+>list.to_al
+(a) >==
+
+) TEST: Multiple items list to AL - preserves order
+) EXPECT_AL: [True, True, True]
+(c) Nil >list.cons
+(b) >swap >list.cons
+(a) >swap >list.cons
+>list.to_al
+(a) >==
+>swap (b) >==
+>swap (c) >==
+
+) ==================== list.reverse Tests ====================
+
+) TEST: Reverse empty list
+) EXPECT_AL: [True]
+Nil >list.reverse >isNil
+
+) TEST: Reverse single item list
+) EXPECT_AL: [True, True]
+(a) Nil >list.cons
+>list.reverse
+!reversed
+reversed.value (a) >==
+reversed.next >isNil
+
+) TEST: Reverse multiple items - (a,b,c) becomes (c,b,a)
+) EXPECT_AL: [True, True, True, True]
+(c) Nil >list.cons
+(b) >swap >list.cons
+(a) >swap >list.cons
+>list.reverse
+!reversed
+reversed.value (c) >==
+reversed.next.value (b) >==
+reversed.next.next.value (a) >==
+reversed.next.next.next >isNil
