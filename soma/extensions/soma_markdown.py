@@ -194,6 +194,51 @@ def render_table(header, rows, alignment):
     return ''.join(result_parts)
 
 
+def data_title_format(*items):
+    """
+    Format items with alternating bold (for data title pattern).
+
+    Takes even number of items and bolds every other one (0, 2, 4...).
+    Example: ('Name', 'Alice', 'Age', '30') -> '**Name** Alice **Age** 30'
+    """
+    # Filter out None (Void representation)
+    items = [str(item) for item in items if item is not None]
+
+    if len(items) % 2 != 0:
+        raise ValueError(f"md.dt requires even number of items, got {len(items)}")
+
+    formatted = []
+    for i, item in enumerate(items):
+        if i % 2 == 0:  # Even indices: 0, 2, 4... get bolded
+            formatted.append(f"**{item}**")
+        else:
+            formatted.append(item)
+
+    return " ".join(formatted)
+
+
+def definition_list_format(*items):
+    """
+    Format items as definition list items (label: value pairs).
+
+    Takes even number of items and formats as "**label**: value" pairs.
+    Example: ('Name', 'Alice', 'Age', '30') -> ['**Name**: Alice', '**Age**: 30']
+    """
+    # Filter out None (Void representation)
+    items = [str(item) for item in items if item is not None]
+
+    if len(items) % 2 != 0:
+        raise ValueError(f"md.dl requires even number of items, got {len(items)}")
+
+    formatted = []
+    for i in range(0, len(items), 2):
+        label = items[i]
+        value = items[i + 1]
+        formatted.append(f"**{label}**: {value}")
+
+    return formatted
+
+
 def write_file(filename, content):
     """Write content to file."""
     with open(str(filename), 'w') as f:

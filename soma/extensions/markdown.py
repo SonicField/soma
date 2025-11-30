@@ -511,6 +511,80 @@ def drain_and_collect_cells_builtin(vm):
     vm.al.append(items)
 
 
+def drain_and_format_data_title_builtin(vm):
+    """
+    >use.md.drain.dt builtin - Drain AL until Void, format with alternating bold.
+
+    AL before: [void, item1, item2, ..., itemN, ...]
+    AL after: ["**item1** item2 **item3** item4 ...", void, ...]
+
+    Requires even number of items.
+    """
+    from soma.vm import Void, VoidSingleton
+    from soma.extensions.soma_markdown import data_title_format
+
+    # Pop items until Void
+    items = []
+    while True:
+        if len(vm.al) < 1:
+            raise RuntimeError("AL underflow: md.dt requires Void terminator")
+
+        item = vm.al.pop()
+
+        if isinstance(item, VoidSingleton):
+            break
+
+        items.append(item)
+
+    # Items are in reverse order (LIFO), so reverse them
+    items.reverse()
+
+    # Format with alternating bold
+    result = data_title_format(*items)
+
+    # Push Void sentinel back first, then result (LIFO order)
+    vm.al.append(Void)
+    vm.al.append(result)
+
+
+def drain_and_format_definition_list_builtin(vm):
+    """
+    >use.md.drain.dl builtin - Drain AL until Void, format as definition list items.
+
+    AL before: [void, label1, value1, label2, value2, ..., ...]
+    AL after: ["**label1**: value1", "**label2**: value2", ..., void, ...]
+
+    Transforms pairs into separate items ready for list formatters.
+    Requires even number of items.
+    """
+    from soma.vm import Void, VoidSingleton
+    from soma.extensions.soma_markdown import definition_list_format
+
+    # Pop items until Void
+    items = []
+    while True:
+        if len(vm.al) < 1:
+            raise RuntimeError("AL underflow: md.dl requires Void terminator")
+
+        item = vm.al.pop()
+
+        if isinstance(item, VoidSingleton):
+            break
+
+        items.append(item)
+
+    # Items are in reverse order (LIFO), so reverse them
+    items.reverse()
+
+    # Format as definition list items (returns list of formatted strings)
+    formatted_items = definition_list_format(*items)
+
+    # Push Void sentinel back first, then all formatted items (LIFO order)
+    vm.al.append(Void)
+    for formatted_item in formatted_items:
+        vm.al.append(formatted_item)
+
+
 def register(vm):
     """Register markdown builtins."""
     # Register drain_and_join as a builtin under use.* namespace
@@ -522,6 +596,8 @@ def register(vm):
     vm.register_extension_builtin('use.md.drain.code', drain_and_format_code_block_builtin)
     vm.register_extension_builtin('use.md.nest', nest_builtin)
     vm.register_extension_builtin('use.md.table.drain.cells', drain_and_collect_cells_builtin)
+    vm.register_extension_builtin('use.md.drain.dt', drain_and_format_data_title_builtin)
+    vm.register_extension_builtin('use.md.drain.dl', drain_and_format_definition_list_builtin)
 
 
 def get_soma_setup():

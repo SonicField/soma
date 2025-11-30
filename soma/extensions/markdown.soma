@@ -180,6 +180,110 @@
   () >use.md.drain.join
 } !md.t
 
+) Data title - alternating bold formatting (PURE SOMA)
+) Drains AL, transforms pairs with alternating bold, concatenates with spaces
+) Example: (a) (b) (c) (d) >md.dt → **a** b **c** d
+{
+  ) Build linked list by draining AL (using Store for loop state)
+  Nil !md.dt.list
+  0 !md.dt.counter
+  {
+    >dup >isVoid >not
+  } {
+    !_.item
+
+    ) Create new node with unique path using counter
+    _.item !md.dt.temp.value
+    md.dt.list !md.dt.temp.next
+    md.dt.temp. !md.dt.list
+
+    md.dt.counter 1 >+ !md.dt.counter
+  } >while
+
+  >drop  ) Drop the Void
+
+  ) Walk list and build result string with transformations
+  () !md.dt.result
+  0 !md.dt.index
+  {
+    md.dt.list >isNil >not
+  } {
+    ) Get current item
+    md.dt.list.value
+
+    ) Apply bold to even indices (0, 2, 4...)
+    md.dt.index 2 >% 0 >=
+      { >md.b }
+      { }
+    >ifelse
+
+    ) Add to result with space separator (except first item)
+    md.dt.index 0 >>
+      { ( ) md.dt.result >concat >concat !md.dt.result }
+      { !md.dt.result }
+    >ifelse
+
+    md.dt.index 1 >+ !md.dt.index
+    md.dt.list.next !md.dt.list
+  } >while
+
+  ) Push Void and result back to AL
+  Void
+  md.dt.result
+} !md.dt
+
+) Definition list - transforms pairs into separate "**label**: value" items (PURE SOMA)
+) Example: (a) (b) (c) (d) >md.dl → (**a**: b) (**c**: d) on AL
+{
+  ) Build linked list by draining AL (using Store for loop state)
+  Nil !md.dl.list
+  {
+    >dup >isVoid >not
+  } {
+    !_.item
+    _.item !_.node.value
+    md.dl.list !_.node.next
+    _.node. !_.node
+    _.node !md.dl.list
+  } >while
+
+  >drop  ) Drop the Void
+
+  ) Walk list in pairs and format
+  Void  ) Push sentinel first
+  Nil !md.dl.first
+  0 !md.dl.index
+  {
+    md.dl.list >isNil >not
+  } {
+    md.dl.index 2 >% 0 >=
+      {
+        ) Even index - save as first of pair (label)
+        md.dl.list.value !md.dl.first
+      }
+      {
+        ) Odd index - combine with first to make "**label**: value"
+        md.dl.first >md.b (:_) >concat md.dl.list.value >concat
+      }
+    >ifelse
+
+    md.dl.index 1 >+ !md.dl.index
+    md.dl.list.next !md.dl.list
+  } >while
+} !md.dl
+
+) Definition unordered list - combines md.dl with md.ul
+) Example: (a) (b) (c) (d) >md.dul → unordered list of **a**: b, **c**: d
+{
+  >md.dl >md.ul
+} !md.dul
+
+) Definition ordered list - combines md.dl with md.ol
+) Example: (a) (b) (c) (d) >md.dol → ordered list of **a**: b, **c**: d
+{
+  >md.dl >md.ol
+} !md.dol
+
 ) ============================================================================
 ) Tables
 ) ============================================================================

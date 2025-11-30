@@ -17,6 +17,8 @@ The standard library (`stdlib.soma`) provides:
 3. **Stack Manipulation** — `dup`, `drop`, `swap`, `over`, `rot`
 4. **Arithmetic Helpers** — `inc`, `dec`, `abs`, `min`, `max`
 5. **Control Flow Helpers** — `times`, `if`, `ifelse`, `^`, `while`, `do`
+6. **Linked List Operations** — `list.new`, `list.cons`
+7. **AL Draining** — `al.drain`
 
 All of these are **user-defined blocks**, not language primitives. They are stored at Store paths and executed with the `>` prefix, just like any user-defined operation.
 
@@ -1460,6 +1462,296 @@ Output:
 
 ---
 
+## 6. Linked List Operations
+
+SOMA's linked list operations demonstrate the power of CellRefs and the context-passing pattern. Lists are built using pure CellRef structures stored in block Registers, yet they persist after the block exits because CellRefs are first-class values.
+
+### 6.1 `>list.new` — Create Empty List
+
+**Signature:** `() -> Nil`
+
+**Definition:**
+```soma
+{
+  Nil
+} !list.new
+```
+
+**Semantics:**
+Creates an empty list, represented by `Nil`.
+
+**AL Transformation:**
+```
+Before: [...]
+After:  [Nil, ...]
+```
+
+**How It Works:**
+Simply pushes `Nil` onto the AL to represent an empty list.
+
+**Example:**
+```soma
+>list.new        ; AL: [Nil]
+!my_list         ; Store empty list
+```
+
+**Usage Example:**
+```soma
+) Start with empty list
+>list.new !items
+```
+
+---
+
+### 6.2 `>list.cons` — Prepend Value to List
+
+**Signature:** `(Value, List) -> CellRef`
+
+**Definition:**
+```soma
+{
+  !_.list !_.value  ) Pop list first (top), then value
+  _.value !_.node.value
+  _.list !_.node.next
+  _.node.  ) Return CellRef to the node (persists after block!)
+} !list.cons
+```
+
+**Semantics:**
+Creates a new list node containing `value` with `next` pointing to the existing `list`. This is the classic functional programming `cons` operation—prepending a value to the front of a list (like pushing onto a stack).
+
+**AL Transformation:**
+```
+Before: [list, value, ...]
+After:  [new_node_ref, ...]
+```
+
+**List Structure:**
+Each node is a CellRef with two fields:
+- `.value`: The data stored in this node
+- `.next`: CellRef to the next node (or `Nil` for end of list)
+
+**How It Works:**
+1. The block receives `value` and `list` on the AL
+2. Stores both in the block's Register
+3. Creates a new node structure: `_.node.value` and `_.node.next`
+4. Returns `_.node.` (CellRef to the node root)
+5. **Key insight:** The CellRef persists even after the block exits!
+
+**Example:**
+```soma
+) Build list: (a, b, c)
+Nil
+(c) >swap >list.cons
+!list1
+
+(b) list1 >list.cons
+!list2
+
+(a) list2 >list.cons
+!my_list
+
+) Access list elements
+my_list.value         ; AL: [(a)]
+my_list.next.value    ; AL: [(b)]
+my_list.next.next.value ; AL: [(c)]
+my_list.next.next.next >isNil ; AL: [True]
+```
+
+**Usage Example:**
+```soma
+) Build a list of numbers
+>list.new
+3 >swap >list.cons
+2 >swap >list.cons
+1 >swap >list.cons
+!numbers
+; numbers represents: 1 -> 2 -> 3 -> Nil
+```
+
+**Stack-Based Operation:**
+Notice that `list.cons` operates like a stack push: each new value goes to the front. This makes it perfect for accumulating items in reverse order, which is exactly what `al.drain` does.
+
+**Why CellRefs Persist:**
+When a block returns `_.node.`, it's returning a **reference** to a Cell in its Register. Even though the Register is local to the block execution, the CellRef itself is a first-class value that can be stored and passed around. The referenced Cell continues to exist as long as there's a reference to it.
+
+---
+
+## 7. AL Draining Operations
+
+AL draining is a powerful pattern for processing all values on the AL using a user-supplied action block. It demonstrates advanced context-passing and state transformation.
+
+### 7.1 `>al.drain` — Drain AL with Action Block
+
+**Signature:** `[Void, item1, item2, ..., itemN, persistent, action_block, ...] -> [...]`
+
+**Definition:**
+```soma
+{
+  {
+    !_.todo !_.persistent !_.current    ) Pop action, persistent, current
+
+    ) Put context on AL for choose blocks
+    _.
+    _.current >isVoid                   ) Check: AL=[bool, CTX, ...rest]
+    {
+      ) Void - cleanup and stop
+      >drop                             ) Drop context
+      Nil                               ) Stop chain
+    }
+    {
+      ) Not void - process and continue
+      !_.                               ) Pop context
+      _.current _.persistent _.todo >^  ) Execute action with args
+      _.persistent _.todo               ) Push state for next iteration
+      loop                              ) AL=[loop, todo, persistent, ...rest]
+    }
+    >choose
+  } !loop
+
+  loop >^
+  >chain
+  >drop
+} !al.drain
+```
+
+**Semantics:**
+Pops values from the AL one at a time until encountering `Void`, executing an action block for each value. The action block receives the current item and a persistent accumulator value.
+
+**AL Transformation:**
+```
+Before: [Void, item1, item2, ..., itemN, persistent_init, {action}, ...]
+After:  [...]
+```
+
+**Action Block Signature:**
+The action block receives: `[current_item, persistent, ...]` on the AL.
+
+The action block should:
+- Pop `current_item` and `persistent` from AL
+- Perform any desired operation (print, accumulate, etc.)
+- Push updated `persistent` value back onto AL
+
+**How It Works:**
+1. The drainer pops `action_block`, `persistent`, and `current` from AL
+2. Tests if `current` is `Void`:
+   - If `Void`: cleanup and stop (end of items)
+   - If not `Void`: execute action block with `current` and `persistent`
+3. The loop continues via `>chain`, processing each item from the AL
+4. The `persistent` value flows through each iteration
+
+**Example 1: Simple Print**
+```soma
+Void (a) (b) (c) Nil { !_.persistent !_.current _.current >print } >al.drain
+```
+
+Output:
+```
+a
+b
+c
+```
+
+The action block just pops both arguments and prints `current`. The `persistent` value (Nil) is unused but must be managed.
+
+**Example 2: Collect into List**
+```soma
+Void (a) (b) (c) Nil { !_.persistent !_.current _.current _.persistent >list.cons } >al.drain
+!my_list
+
+my_list.value                ; AL: [(c)]
+my_list.next.value           ; AL: [(b)]
+my_list.next.next.value      ; AL: [(a)]
+```
+
+This collects all items into a linked list. Note that the list is built in reverse order (last item first) because `list.cons` prepends to the front.
+
+**Example 3: Count Items**
+```soma
+Void (a) (b) (c) 0 { !_.persistent !_.current _.persistent >inc } >al.drain
+; AL: [3]
+```
+
+The action block ignores `current` and just increments the persistent counter.
+
+**Example 4: Action with Side Effects**
+```soma
+Void (x) (y) (z) (PREFIX:) {
+  !_.persistent !_.current
+  _.persistent >print
+  _.current >print
+} >al.drain
+```
+
+Output:
+```
+PREFIX:
+x
+PREFIX:
+y
+PREFIX:
+z
+```
+
+The persistent value is used as a prefix for each printed item.
+
+**Usage Pattern:**
+```soma
+) Setup: Mark end of items with Void, push items, push initial state, push action
+Void
+item1
+item2
+item3
+initial_persistent_value
+{
+  !_.persistent !_.current
+  ) Process current and persistent
+  ) Push updated persistent back
+  updated_persistent
+}
+>al.drain
+```
+
+**Why This Pattern Matters:**
+
+The `al.drain` operation is a generalized **iterator** that can:
+- Collect items into data structures (lists, counts, etc.)
+- Perform side effects for each item (print, store, etc.)
+- Transform sequences with persistent state
+- Work with any AL content, regardless of type
+
+**Relationship to Functional Programming:**
+
+This is similar to a `foldl` or `reduce` operation:
+- `persistent` is the accumulator
+- `current` is the current element
+- The action block is the combining function
+- The AL contents are the sequence being reduced
+
+**Common Mistake:**
+```soma
+) WRONG - forgetting to push persistent back
+Void (a) (b) 0 {
+  !_.persistent !_.current
+  _.persistent >inc
+  ) Missing: push updated value!
+} >al.drain
+; AL: [] (persistent value was lost!)
+
+) RIGHT - always push persistent back
+Void (a) (b) 0 {
+  !_.persistent !_.current
+  _.persistent >inc
+} >al.drain
+; AL: [2]
+```
+
+**Design Note:**
+
+The `al.drain` operation uses the Store for the `loop` block (not Register) because the loop needs to reference itself by name for self-recursion. This is the standard pattern for any self-referencing block in SOMA.
+
+---
+
 ## Composing Operations
 
 The real power of the stdlib comes from **composing** these operations to build more complex behaviors.
@@ -1712,6 +2004,8 @@ The SOMA standard library demonstrates that **most operations you think of as pr
 - **Stack operations** build from Register paths
 - **Arithmetic helpers** build from `>+`, `>-`, `><`
 - **Control flow** builds from `>choose`, `>chain`, `>block`
+- **Linked lists** build from CellRefs and context-passing
+- **AL draining** builds from `>chain`, `>choose`, and action blocks
 
 **Key insights:**
 
@@ -1720,6 +2014,8 @@ The SOMA standard library demonstrates that **most operations you think of as pr
 3. **Composition is natural** — Complex operations emerge from simple ones
 4. **The FFI is tiny** — Minimal primitives, maximal expressiveness
 5. **Users are equals** — You can extend stdlib using the same primitives
+6. **CellRefs enable persistent structures** — Register-local data can outlive the block
+7. **Context-passing enables iteration** — Persistent state flows through loops
 
 **The elegance of SOMA:** A small kernel of irreducible operations, and everything else built transparently in user space. No magic. No hidden machinery. Just paths, blocks, and explicit state transformation.
 

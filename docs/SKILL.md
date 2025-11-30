@@ -348,6 +348,20 @@ Located in `soma/stdlib.soma`. Automatically loaded by the VM on initialization 
 >do         ) Do-while loop: [body_block, cond_block] → []
 ```
 
+### Linked List Operations
+```soma
+>list.new   ) Create empty list: [] → [Nil]
+>list.cons  ) Prepend to list: [value, list] → [new_node]
+            ) Returns CellRef with .value and .next fields
+```
+
+### AL Draining
+```soma
+>al.drain   ) Drain AL with action: [Void, items..., persistent, {action}] → []
+            ) Action block receives: [current, persistent] → [new_persistent]
+            ) Processes items until Void, accumulating in persistent state
+```
+
 ---
 
 ## 6. Common Patterns Cookbook
@@ -549,11 +563,60 @@ state-a >chain                  ) Executes A → B → C → stops
 
 ### List Building with CellRefs
 ```soma
-Nil !list.head
+) Build a simple linked list
+>list.new
+(c) >swap >list.cons
+(b) >swap >list.cons
+(a) >swap >list.cons
+!my_list
 
-42 !list.head.value
-list.head. !list.head.next.prev
-99 !list.head.next.value
+) Access list elements
+my_list.value              ; AL: [(a)]
+my_list.next.value         ; AL: [(b)]
+my_list.next.next.value    ; AL: [(c)]
+my_list.next.next.next >isNil  ; AL: [True]
+```
+
+### AL Draining: Collect Items into List
+```soma
+) Drain AL items into a linked list
+Void (first) (second) (third) Nil {
+  !_.persistent !_.current
+  _.current _.persistent >list.cons
+} >al.drain
+!collected_list
+
+) Items are in reverse order (LIFO)
+collected_list.value                      ; AL: [(third)]
+collected_list.next.value                 ; AL: [(second)]
+collected_list.next.next.value            ; AL: [(first)]
+```
+
+### AL Draining: Count Items
+```soma
+) Count how many items on AL
+Void (a) (b) (c) (d) 0 {
+  !_.persistent !_.current
+  _.persistent >inc
+} >al.drain
+; AL: [4]
+```
+
+### AL Draining: Print with Prefix
+```soma
+) Print each item with a prefix
+Void (apple) (banana) (cherry) (Item:) {
+  !_.persistent !_.current
+  _.persistent >print
+  _.current >print
+} >al.drain
+) Output:
+) Item:
+) apple
+) Item:
+) banana
+) Item:
+) cherry
 ```
 
 ### Higher-Order Function (Apply)

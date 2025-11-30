@@ -456,6 +456,218 @@ loop >^
 
 ---
 
+## Linked Lists and CellRef Persistence
+
+SOMA's linked list operations (`list.new` and `list.cons`) demonstrate an important property: **CellRefs created in a block's Register can persist after the block exits**.
+
+### How Lists Work
+
+Lists are built using CellRefs stored in block Registers:
+
+```soma
+{
+  !_.list !_.value  ) Pop arguments
+  _.value !_.node.value
+  _.list !_.node.next
+  _.node.  ) Return CellRef to node - persists after block exits!
+} !list.cons
+```
+
+**Key insight:** When a block returns `_.node.`, it's returning a **reference** to a Cell in its Register. The CellRef is a first-class value that can be stored and passed around. The referenced Cell continues to exist as long as there's a reference to it.
+
+### Building Lists
+
+Lists are built by consing values onto the front (like a stack):
+
+```soma
+>list.new
+(c) >swap >list.cons
+(b) >swap >list.cons
+(a) >swap >list.cons
+!my_list
+
+) List structure: a -> b -> c -> Nil
+my_list.value              ; (a)
+my_list.next.value         ; (b)
+my_list.next.next.value    ; (c)
+my_list.next.next.next     ; Nil
+```
+
+### List Traversal Pattern
+
+To traverse a list, use a loop with context-passing:
+
+```soma
+>{
+  my_list !_.current
+
+  {
+    !_.
+    _.current >isNil
+      {
+        >drop Nil
+      }
+      {
+        >{
+          !_.
+          _.current.value >print
+          _.current.next !_.current
+          _.
+          traverse
+        }
+      }
+    >choose >^
+  } !traverse
+
+  _.
+  traverse >^
+  >chain
+  >drop
+}
+```
+
+### Why This Matters
+
+CellRef persistence enables:
+1. **Functional data structures** - immutable lists with structural sharing
+2. **Register-local allocation** - nodes created in block Registers
+3. **First-class references** - CellRefs can be stored anywhere
+4. **No explicit memory management** - references keep data alive
+
+---
+
+## AL Draining Pattern
+
+The `al.drain` operation is a generalized iterator that processes values from the AL with persistent state. It's similar to functional programming's `foldl` or `reduce`.
+
+### Basic Pattern
+
+```soma
+Void          ) Sentinel marking end of items
+item1
+item2
+item3
+initial_state
+{
+  !_.persistent !_.current
+  ) Process current using persistent state
+  ) Return updated persistent state
+  updated_state
+}
+>al.drain
+```
+
+### Pattern 1: Collecting into a List
+
+```soma
+) Drain AL items into a linked list
+Void (a) (b) (c) Nil {
+  !_.persistent !_.current
+  _.current _.persistent >list.cons
+} >al.drain
+!my_list
+
+) Items are in reverse order (last item first)
+my_list.value                ; (c)
+my_list.next.value           ; (b)
+my_list.next.next.value      ; (a)
+```
+
+**Why reverse order?** Because `list.cons` prepends to the front, and we process items from top of AL first.
+
+### Pattern 2: Accumulating a Count
+
+```soma
+) Count items on AL
+Void (a) (b) (c) (d) 0 {
+  !_.persistent !_.current
+  _.persistent >inc
+} >al.drain
+; AL: [4]
+```
+
+### Pattern 3: Side Effects with Context
+
+```soma
+) Print each item with a prefix
+Void (apple) (banana) (cherry) (PREFIX:) {
+  !_.persistent !_.current
+  _.persistent >print    ) Print prefix
+  _.current >print       ) Print item
+} >al.drain
+```
+
+### Pattern 4: Stateful Processing
+
+```soma
+) Running sum
+Void 1 2 3 4 5 0 {
+  !_.persistent !_.current
+  _.persistent _.current >+
+} >al.drain
+; AL: [15]
+```
+
+### Why This Pattern Matters
+
+`al.drain` is a **state transformer**: it takes values from the AL and threads persistent state through an action block for each value. This enables:
+
+- **Functional iteration** - map, filter, reduce patterns
+- **State accumulation** - building collections, counting, summing
+- **Side effects** - printing, logging, external operations
+- **Uniform interface** - works with any AL content
+
+### Relationship to Functional Programming
+
+```
+al.drain ≈ foldl/reduce
+├─ persistent = accumulator
+├─ current = current element
+├─ action block = combining function
+└─ Void = end sentinel
+```
+
+### Common Mistakes
+
+**Mistake 1: Forgetting to return persistent**
+```soma
+) WRONG
+Void (a) (b) 0 {
+  !_.persistent !_.current
+  _.persistent >inc
+  ) Missing: return value!
+} >al.drain
+; AL: [] - state was lost!
+
+) RIGHT
+Void (a) (b) 0 {
+  !_.persistent !_.current
+  _.persistent >inc  ) Implicitly returns incremented value
+} >al.drain
+; AL: [2]
+```
+
+**Mistake 2: Wrong argument order**
+```soma
+) WRONG - action block signature is backwards
+Void (a) (b) Nil {
+  !_.current !_.persistent  ) Swapped!
+  _.current _.persistent >list.cons
+} >al.drain
+
+) RIGHT - persistent is popped first (top of AL)
+Void (a) (b) Nil {
+  !_.persistent !_.current
+  _.current _.persistent >list.cons
+} >al.drain
+```
+
+### Design Note
+
+The action block in `al.drain` uses Register paths (`_.persistent`, `_.current`) for clarity and isolation. Each action execution gets a fresh Register, so the naming is clean and there's no state leakage between iterations.
+
+---
+
 ## Complete Examples
 
 ### Example 1: Collatz Sequence
@@ -583,6 +795,8 @@ collatz-step >^
 3. **Store for self-reference** - Use `!name` not `!_.name` for loops
 4. **Values over blocks** - Use `>choose` with values when possible
 5. **Always push context** - Before loops, before continuation checks
+6. **CellRefs persist** - Register-local structures can outlive the block
+7. **AL draining for iteration** - Use `al.drain` for sequence processing
 
 ### The Standard Loop Template
 

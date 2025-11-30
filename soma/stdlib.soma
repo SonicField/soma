@@ -134,3 +134,58 @@
   } >chain
   >drop
 } !do
+
+) ==================== Linked List Operations ====================
+) Linked lists using CellRefs and context-passing style
+) Empty list is Nil, nodes have .value and .next
+
+) list.new: Create empty list
+) AL: [...] -> [Nil, ...]
+{
+  Nil
+} !list.new
+
+) list.cons: Prepend value to list (functional cons)
+) AL: [value, list, ...] -> [new_node, ...]
+) Creates new node with value, next points to list
+) Pure CellRef implementation - node lives in this block's Register
+{
+  !_.list !_.value  ) Pop list first (top), then value
+  _.value !_.node.value
+  _.list !_.node.next
+  _.node.  ) Return CellRef to the node (persists after block!)
+} !list.cons
+
+) ==================== AL Draining Operations ====================
+
+) al.drain: Drain AL until Void, applying action to each item
+) AL: [void, item1, item2, ..., itemN, persistent, action_block, ...] -> [...]
+) The action_block receives: [current, persistent, ...] on AL
+) Core state transformer: AL -> AL'
+{
+  {
+    !_.todo !_.persistent !_.current    ) Pop action, persistent, current
+
+    ) Put context on AL for choose blocks
+    _.
+    _.current >isVoid                   ) Check: AL=[bool, CTX, ...rest]
+    {
+      ) Void - cleanup and stop
+      >drop                             ) Drop context
+      Nil                               ) Stop chain
+    }
+    {
+      ) Not void - process and continue
+      !_.                               ) Pop context
+      _.current _.persistent _.todo >^  ) Execute action with args
+      _.persistent _.todo               ) Push state for next iteration
+      loop                              ) AL=[loop, todo, persistent, ...rest]
+    }
+    >choose
+  } !loop
+
+  loop >^
+  >chain
+  >drop
+} !al.drain
+
