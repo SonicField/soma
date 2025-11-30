@@ -1,0 +1,28 @@
+) ============================================================================
+) AL Draining Tests
+) Testing al.drain implementation
+) ============================================================================
+
+) TEST: Drain empty AL
+) EXPECT_AL: []
+Void Nil { !_.persistent !_.current } >al.drain
+
+) TEST: Drain AL with single item - print action
+) EXPECT_AL: []
+Void (a) Nil { !_.persistent !_.current _.current >print } >al.drain
+
+) TEST: Drain AL with multiple items - collect in persistent
+) EXPECT_AL: [True, True, True]
+Void (a) (b) (c) Nil { !_.persistent !_.current _.current _.persistent >list.cons } >al.drain
+!my_list
+my_list.value (c) >==
+my_list.next.value (b) >==
+my_list.next.next.value (a) >==
+
+) TEST: Drain AL with counter - count items
+) EXPECT_AL: [3]
+Void (a) (b) (c) 0 { !_.persistent !_.current _.persistent >inc } >al.drain
+
+) TEST: Drain with action that uses both persistent and current
+) EXPECT_AL: []
+Void (x) (y) (z) (PREFIX:) { !_.persistent !_.current _.persistent >print _.current >print } >al.drain

@@ -1,0 +1,24 @@
+) ============================================================================
+) AL Draining Tests - Phase 2
+) Testing list.from_al implementation
+) ============================================================================
+
+) TEST: Build list from AL - empty
+) EXPECT_AL: [True]
+Void >list.from_al >isNil
+
+) TEST: Build list from AL - single item
+) EXPECT_AL: [True, True]
+Void (a) >list.from_al
+!my_list
+my_list.value (a) >==
+my_list.next >isNil
+
+) TEST: Build list from AL - multiple items
+) EXPECT_AL: [True, True, True, True]
+Void (a) (b) (c) >list.from_al
+!my_list
+my_list.value (a) >==
+my_list.next.value (b) >==
+my_list.next.next.value (c) >==
+my_list.next.next.next >isNil

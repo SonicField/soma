@@ -1,0 +1,28 @@
+) ============================================================================
+) Linked List Library Tests - Phase 1: Basic Operations
+) Tests for stdlib list operations using CellRefs and context-passing
+) ============================================================================
+
+) TEST: Create empty list
+) EXPECT_AL: [Nil]
+>list.new
+
+) TEST: Cons value onto empty list
+) EXPECT_AL: [True, True]
+(first) Nil >list.cons
+!my_list
+my_list.value (first) >==
+my_list.next >isNil
+
+) TEST: Cons multiple values - build list (a, b, c)
+) EXPECT_AL: [True, True, True, True]
+(c) Nil >list.cons
+!list1
+(b) list1 >list.cons
+!list2
+(a) list2 >list.cons
+!my_list
+my_list.value (a) >==
+my_list.next.value (b) >==
+my_list.next.next.value (c) >==
+my_list.next.next.next >isNil
