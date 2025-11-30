@@ -179,13 +179,91 @@
       !_.                               ) Pop context
       _.current _.persistent _.todo >^  ) Execute action with args
       _.persistent _.todo               ) Push state for next iteration
-      loop                              ) AL=[loop, todo, persistent, ...rest]
+      al.drain#loop                     ) AL=[loop, todo, persistent, ...rest]
     }
     >choose
-  } !loop
+  } !al.drain.#loop
 
-  loop >^
+  al.drain.#loop >^
   >chain
   >drop
 } !al.drain
+
+) ==================== List Transformations ====================
+
+) list.from_al: Drain AL into linked list
+) AL: [void, items..., ...] -> [list, ...]
+) Uses al.drain with list.cons to build list from AL items
+) Preserves AL order: Void (a) (b) (c) -> list (a,b,c)
+{
+  Nil { !_.persistent !_.current _.current _.persistent >list.cons } >al.drain
+} !list.from_al
+
+) list.to_al: Push list items onto AL
+) AL: [list, ...] -> [items..., ...]
+) Traverses list, pushes each .value onto AL
+) Preserves order: list (a,b,c) -> AL: [(a), (b), (c)]
+{
+  !_.list
+  {
+    !_.
+    _.
+    _.list >isNil
+    {
+      ) End of list
+      !_.
+      Nil
+    }
+    {
+      ) Not empty - push value and continue
+      !_.
+      _.list.value                ) Push value onto AL
+      _.list.next !_.list         ) Move to next
+      _.
+      list.to_al.#loop
+    }
+    >choose
+  } !list.to_al.#loop
+
+  _.
+  list.to_al.#loop >^
+  >chain
+  >drop
+} !list.to_al
+
+) list.reverse: Reverse a list by copying
+) AL: [list, ...] -> [reversed_list, ...]
+) Traverses original, conses onto new list
+) Reverses order: (a,b,c) -> (c,b,a)
+{
+  !_.old_list
+  Nil !_.new_list
+
+  {
+    !_.
+    _.
+    _.old_list >isNil
+    {
+      ) End - return accumulated list
+      !_.
+      _.new_list
+      Nil
+    }
+    {
+      ) Not empty - cons value onto new list
+      !_.
+      _.old_list.value _.new_list >list.cons
+      !_.new_list
+      _.old_list.next !_.old_list
+      _.
+      list.reverse.#loop
+    }
+    >choose
+  } !list.reverse.#loop
+
+  _.
+  list.reverse.#loop >^
+  >chain
+  >drop
+} !list.reverse
 
