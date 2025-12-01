@@ -82,6 +82,7 @@ The reference implementation is **production-ready** and demonstrates all langua
 10. [Errors and Semantics](10-errors-semantics.md) - Fatal errors, abstract machine, and formal grammar
 11. [Standard Library](11-stdlib.md) - Derived operations built from FFI primitives
 12. [Extensions](12-extensions.md) - Extension system, `>use` builtin, and Python FFI
+13. [Debugging](13-debugging.md) - Debug tools, philosophy, and troubleshooting techniques
 
 ---
 
