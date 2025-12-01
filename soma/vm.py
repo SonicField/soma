@@ -300,6 +300,10 @@ class Store:
             self.root["debug"].children["al"] = Cell(value=Void)
         self.root["debug"].children["al"].children["dump"] = Cell(value=BuiltinBlock("debug.al.dump", builtin_debug_al_dump))
 
+        # Debug instrumented control flow primitives
+        self.root["debug"].children["chain"] = Cell(value=BuiltinBlock("debug.chain", builtin_debug_chain))
+        self.root["debug"].children["choose"] = Cell(value=BuiltinBlock("debug.choose", builtin_debug_choose))
+
         # String operations
         self.root["concat"] = Cell(value=BuiltinBlock("concat", builtin_concat))
 
@@ -1484,6 +1488,135 @@ def builtin_debug_al_dump(vm: VM):
         else:
             items.append(f'{type(item).__name__}')
     print('[' + ', '.join(items) + ']')
+
+
+def builtin_debug_chain(vm: VM):
+    """
+    debug.chain: Instrumented version of chain that logs each iteration.
+
+    AL before: [block_or_nil, ...]
+    AL after: [...] (depends on block execution)
+
+    Like builtin_chain, but prints:
+    - Iteration number
+    - AL size before/after each block execution
+    - Termination reason (Nil or no more blocks)
+
+    Use the backup/restore pattern:
+        chain !backup.chain
+        debug.chain !chain
+        ... your code ...
+        backup.chain !chain
+
+    Includes safety limit of 1000 iterations to detect infinite loops.
+    """
+    if len(vm.al) < 1:
+        raise RuntimeError("AL underflow: >chain requires 1 value (block)")
+
+    # Peek at top of AL
+    thing = vm.al.pop()
+    iteration = 0
+    MAX_ITERATIONS = 1000
+
+    # If it's a Block, execute it and loop
+    while isinstance(thing, (Block, BuiltinBlock)):
+        iteration += 1
+        al_size_before = len(vm.al)
+
+        print(f"\n[DEBUG CHAIN] Iteration {iteration}")
+        print(f"  AL before: {al_size_before} items")
+        print(f"  → Executing Block")
+
+        # Safety check for infinite loops
+        if iteration >= MAX_ITERATIONS:
+            print(f"\n[DEBUG CHAIN] ⚠️  WARNING: Reached {MAX_ITERATIONS} iterations!")
+            print(f"  Possible infinite loop detected - stopping chain")
+            print(f"  Last AL size: {al_size_before} items")
+            break
+
+        # Execute the block
+        thing.execute(vm)
+
+        al_size_after = len(vm.al)
+        print(f"  AL after: {al_size_after} items")
+
+        # Check if there's another block on AL to continue the chain
+        if len(vm.al) > 0 and isinstance(vm.al[-1], (Block, BuiltinBlock)):
+            thing = vm.al.pop()
+        else:
+            # No more blocks, stop chaining
+            print(f"  → Chain terminating: no more blocks on AL")
+            break
+
+    # If the thing wasn't a block, check if it's Nil
+    if not isinstance(thing, (Block, BuiltinBlock)):
+        if isinstance(thing, NilSingleton):
+            print(f"\n[DEBUG CHAIN] → Nil encountered, stopping")
+        else:
+            vm.al.append(thing)
+
+
+def builtin_debug_choose(vm: VM):
+    """
+    debug.choose: Instrumented version of choose that logs branch selection.
+
+    AL before: [condition, true_block, false_block, ...]
+    AL after: [chosen_block, ...]
+
+    Like builtin_choose, but prints:
+    - Condition value
+    - Which branch (TRUE/FALSE) is selected
+    - AL size before/after
+
+    Use the backup/restore pattern:
+        choose !backup.choose
+        debug.choose !choose
+        ... your code ...
+        backup.choose !choose
+    """
+    if len(vm.al) < 3:
+        raise RuntimeError("Choose requires [condition, true_block, false_block] on AL")
+
+    al_size_before = len(vm.al)
+
+    false_block = vm.al.pop()
+    true_block = vm.al.pop()
+    condition = vm.al.pop()
+
+    print(f"\n[DEBUG CHOOSE]")
+    print(f"  Condition: {type(condition).__name__}")
+    print(f"  AL before: {al_size_before} items")
+
+    # Determine which branch based on truthiness
+    # In SOMA: True_, non-zero ints, non-empty strings are truthy
+    # False_, Nil, Void, 0, empty string are falsy
+    if isinstance(condition, (TrueSingleton,)):
+        print(f"  → Taking TRUE branch")
+        vm.al.append(true_block)
+    elif isinstance(condition, (FalseSingleton, VoidSingleton, NilSingleton)):
+        print(f"  → Taking FALSE branch")
+        vm.al.append(false_block)
+    elif isinstance(condition, int):
+        if condition != 0:
+            print(f"  → Taking TRUE branch (non-zero int: {condition})")
+            vm.al.append(true_block)
+        else:
+            print(f"  → Taking FALSE branch (zero)")
+            vm.al.append(false_block)
+    elif isinstance(condition, str):
+        if condition != "":
+            print(f"  → Taking TRUE branch (non-empty string)")
+            vm.al.append(true_block)
+        else:
+            print(f"  → Taking FALSE branch (empty string)")
+            vm.al.append(false_block)
+    else:
+        # Default: truthy for everything else
+        print(f"  → Taking TRUE branch (truthy value)")
+        vm.al.append(true_block)
+
+    al_size_after = len(vm.al)
+    print(f"  AL after: {al_size_after} items")
 
 
 def builtin_read_line(vm: VM):
