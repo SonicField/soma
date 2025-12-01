@@ -293,6 +293,13 @@ class Store:
         self.root["print"] = Cell(value=BuiltinBlock("print", builtin_print))
         self.root["readLine"] = Cell(value=BuiltinBlock("readLine", builtin_read_line))
 
+        # Debug utilities (non-standard)
+        if "debug" not in self.root:
+            self.root["debug"] = Cell(value=Void)
+        if "al" not in self.root["debug"].children:
+            self.root["debug"].children["al"] = Cell(value=Void)
+        self.root["debug"].children["al"].children["dump"] = Cell(value=BuiltinBlock("debug.al.dump", builtin_debug_al_dump))
+
         # String operations
         self.root["concat"] = Cell(value=BuiltinBlock("concat", builtin_concat))
 
@@ -1444,6 +1451,39 @@ def builtin_print(vm: VM):
         print("Void")
     else:
         print(repr(value))
+
+
+def builtin_debug_al_dump(vm: VM):
+    """
+    debug.al.dump: Dump current AL state to stdout for debugging.
+
+    AL before: [...]
+    AL after: [...] (unchanged)
+
+    Prints a representation of the AL to help with debugging.
+    """
+    print(f"DEBUG AL [{len(vm.al)} items]: ", end="")
+    items = []
+    for item in vm.al:
+        if isinstance(item, str):
+            items.append(f'({item})')
+        elif isinstance(item, int):
+            items.append(str(item))
+        elif isinstance(item, TrueSingleton):
+            items.append('True')
+        elif isinstance(item, FalseSingleton):
+            items.append('False')
+        elif isinstance(item, NilSingleton):
+            items.append('Nil')
+        elif isinstance(item, VoidSingleton):
+            items.append('Void')
+        elif isinstance(item, Block):
+            items.append('Block')
+        elif isinstance(item, CellRef):
+            items.append(f'CellRef({id(item.cell)})')
+        else:
+            items.append(f'{type(item).__name__}')
+    print('[' + ', '.join(items) + ']')
 
 
 def builtin_read_line(vm: VM):

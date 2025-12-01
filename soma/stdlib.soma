@@ -233,29 +233,31 @@
 ) AL: [list, ...] -> [reversed_list, ...]
 ) Traverses original, conses onto new list
 ) Reverses order: (a,b,c) -> (c,b,a)
+) Uses context-passing: each iteration receives [old_list, new_list, ...] on AL
 {
-  Nil                             ) Push initial reversed list (empty)
   {
-    !_.new_list !_.old_list       ) Pop new_list and old_list from AL
-    _.old_list                    ) Save for isNil check
-    _.old_list >isNil             ) Check: AL=[bool, old_list_node]
+    !_.old_list !_.new_list       ) Pop in LIFO order: top is old_list (pushed second), next is new_list (pushed first)
+    _.                            ) Push Register context onto AL for choose branches
+    _.old_list >isNil             ) Check: AL=[bool, CTX, ...]
     {
-      ) End - return accumulated list
-      !_.                         ) Pop old_list
-      _.new_list                  ) Return new_list
+      !_.                         ) Pop Register context from previous block
+      ) Nil - return accumulated list
+      _.new_list                  ) Return result
       Nil                         ) Stop chain
     }
     {
-      ) Not empty - cons value onto new list
-      !_.node                     ) Pop and save old_list node
-      _.node.value _.new_list >list.cons  ) Cons value onto new_list
-      _.node.next                 ) Push old_list.next
-      list.reverse.#loop          ) Push loop block
+      !_.                         ) Pop Register context from previous block
+      ) Not Nil - cons and continue
+      _.old_list.value _.new_list >list.cons  ) Create new_list with value consed
+      !_.new_new_list                         ) Save it
+      _.new_new_list _.old_list.next          ) Push for next iteration in correct order: new_list first, old_list second
+      list.reverse.#loop                      ) Push loop block from Store
     }
     >choose
   } !list.reverse.#loop
 
-  list.reverse.#loop
+  Nil >swap                       ) AL=[original_list, Nil, ...] → swap → AL=[Nil, original_list, ...]
+  list.reverse.#loop                ) Initial push from Store
   >chain
   >drop
 } !list.reverse
