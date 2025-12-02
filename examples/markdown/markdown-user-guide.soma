@@ -87,6 +87,21 @@ Nil >md.code
 (This generates a markdown file with a heading, paragraph, and unordered list!)
 >md.p
 
+(Output Formats)
+>md.h2
+
+(By default, SOMA markdown generates markdown syntax. You can switch to HTML output
+using the htmlEmitter:)
+>md.p
+
+(htmlEmitter >md.emitter)
+Nil >md.code
+
+(After switching, all operations generate HTML tags instead of markdown syntax.
+Use ) (mdEmitter >md.emitter) >md.c ( to switch back to markdown output)
+>md.t
+>md.p
+
 >md.hr
 
 ) ============================================================================
