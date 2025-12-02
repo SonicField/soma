@@ -216,6 +216,100 @@ Here's an example with unordered outer and ordered inner:)
 >md.ul
 
 ) ============================================================================
+) Complex List Items
+) ============================================================================
+
+(Complex List Items)
+>md.h2
+
+(List Items with Inline Formatting)
+>md.h3
+
+(The md.uli and md.oli transformations allow you to build list items with inline formatting.
+This is perfect for items that need bold, italic, code, or links within them.)
+>md.p
+
+(Task: ) (Install) >md.b ( the required dependencies) >md.uli
+(Task: ) (Run) >md.c ( npm start ) >md.c ( to start the development server) >md.uli
+(Task: ) (Visit the ) (documentation) (https://soma-lang.org) >md.l ( for more details) >md.uli
+>md.ul
+
+(You can also use md.oli for numbered lists with complex formatting:)
+>md.p
+
+(Step 1: ) (Clone) >md.b ( the repository from ) (GitHub) (https://github.com/soma-lang) >md.l >md.oli
+(Step 2: ) (Install) >md.i ( dependencies using ) (npm install) >md.c >md.oli
+(Step 3: ) (Configure) >md.b ( your ) (config.json) >md.c ( file) >md.oli
+>md.ol
+
+(Mixing Complex and Simple Items)
+>md.h3
+
+(You can freely mix simple strings with md.oli/uli items in the same list:)
+>md.p
+
+(Simple feature without formatting)
+(Complex feature: ) (requires) >md.b ( the ) (async) >md.c ( module) >md.uli
+(Another simple item)
+(Final item with ) (italic emphasis) >md.i >md.uli
+>md.ul
+
+) ============================================================================
+) Definition Lists
+) ============================================================================
+
+(Definition Lists)
+>md.h2
+
+(Basic Definition Lists)
+>md.h3
+
+(Definition lists are perfect for glossaries, configuration options, and labeled data.
+The md.dl transformation takes label-value pairs and formats them as a definition list.)
+>md.p
+
+Void (API Key) (sk-1234567890abcdef) (Environment) (Production) (Region) (us-east-1) >md.dl
+
+(The md.dul convenience function creates a definition list with unordered values:)
+>md.p
+
+Void (Server) (nginx 1.24.0) (Port) (8080) (Workers) (4) >md.dul
+
+(The md.dol convenience function creates a definition list with ordered values:)
+>md.p
+
+Void (Step 1) (Initialize configuration) (Step 2) (Validate credentials) (Step 3) (Connect to server) >md.dol
+
+(Data Titles)
+>md.h3
+
+(The md.dt transformation creates alternating bold-normal pairs, perfect for displaying metrics:)
+>md.p
+
+Void (Downloads) (1.2M) (Stars) (450) (Forks) (89) (Contributors) (23) >md.dt >md.p
+
+(Another example showing project statistics:)
+>md.p
+
+Void (Test Coverage) (98.5%) (Build Time) (2.3s) (Bundle Size) (42KB) >md.dt >md.p
+
+(Definition Lists in Tables)
+>md.h3
+
+(Definition lists work great inside table cells for structured data:)
+>md.p
+
+(Service) (Configuration) (Status)
+>md.table.header
+(Web Server) Void (Port) (8080) (Host) (localhost) >md.dl (Running) >md.b
+>md.table.row
+(Database) Void (Port) (5432) (Name) (mydb) >md.dl (Running) >md.b
+>md.table.row
+(Cache) Void (Port) (6379) (Type) (Redis) >md.dl (Stopped) >md.i
+>md.table.row
+>md.table
+
+) ============================================================================
 ) Tables
 ) ============================================================================
 
@@ -357,6 +451,16 @@ Nil >md.code
   (Each context contains items, depth, and nested text)
   (Supports arbitrary nesting depth)
   >md.ul
+(List Item Accumulators)
+>md.nest
+  (md.oli and md.uli build complex items with inline formatting)
+  (Allow composition of formatting within list items)
+  >md.ul
+(Inline Transformations)
+>md.nest
+  (md.dt for alternating bold-normal pairs)
+  (md.dl family for definition lists and structured data)
+  >md.ul
 (Two-Phase Rendering)
 >md.nest
   (Nested formatters add to parent context)
@@ -370,10 +474,12 @@ Nil >md.code
 (The extension has comprehensive test coverage:)
 >md.p
 
-(38 total tests passing)
+(72 total tests passing)
 (5 table tests covering all table features)
 (7 inline formatting tests including inline code)
 (5 nesting tests covering complex scenarios)
+(6 list item accumulator tests for md.oli and md.uli)
+(9 definition list tests covering md.dl, md.dt, md.dul, and md.dol)
 (2 blockquote tests)
 (3 code block tests with and without language)
 (2 horizontal rule tests)
@@ -392,11 +498,12 @@ Nil >md.code
 The syntax is lightweight and readable while remaining pure SOMA code.
 The extension supports headings, paragraphs, lists with arbitrary nesting,
 inline formatting including code, blockquotes, code blocks with syntax highlighting,
-tables with alignment, and horizontal rules - everything needed for rich technical documentation.)
+tables with alignment, horizontal rules, complex list items with inline formatting,
+and definition lists - everything needed for rich technical documentation.)
 >md.p
 
 ) ============================================================================
 ) Render Output
 ) ============================================================================
 
-(output.md) >md.render
+(markdown-examples.md) >md.render

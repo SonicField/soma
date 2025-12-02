@@ -27,6 +27,27 @@ SOMA is a stack-based language. For markdown generation, you only need these con
 work naturally)
 ```
 
+**Escaping Special Characters:**
+
+SOMA uses `\HEX\` format for escapes - backslash, hex digits, backslash:
+```soma
+(Hello world\29\)           ) \29\ escapes ) (hex 29)
+(Path: C:\5C\Users\5C\name) ) \5C\ escapes \ (hex 5C)
+(Error :-\29\)              ) Example: smiley with )
+(Degree: 98.6\B0\)          ) \B0\ = ° symbol
+```
+
+**Adjacent escapes** - each escape is independent, so they sit side-by-side:
+```soma
+(\28\\5C\\29\)              ) Produces: (\)
+(Escape\29\\5C\\29\test)    ) Produces: Escape)\)test
+```
+
+**Critical:** Only `)` and `\` need escaping:
+- `)` → `\29\` (or it closes the string)
+- `\` → `\5C\` (or it starts an escape)
+- `(` does NOT need escaping - write it literally!
+
 ### 2. Formatters (Functions)
 ```soma
 >md.h1          ) Call the h1 formatter
@@ -114,6 +135,10 @@ variable        ) Retrieve value
 >md.ol
 ```
 
+**Style note:** List items should be consecutive with no blank lines between them in SOMA source.
+
+**Common mistake:** Use `>md.ol` for numbered lists, not formatting tricks like `()>md.b`.
+
 **Nested Lists:**
 ```soma
 (Outer item 1)
@@ -156,6 +181,19 @@ variable        ) Retrieve value
 ```soma
 (link text) (https://example.com) >md.l
 ) Produces: [link text](https://example.com)
+```
+
+**Critical - Don't use Markdown syntax directly:**
+```soma
+) WRONG:
+(**bold**)                          ) No! Markdown syntax doesn't work
+()+3.3%**)>b                        ) No! Empty () and ** mixed together
+(text **bold**)                     ) No! ** inside strings won't be formatted
+
+) RIGHT:
+(bold)>md.b                         ) Yes! Use SOMA formatters
+(+3.3%)>md.b                        ) Yes! Text in (...), then >md.b
+(text ) (bold)>md.b >md.t           ) Yes! Compose with formatters
 ```
 
 **Composition:**
@@ -230,6 +268,8 @@ Nil >md.code
 ) Also produces a code block without language
 ```
 
+**Format reminder:** Code lines must be in string constants `(...)`. Order is: code strings, then language (or Nil), then `>md.code`.
+
 ### Tables
 
 **Basic Table:**
@@ -242,6 +282,8 @@ Nil >md.code
 >md.table.row
 >md.table
 ```
+
+**Critical:** Every data row needs `>md.table.row`. Newlines are whitespace in SOMA, not syntax - unlike Markdown, line breaks don't create rows.
 
 **Table with Alignment:**
 ```soma
@@ -286,6 +328,256 @@ Nil >md.code
 >md.hr
 (Section 2) >md.h2
 ```
+
+### Complex List Items with Inline Formatting
+
+Sometimes you need inline formatting (bold, italic, code, links) **within** list items. The basic list pattern doesn't support this because formatters like `>md.b` consume items from the stack immediately.
+
+**The Problem:**
+```soma
+) WRONG - This doesn't work:
+(Task: ) (Install) >md.b ( dependencies)  ) >md.b drains items!
+(Task: ) (Run) >md.c ( the server)         ) >md.c drains items!
+>md.ol                                      ) List has no items left!
+```
+
+**The Solution - List Item Accumulators:**
+
+Use `>md.oli` (ordered list item) and `>md.uli` (unordered list item) to accumulate formatted content into single list items:
+
+**Ordered List Items (md.oli):**
+```soma
+(Task: ) (Install) >md.b ( dependencies) >md.oli
+(Task: ) (Run) >md.c ( the server) >md.oli
+(Task: ) (Test the ) (API endpoint) >md.l ( works) >md.oli
+>md.ol
+) Produces:
+) 1. Task: **Install** dependencies
+) 2. Task: `Run` the server
+) 3. Task: Test the [API endpoint](url) works
+```
+
+**Unordered List Items (md.uli):**
+```soma
+(Feature: ) (fast) >md.i ( performance) >md.uli
+(Feature: ) (simple) >md.b ( API) >md.uli
+(Feature: ) (detailed ) (documentation) >md.l >md.uli
+>md.ul
+) Produces:
+) - Feature: _fast_ performance
+) - Feature: **simple** API
+) - Feature: detailed [documentation](url)
+```
+
+**How It Works:**
+- `>md.oli` and `>md.uli` accumulate content into a **single list item**
+- They store the item internally and put an opaque placeholder on the stack
+- Later, `>md.ol` or `>md.ul` consumes these placeholders and renders the full list
+- You can use any inline formatter (`>md.b`, `>md.i`, `>md.c`, `>md.l`) before the accumulator
+
+**Pattern - Building Complex Items:**
+```soma
+) Step 1: Build each item with inline formatting
+(Step ) (1) >md.b (: Install ) (Python) >md.c >md.oli
+(Step ) (2) >md.b (: Run ) (pip install soma) >md.c >md.oli
+(Step ) (3) >md.b (: Read the ) (docs) (https://soma.org) >md.l >md.oli
+
+) Step 2: Consume the accumulated items with a list formatter
+>md.ol
+```
+
+**When to Use:**
+- Task lists with formatted keywords
+- Feature lists with code or links
+- Step-by-step instructions with emphasis
+- Any list where items need internal formatting
+
+**When NOT to Use:**
+- Simple text-only lists (use direct `>md.ul` or `>md.ol`)
+- When you don't need inline formatting
+
+### Inline Transformations (md.dl and md.dt)
+
+These are **transformation operations** - they consume items from the stack and produce **new items** back on the stack. They do NOT render anything themselves.
+
+**Definition List Transformation (md.dl):**
+
+Takes pairs of items and transforms them into `**label**: value` format:
+
+```soma
+Void (Name) (Alice) (Age) (30) >md.dl
+) Stack now contains: (**Name**: Alice) (**Age**: 30)
+) Nothing rendered yet - items are on stack
+
+>md.ul
+) Produces:
+) - **Name**: Alice
+) - **Age**: 30
+```
+
+**Key Points:**
+- Requires **even number of items** (pairs)
+- Consumes items from stack
+- Produces formatted pairs back on stack
+- Must use a renderer (`>md.ul`, `>md.ol`, etc.) to output
+
+**Data Title Transformation (md.dt):**
+
+Alternates bold formatting on pairs of items:
+
+```soma
+Void (Alice) (Developer) (Bob) (Designer) >md.dt
+) Stack now contains: (**Alice**) (Developer) (**Bob**) (Designer)
+
+>md.ul
+) Produces:
+) - **Alice**
+) - Developer
+) - **Bob**
+) - Designer
+```
+
+**Common Use Cases:**
+
+**Configuration Settings:**
+```soma
+Void (Host) (localhost) (Port) (8080) (Debug) (True) >md.dl
+>md.ul
+) Produces:
+) - **Host**: localhost
+) - **Port**: 8080
+) - **Debug**: True
+```
+
+**Team Directory:**
+```soma
+Void (Alice) (Engineering) (Bob) (Design) (Carol) (Product) >md.dt
+>md.ol
+) Produces:
+) 1. **Alice**
+) 2. Engineering
+) 3. **Bob**
+) 4. Design
+) 5. **Carol**
+) 6. Product
+```
+
+**CRITICAL WARNING - Placeholder Interactions:**
+
+Transformations **FAIL** if placeholders from `>md.oli` or `>md.uli` are in the items:
+
+```soma
+) WRONG - This will ERROR:
+(Task) >md.b >md.oli          ) Creates placeholder
+(Description) >md.i >md.oli   ) Creates placeholder
+>md.dl                         ) ERROR! Can't pair placeholders!
+
+) RIGHT - Render placeholders first, THEN transform:
+(Task) >md.b >md.oli
+(Description) >md.i >md.oli
+>md.ol                         ) Render the complex items
+
+Void (Name) (Alice) (Role) (Engineer) >md.dl
+>md.ul                         ) Now transform and render separately
+```
+
+**Rules for Using Transformations:**
+1. Always work with **even numbers** of items
+2. Never mix with placeholders from `>md.oli`/`>md.uli`
+3. Transform first, then render with `>md.ul`/`>md.ol`/`>md.p`
+4. You can chain transformations if needed
+
+**Example - Chaining Transformations:**
+```soma
+Void (Key1) (Value1) (Key2) (Value2) >md.dl
+) Stack: (**Key1**: Value1) (**Key2**: Value2)
+
+>md.p
+) Renders as paragraph with formatted pairs
+```
+
+### Convenience Combinators (md.dul and md.dol)
+
+These are shortcuts that combine transformations with rendering in one operation:
+
+**Definition Unordered List (md.dul):**
+
+Equivalent to `>md.dl` followed by `>md.ul`:
+
+```soma
+) Instead of this:
+Void (Name) (Alice) (Age) (30) >md.dl
+>md.ul
+
+) Write this:
+Void (Name) (Alice) (Age) (30) >md.dul
+) Produces:
+) - **Name**: Alice
+) - **Age**: 30
+```
+
+**Definition Ordered List (md.dol):**
+
+Equivalent to `>md.dl` followed by `>md.ol`:
+
+```soma
+Void (Step) (Initialize) (Action) (Configure) (Result) (Success) >md.dol
+) Produces:
+) 1. **Step**: Initialize
+) 2. **Action**: Configure
+) 3. **Result**: Success
+```
+
+**When to Use Combinators:**
+
+**Configuration Files:**
+```soma
+>md.start
+
+(Server Configuration) >md.h2
+
+Void (Host) (localhost)
+     (Port) (8080)
+     (Workers) (4)
+     (Timeout) (30s)
+>md.dul
+
+(config.md) >md.render
+```
+
+**Feature Comparison:**
+```soma
+>md.start
+
+(Feature Comparison) >md.h2
+
+Void (Speed) (Fast)
+     (Memory) (Low)
+     (Compatibility) (High)
+>md.dol
+
+(comparison.md) >md.render
+```
+
+**Environment Variables:**
+```soma
+(Environment Setup) >md.h2
+
+Void (DATABASE_URL) (postgres://localhost/db)
+     (API_KEY) (your-api-key-here)
+     (LOG_LEVEL) (debug)
+>md.dul
+```
+
+**When NOT to Use:**
+- When you need placeholders (use separate render then transform)
+- When you need different output format (use `>md.dl` + custom renderer)
+
+**Remember:**
+- `>md.dul` = definition unordered list (bulleted)
+- `>md.dol` = definition ordered list (numbered)
+- Both require even number of items
+- Both fail with placeholders (same rules as `>md.dl`)
 
 ---
 
@@ -514,6 +806,141 @@ vm.execute_string('(out.md) >md.render')
 (meeting_notes.md) >md.render
 ```
 
+### Configuration Documentation with Definition Lists
+
+```soma
+(python) >use
+(markdown) >use
+>md.start
+
+(Application Configuration) >md.h1
+
+(Server Settings) >md.h2
+
+Void (Host) (0.0.0.0)
+     (Port) (8080)
+     (Workers) (4)
+     (Timeout) (30s)
+     (Debug Mode) (false)
+>md.dul
+
+(Database Configuration) >md.h2
+
+Void (Engine) (PostgreSQL)
+     (Version) (14.0)
+     (Max Connections) (100)
+     (Pool Size) (20)
+>md.dul
+
+(API Keys) >md.h2
+
+Void (STRIPE_KEY) (sk_test_xxx)
+     (SENDGRID_KEY) (SG.xxx)
+     (AWS_ACCESS_KEY) (AKIA...)
+>md.dul
+
+(config_docs.md) >md.render
+```
+
+### Task List with Inline Formatting
+
+```soma
+(python) >use
+(markdown) >use
+>md.start
+
+(Development Tasks) >md.h1
+
+(High Priority) >md.h2
+
+(Fix the ) (authentication) >md.b ( bug in ) (login.py) >md.c >md.oli
+(Update ) (API documentation) >md.i ( with new endpoints) >md.oli
+(Deploy to ) (staging) >md.b ( environment) >md.oli
+>md.ol
+
+(Code Review Checklist) >md.h2
+
+(Check ) (type hints) >md.c ( are present) >md.uli
+(Verify ) (tests pass) >md.b ( locally) >md.uli
+(Review ) (security) >md.i ( implications) >md.uli
+(Update ) (CHANGELOG.md) >md.c >md.uli
+>md.ul
+
+(tasks.md) >md.render
+```
+
+### Feature Comparison with Definition Ordered List
+
+```soma
+(python) >use
+(markdown) >use
+>md.start
+
+(Product Tiers) >md.h1
+
+(Free Tier) >md.h2
+
+Void (Storage) (10 GB)
+     (Users) (1)
+     (Support) (Community)
+     (API Calls) (1,000/month)
+>md.dol
+
+(Pro Tier) >md.h2
+
+Void (Storage) (100 GB)
+     (Users) (5)
+     (Support) (Email)
+     (API Calls) (100,000/month)
+>md.dol
+
+(Enterprise Tier) >md.h2
+
+Void (Storage) (Unlimited)
+     (Users) (Unlimited)
+     (Support) (24/7 Phone)
+     (API Calls) (Unlimited)
+>md.dol
+
+(pricing.md) >md.render
+```
+
+### Installation Guide with Complex Steps
+
+```soma
+(python) >use
+(markdown) >use
+>md.start
+
+(Installation Guide) >md.h1
+
+(Prerequisites) >md.h2
+
+(Install ) (Python 3.8+) >md.b >md.uli
+(Install ) (Git) >md.b >md.uli
+(Have ) (pip) >md.c ( and ) (virtualenv) >md.c ( available) >md.uli
+>md.ul
+
+(Quick Start) >md.h2
+
+(Clone with ) (git clone https://github.com/user/repo.git) >md.c >md.oli
+(Navigate with ) (cd repo) >md.c >md.oli
+(Create virtualenv with ) (python -m venv venv) >md.c >md.oli
+(Activate with ) (source venv/bin/activate) >md.c >md.oli
+(Install with ) (pip install -r requirements.txt) >md.c >md.oli
+>md.ol
+
+(Configuration) >md.h2
+
+Void (DB_HOST) (localhost)
+     (DB_PORT) (5432)
+     (SECRET_KEY) (your-secret-here)
+     (LOG_LEVEL) (INFO)
+>md.dul
+
+(install.md) >md.render
+```
+
 ---
 
 ## Tips for Helping Users
@@ -573,6 +1000,51 @@ Remember: items accumulate until a formatter drains them:
 ) Oops! Outer items never rendered - need >md.ul or >md.ol
 ```
 
+**Wrong - Using md.dl/dt with placeholders:**
+```soma
+(Item1) >md.b >md.oli
+(Item2) >md.i >md.oli
+>md.dl              ) ERROR! Transformations fail with placeholders
+```
+
+**Right - Render placeholders first:**
+```soma
+(Item1) >md.b >md.oli
+(Item2) >md.i >md.oli
+>md.ol              ) Render complex list first
+
+Void (Key1) (Val1) (Key2) (Val2) >md.dl
+>md.ul              ) Then transform and render separately
+```
+
+**Wrong - Odd number of items with md.dl:**
+```soma
+Void (Name) (Alice) (Age)   ) Only 3 items!
+>md.dl                       ) ERROR! Need even number for pairs
+```
+
+**Right - Even pairs:**
+```soma
+Void (Name) (Alice) (Age) (30)  ) 4 items = 2 pairs
+>md.dl
+>md.ul
+```
+
+**Wrong - Forgetting to consume placeholders:**
+```soma
+(Item) >md.b >md.oli
+(Another) >md.i >md.oli
+>md.render           ) ERROR! Placeholders not rendered
+```
+
+**Right - Always render placeholders:**
+```soma
+(Item) >md.b >md.oli
+(Another) >md.i >md.oli
+>md.ol               ) Consume placeholders first
+(output.md) >md.render
+```
+
 ### 5. **Debugging**
 If output is wrong, check:
 1. Did you call `>md.start`?
@@ -599,8 +1071,22 @@ ALIGNMENT:       >md.table.left/centre/right >md.table.align
 CODE BLOCKS:     (line1) (line2) Nil/>md.code  OR  (line1) (python) >md.code
 SEPARATOR:       >md.hr
 
+COMPLEX ITEMS:   (text) >md.b >md.oli  ) Ordered list item with formatting
+                 (text) >md.i >md.uli  ) Unordered list item with formatting
+                 >md.ol or >md.ul      ) Then render the accumulated items
+
+TRANSFORMATIONS: Void (k1) (v1) (k2) (v2) >md.dl >md.ul  ) Definition list
+                 Void (a) (b) (c) (d) >md.dt >md.ol      ) Data title pairs
+
+COMBINATORS:     Void (k1) (v1) (k2) (v2) >md.dul        ) Definition + ul
+                 Void (k1) (v1) (k2) (v2) >md.dol        ) Definition + ol
+
 COMPOSITION:     (text) >md.b >md.i → _**text**_
 CONCATENATION:   (a) (b) >md.b (c) >md.t → a**b**c
+
+WARNINGS:        - Never mix >md.dl/dt with placeholders from >md.oli/uli
+                 - Always even number of items for >md.dl/dt/dul/dol
+                 - Always render placeholders before >md.render
 ```
 
 ---

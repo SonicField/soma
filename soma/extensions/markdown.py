@@ -6,6 +6,69 @@ All logic implemented in pure SOMA using Python FFI primitives.
 """
 
 
+class OliPlaceholder:
+    """Opaque placeholder for ordered list items accumulated via >md.oli"""
+    def __init__(self, index):
+        self.index = index
+
+    def __repr__(self):
+        return f"OliPlaceholder({self.index})"
+
+
+class UliPlaceholder:
+    """Opaque placeholder for unordered list items accumulated via >md.uli"""
+    def __init__(self, index):
+        self.index = index
+
+    def __repr__(self):
+        return f"UliPlaceholder({self.index})"
+
+
+def is_placeholder(obj):
+    """Check if object is any kind of list item placeholder."""
+    return isinstance(obj, (OliPlaceholder, UliPlaceholder))
+
+
+def replace_placeholder(item, accumulator):
+    """
+    Replace placeholder with accumulated value if it's a placeholder.
+    Otherwise return the item as-is (converted to string).
+    """
+    if isinstance(item, (OliPlaceholder, UliPlaceholder)):
+        if 0 <= item.index < len(accumulator):
+            return accumulator[item.index]
+        else:
+            raise RuntimeError(f"Placeholder index {item.index} out of range (accumulator has {len(accumulator)} items)")
+    return str(item)
+
+
+def validate_no_placeholders(items, operation_name):
+    """
+    Validate that no placeholders exist in items.
+    Raises RuntimeError if any placeholder is found.
+    """
+    for i, item in enumerate(items):
+        if is_placeholder(item):
+            placeholder_type = "ordered" if isinstance(item, OliPlaceholder) else "unordered"
+            list_op = ">md.ol" if isinstance(item, OliPlaceholder) else ">md.ul"
+
+            # Provide context-specific hints
+            hint = ""
+            if operation_name in [">md.dl", ">md.dt"]:
+                hint = (
+                    f"\n\nNote: {operation_name} processes items in pairs. "
+                    f"Placeholders cannot be part of pairs. "
+                    f"Consume all placeholders with {list_op} BEFORE calling {operation_name}, "
+                    f"or ensure placeholders are below the Void sentinel (not in the items being paired)."
+                )
+
+            raise RuntimeError(
+                f"{operation_name} encountered {type(item).__name__} at position {i}. "
+                f"Placeholders from >md.oli/uli must be consumed by >md.ol/ul before {operation_name}. "
+                f"Did you forget to call {list_op}?{hint}"
+            )
+
+
 def drain_and_join_builtin(vm):
     """
     >md.drain.join builtin - Drain AL until Void, join with separator.
@@ -20,8 +83,9 @@ def drain_and_join_builtin(vm):
         raise RuntimeError("AL underflow: md.drain.join requires separator")
     separator = vm.al.pop()
 
-    # Pop items until Void
+    # Pop items until Void or placeholder
     items = []
+    hit_placeholder = False
     while True:
         if len(vm.al) < 1:
             raise RuntimeError("AL underflow: md.drain.join requires Void terminator")
@@ -29,6 +93,13 @@ def drain_and_join_builtin(vm):
         item = vm.al.pop()
 
         if isinstance(item, VoidSingleton):
+            break
+
+        # Stop if we hit a placeholder from oli/uli calls
+        if is_placeholder(item):
+            # Put it back and stop draining
+            vm.al.append(item)
+            hit_placeholder = True
             break
 
         items.append(str(item))
@@ -39,8 +110,11 @@ def drain_and_join_builtin(vm):
     # Join with separator
     result = str(separator).join(items)
 
-    # Push Void sentinel back first, then result (LIFO order)
-    vm.al.append(Void)
+    # Push Void back if we hit it, otherwise we stopped at placeholder (which is already back)
+    if not hit_placeholder:
+        vm.al.append(Void)
+
+    # Push result
     vm.al.append(result)
 
 
@@ -48,16 +122,24 @@ def drain_and_format_ul_builtin(vm):
     """
     >use.md.drain.ul builtin - Drain AL, check nesting stack, format as unordered list.
 
-    AL before: [void, item1, item2, ..., itemN, depth, stack, ...]
+    AL before: [void, item1, item2, ..., itemN, depth, stack, accumulator, ...]
     AL after: ["- item1\n...\n\n", new_depth, new_stack, void, ...]
+
+    Items may include placeholders like "__MD_ITEM_PLACEHOLDER_N__" which are
+    replaced with accumulated items from the accumulator list.
     """
     from soma.vm import Void, VoidSingleton
 
-    # Pop stack and depth
-    if len(vm.al) < 2:
-        raise RuntimeError("AL underflow: md.drain.ul requires stack and depth")
+    # Pop accumulator, stack and depth
+    if len(vm.al) < 3:
+        raise RuntimeError("AL underflow: md.drain.ul requires accumulator, stack and depth")
+    accumulator = vm.al.pop()
     stack = vm.al.pop()
     depth = int(vm.al.pop())
+
+    # Ensure accumulator is a list
+    if not isinstance(accumulator, list):
+        accumulator = []
 
     # Pop items until Void
     items = []
@@ -70,10 +152,30 @@ def drain_and_format_ul_builtin(vm):
         if isinstance(item, VoidSingleton):
             break
 
-        items.append(str(item))
+        items.append(item)  # Keep as object for now
 
     # Items are in reverse order (LIFO), so reverse them
     items.reverse()
+
+    # Replace placeholders with accumulated items and validate types
+    for i in range(len(items)):
+        item = items[i]
+        if isinstance(item, UliPlaceholder):
+            # Correct placeholder type - replace with accumulated item
+            if 0 <= item.index < len(accumulator):
+                items[i] = accumulator[item.index]
+            else:
+                raise RuntimeError(f"UliPlaceholder index {item.index} out of range (accumulator has {len(accumulator)} items)")
+        elif isinstance(item, OliPlaceholder):
+            # Wrong placeholder type!
+            raise RuntimeError(
+                f">md.ul encountered OliPlaceholder (from >md.oli). "
+                f"Use >md.ol for ordered list items, not >md.ul. "
+                f"Did you mean to use >md.ol instead of >md.ul?"
+            )
+        else:
+            # Regular item - convert to string
+            items[i] = str(item)
 
     # Build result
     result_parts = []
@@ -118,10 +220,14 @@ def drain_and_format_ul_builtin(vm):
             for ctx in contexts_to_render:
                 parent_items = ctx['items']
                 nested_text = ctx.get('nested_text', '')
+                # Get the accumulator that was active when these items were created
+                parent_accumulator = ctx.get('uli_accumulator', [])
 
-                # Render parent items using UL format
+                # Render parent items using UL format (replace placeholders if needed)
                 for item in parent_items:
-                    result_parts.append(f"{parent_indent}- {item}\n")
+                    # Replace placeholder with accumulated value from parent context
+                    item_text = replace_placeholder(item, parent_accumulator)
+                    result_parts.append(f"{parent_indent}- {item_text}\n")
 
                 # Insert nested text
                 if nested_text:
@@ -169,16 +275,24 @@ def drain_and_format_ol_builtin(vm):
     """
     >use.md.drain.ol builtin - Drain AL, check nesting stack, format as ordered list.
 
-    AL before: [void, item1, item2, ..., itemN, depth, stack, ...]
+    AL before: [void, item1, item2, ..., itemN, depth, stack, accumulator, ...]
     AL after: ["1. item1\n...\n\n", new_depth, new_stack, void, ...]
+
+    Items may include placeholders like "__MD_ITEM_PLACEHOLDER_N__" which are
+    replaced with accumulated items from the accumulator list.
     """
     from soma.vm import Void, VoidSingleton
 
-    # Pop stack and depth
-    if len(vm.al) < 2:
-        raise RuntimeError("AL underflow: md.drain.ol requires stack and depth")
+    # Pop accumulator, stack and depth
+    if len(vm.al) < 3:
+        raise RuntimeError("AL underflow: md.drain.ol requires accumulator, stack and depth")
+    accumulator = vm.al.pop()
     stack = vm.al.pop()
     depth = int(vm.al.pop())
+
+    # Ensure accumulator is a list
+    if not isinstance(accumulator, list):
+        accumulator = []
 
     # Pop items until Void
     items = []
@@ -191,10 +305,30 @@ def drain_and_format_ol_builtin(vm):
         if isinstance(item, VoidSingleton):
             break
 
-        items.append(str(item))
+        items.append(item)  # Keep as object for now
 
     # Items are in reverse order (LIFO), so reverse them
     items.reverse()
+
+    # Replace placeholders with accumulated items and validate types
+    for i in range(len(items)):
+        item = items[i]
+        if isinstance(item, OliPlaceholder):
+            # Correct placeholder type - replace with accumulated item
+            if 0 <= item.index < len(accumulator):
+                items[i] = accumulator[item.index]
+            else:
+                raise RuntimeError(f"OliPlaceholder index {item.index} out of range (accumulator has {len(accumulator)} items)")
+        elif isinstance(item, UliPlaceholder):
+            # Wrong placeholder type!
+            raise RuntimeError(
+                f">md.ol encountered UliPlaceholder (from >md.uli). "
+                f"Use >md.ul for unordered list items, not >md.ol. "
+                f"Did you mean to use >md.ul instead of >md.ol?"
+            )
+        else:
+            # Regular item - convert to string
+            items[i] = str(item)
 
     # Build result
     result_parts = []
@@ -242,10 +376,14 @@ def drain_and_format_ol_builtin(vm):
             for ctx in contexts_to_render:
                 parent_items = ctx['items']
                 nested_text = ctx.get('nested_text', '')
+                # Get the accumulator that was active when these items were created
+                parent_accumulator = ctx.get('oli_accumulator', [])
 
-                # Render parent items using OL format
+                # Render parent items using OL format (replace placeholders if needed)
                 for item in parent_items:
-                    result_parts.append(f"{parent_indent}{counter}. {item}\n")
+                    # Replace placeholder with accumulated value from parent context
+                    item_text = replace_placeholder(item, parent_accumulator)
+                    result_parts.append(f"{parent_indent}{counter}. {item_text}\n")
                     counter += 1
 
                 # Insert nested text
@@ -315,15 +453,18 @@ def drain_and_format_paragraphs_builtin(vm):
         if isinstance(item, VoidSingleton):
             break
 
-        items.append(str(item))
+        items.append(item)
 
     # Items are in reverse order (LIFO), so reverse them
     items.reverse()
 
+    # Validate no placeholders
+    validate_no_placeholders(items, ">md.p")
+
     # Format each item as a separate paragraph
     result_parts = []
     for item in items:
-        result_parts.append(f"{item}\n\n")
+        result_parts.append(f"{str(item)}\n\n")
 
     result = ''.join(result_parts)
 
@@ -354,15 +495,18 @@ def drain_and_format_blockquote_builtin(vm):
         if isinstance(item, VoidSingleton):
             break
 
-        items.append(str(item))
+        items.append(item)
 
     # Items are in reverse order (LIFO), so reverse them
     items.reverse()
 
+    # Validate no placeholders
+    validate_no_placeholders(items, ">md.q")
+
     # Format each item as a blockquote line
     result_parts = []
     for item in items:
-        result_parts.append(f"> {item}\n")
+        result_parts.append(f"> {str(item)}\n")
 
     result = ''.join(result_parts)
 
@@ -406,10 +550,13 @@ def drain_and_format_code_block_builtin(vm):
         if isinstance(item, VoidSingleton):
             break
 
-        lines.append(str(item))
+        lines.append(item)
 
     # Lines are in reverse order (LIFO), so reverse them
     lines.reverse()
+
+    # Validate no placeholders
+    validate_no_placeholders(lines, ">md.code")
 
     # Build code block
     result_parts = []
@@ -422,7 +569,7 @@ def drain_and_format_code_block_builtin(vm):
 
     # Add each line
     for line in lines:
-        result_parts.append(f"{line}\n")
+        result_parts.append(f"{str(line)}\n")
 
     # Closing triple backticks
     result_parts.append("```\n\n")
@@ -441,7 +588,8 @@ def nest_builtin(vm):
     AL before: [void, item1, item2, ..., itemN, ...]
     AL after: [void, ...]
 
-    Side effects: Pushes context onto md.state.stack, increases md.state.depth
+    Side effects: Pushes context onto md.state.stack, increases md.state.depth,
+                  saves current accumulator state and clears it for nested level
     """
     from soma.vm import Void, VoidSingleton
 
@@ -456,7 +604,11 @@ def nest_builtin(vm):
         if isinstance(item, VoidSingleton):
             break
 
-        items.append(str(item))
+        # Keep placeholders as objects, convert others to strings
+        if is_placeholder(item):
+            items.append(item)
+        else:
+            items.append(str(item))
 
     # Items are in reverse order (LIFO), so reverse them
     items.reverse()
@@ -465,14 +617,33 @@ def nest_builtin(vm):
     current_depth = vm.store.read_value(['md', 'state', 'depth'])
     current_stack = vm.store.read_value(['md', 'state', 'stack'])
 
-    # Create context for this level
-    context = {'items': items, 'depth': current_depth}
+    # Save current accumulator state (both oli and uli)
+    oli_accumulator = vm.store.read_value(['md', 'state', 'oli', 'items'])
+    uli_accumulator = vm.store.read_value(['md', 'state', 'uli', 'items'])
+
+    # Ensure they're lists
+    if not isinstance(oli_accumulator, list):
+        oli_accumulator = []
+    if not isinstance(uli_accumulator, list):
+        uli_accumulator = []
+
+    # Create context for this level (save items AND accumulator state)
+    context = {
+        'items': items,
+        'depth': current_depth,
+        'oli_accumulator': oli_accumulator[:],  # Copy
+        'uli_accumulator': uli_accumulator[:]   # Copy
+    }
 
     # Push context onto stack
     if not isinstance(current_stack, list):
         current_stack = []
     new_stack = current_stack + [context]
     vm.store.write_value(['md', 'state', 'stack'], new_stack)
+
+    # Clear accumulators for nested level
+    vm.store.write_value(['md', 'state', 'oli', 'items'], [])
+    vm.store.write_value(['md', 'state', 'uli', 'items'], [])
 
     # Increase depth for nested content
     vm.store.write_value(['md', 'state', 'depth'], current_depth + 1)
@@ -501,10 +672,16 @@ def drain_and_collect_cells_builtin(vm):
         if isinstance(item, VoidSingleton):
             break
 
-        items.append(str(item))
+        items.append(item)
 
     # Items are in reverse order (LIFO), so reverse them
     items.reverse()
+
+    # Validate no placeholders
+    validate_no_placeholders(items, ">md.table.header/row/align")
+
+    # Convert to strings
+    items = [str(item) for item in items]
 
     # Push Void back first, then the list
     vm.al.append(Void)
@@ -538,6 +715,9 @@ def drain_and_format_data_title_builtin(vm):
 
     # Items are in reverse order (LIFO), so reverse them
     items.reverse()
+
+    # Validate no placeholders
+    validate_no_placeholders(items, ">md.dt")
 
     # Format with alternating bold
     result = data_title_format(*items)
@@ -576,6 +756,9 @@ def drain_and_format_definition_list_builtin(vm):
     # Items are in reverse order (LIFO), so reverse them
     items.reverse()
 
+    # Validate no placeholders
+    validate_no_placeholders(items, ">md.dl")
+
     # Format as definition list items (returns list of formatted strings)
     formatted_items = definition_list_format(*items)
 
@@ -583,6 +766,178 @@ def drain_and_format_definition_list_builtin(vm):
     vm.al.append(Void)
     for formatted_item in formatted_items:
         vm.al.append(formatted_item)
+
+
+def accumulate_list_item_builtin(vm):
+    """
+    >use.md.accumulate.item builtin - Drain AL, concatenate, append to accumulator.
+
+    AL before: [void, item1, item2, ..., itemN, path_component1, path_component2, ...]
+    AL after: [void]
+
+    Expects path components on AL (e.g., "md", "state", "oli", "items")
+    Side effect: Appends concatenated string to accumulator list in Store
+    """
+    from soma.vm import Void, VoidSingleton
+
+    # Pop path components until we hit a special marker or count
+    # For simplicity, we'll use a fixed path structure: md.state.oli.items or md.state.uli.items
+    # Pop 4 components: items, oli/uli, state, md (in reverse order)
+    if len(vm.al) < 4:
+        raise RuntimeError("AL underflow: accumulate_list_item requires path components")
+
+    # Pop in reverse order (LIFO)
+    component4 = str(vm.al.pop())  # "items"
+    component3 = str(vm.al.pop())  # "oli" or "uli"
+    component2 = str(vm.al.pop())  # "state"
+    component1 = str(vm.al.pop())  # "md"
+
+    path_components = [component1, component2, component3, component4]
+
+    # Drain items until Void or placeholder
+    items = []
+    hit_placeholder = False
+    while True:
+        if len(vm.al) < 1:
+            raise RuntimeError("AL underflow: accumulate_list_item requires Void terminator")
+
+        item = vm.al.pop()
+
+        if isinstance(item, VoidSingleton):
+            break
+
+        # Stop if we hit a placeholder from a previous oli/uli call
+        if is_placeholder(item):
+            # Put it back and stop draining
+            vm.al.append(item)
+            hit_placeholder = True
+            break
+
+        items.append(str(item))
+
+    # Items are in reverse order (LIFO), so reverse them
+    items.reverse()
+
+    # Concatenate into single item (like md.t does)
+    result = ''.join(items)
+
+    # Read current accumulator
+    try:
+        accumulator = vm.store.read_value(path_components)
+    except:
+        accumulator = []
+
+    if not isinstance(accumulator, list):
+        accumulator = []
+
+    # Append new item
+    new_accumulator = accumulator + [result]
+
+    # Write back to store
+    vm.store.write_value(path_components, new_accumulator)
+
+    # Push Void back if we hit it, otherwise we stopped at placeholder (which is already back)
+    if not hit_placeholder:
+        vm.al.append(Void)
+
+    # Push placeholder to mark position in final list
+    # Determine which placeholder type based on oli vs uli
+    if component3 == "oli":
+        placeholder = OliPlaceholder(len(accumulator))
+    elif component3 == "uli":
+        placeholder = UliPlaceholder(len(accumulator))
+    else:
+        raise RuntimeError(f"Unknown list type '{component3}' - expected 'oli' or 'uli'")
+
+    vm.al.append(placeholder)
+
+
+def list_length_builtin(vm):
+    """
+    >use.python.list_length builtin - Get length of Python list.
+
+    AL before: [list, ...]
+    AL after: [void, length, ...]
+
+    Returns Void (exception placeholder) and length.
+    """
+    from soma.vm import Void
+
+    if len(vm.al) < 1:
+        raise RuntimeError("AL underflow: list_length requires list")
+
+    lst = vm.al.pop()
+
+    if not isinstance(lst, list):
+        length = 0
+    else:
+        length = len(lst)
+
+    # Push Void (exception placeholder), then length
+    vm.al.append(Void)
+    vm.al.append(length)
+
+
+def list_to_al_builtin(vm):
+    """
+    >use.python.list_to_al builtin - Push list items to AL.
+
+    AL before: [list, ...]
+    AL after: [item1, item2, ..., itemN, ...]
+
+    Pushes each item from the list onto AL in order.
+    """
+    if len(vm.al) < 1:
+        raise RuntimeError("AL underflow: list_to_al requires list")
+
+    lst = vm.al.pop()
+
+    if isinstance(lst, list):
+        for item in lst:
+            vm.al.append(item)
+
+
+def validate_document_builtin(vm):
+    """
+    >use.md.validate.document builtin - Validate document has no placeholders.
+
+    AL before: [document_string, ...]
+    AL after: [document_string, ...]
+
+    Checks that the document string doesn't contain placeholder objects.
+    If it does, raises an error indicating unconsumed oli/uli items.
+    """
+    if len(vm.al) < 1:
+        raise RuntimeError("AL underflow: validate_document requires document string")
+
+    doc = vm.al.pop()
+
+    # Check if document is actually a placeholder object (shouldn't happen but be safe)
+    if is_placeholder(doc):
+        raise RuntimeError(
+            f">md.render/print encountered {type(doc).__name__} in final document. "
+            f"All placeholders from >md.oli/uli must be consumed by >md.ol/ul before rendering. "
+            f"Did you forget to call >md.ol or >md.ul?"
+        )
+
+    # Push it back
+    vm.al.append(doc)
+
+
+def throw_error_builtin(vm):
+    """
+    >use.python.throw builtin - Throw a RuntimeError with the given message.
+
+    AL before: [message, ...]
+    AL after: (never returns - raises exception)
+
+    Pops error message from AL and raises RuntimeError.
+    """
+    if len(vm.al) < 1:
+        raise RuntimeError("AL underflow: throw requires error message")
+
+    message = vm.al.pop()
+    raise RuntimeError(str(message))
 
 
 def register(vm):
@@ -598,6 +953,12 @@ def register(vm):
     vm.register_extension_builtin('use.md.table.drain.cells', drain_and_collect_cells_builtin)
     vm.register_extension_builtin('use.md.drain.dt', drain_and_format_data_title_builtin)
     vm.register_extension_builtin('use.md.drain.dl', drain_and_format_definition_list_builtin)
+    # Register list item accumulator builtins
+    vm.register_extension_builtin('use.md.accumulate.item', accumulate_list_item_builtin)
+    vm.register_extension_builtin('use.python.list_length', list_length_builtin)
+    vm.register_extension_builtin('use.python.list_to_al', list_to_al_builtin)
+    vm.register_extension_builtin('use.md.validate.document', validate_document_builtin)
+    vm.register_extension_builtin('use.python.throw', throw_error_builtin)
 
 
 def get_soma_setup():

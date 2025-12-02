@@ -205,7 +205,11 @@ def data_title_format(*items):
     items = [str(item) for item in items if item is not None]
 
     if len(items) % 2 != 0:
-        raise ValueError(f"md.dt requires even number of items, got {len(items)}")
+        raise ValueError(
+            f"md.dt requires even number of items for alternating bold pairs, got {len(items)}. "
+            f"Items: {items}. "
+            f"Hint: Each label needs a value. Did you forget an item or have an extra one?"
+        )
 
     formatted = []
     for i, item in enumerate(items):
@@ -228,7 +232,11 @@ def definition_list_format(*items):
     items = [str(item) for item in items if item is not None]
 
     if len(items) % 2 != 0:
-        raise ValueError(f"md.dl requires even number of items, got {len(items)}")
+        raise ValueError(
+            f"md.dl requires even number of items for label-value pairs, got {len(items)}. "
+            f"Items: {items}. "
+            f"Hint: Each label needs a definition. Did you forget an item or have an extra one?"
+        )
 
     formatted = []
     for i in range(0, len(items), 2):

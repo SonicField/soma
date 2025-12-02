@@ -1,0 +1,2123 @@
+) ============================================================================
+) SOMA Markdown Extension - Comprehensive User Guide
+) ============================================================================
+) This document demonstrates and explains all features of the SOMA markdown
+) extension. This file IS ITSELF written in SOMA and generates its own
+) documentation when executed!
+)
+) To generate the guide: soma markdown-user-guide.soma
+) Output: markdown-user-guide.md
+) ============================================================================
+
+) Load required extensions
+(python) >use
+(markdown) >use
+
+) Initialize the markdown state machine
+>md.start
+
+) ============================================================================
+) TITLE AND INTRODUCTION
+) ============================================================================
+
+(SOMA Markdown Extension User Guide)
+>md.h1
+
+(Welcome to the comprehensive guide for the SOMA markdown extension.
+This guide covers everything from basic usage to advanced features,
+including the newest list item accumulators and definition list transformations)
+>md.p
+
+(What is the SOMA Markdown Extension?)
+>md.h2
+
+(The SOMA markdown extension is a pure SOMA implementation that enables
+programmatic generation of markdown documents. Unlike template-based approaches,
+SOMA markdown treats document construction as a series of stack operations,
+giving you the full power of SOMA's functional programming model while
+generating clean, readable markdown output)
+>md.p
+
+(Key benefits:)
+>md.p
+
+(Pure SOMA implementation - no external dependencies beyond Python FFI)
+(Stack-based operations enable elegant composition patterns)
+(Type-safe with clear error messages)
+(Supports all common markdown features plus tables and nested lists)
+(Test-driven development with 50+ comprehensive tests)
+>md.ul
+
+(Why Use It?)
+>md.h2
+
+(Traditional markdown generation involves string concatenation, which is
+error-prone and difficult to compose. The SOMA markdown extension provides:)
+>md.p
+
+(Clean syntax using the Void sentinel pattern)
+(Composable inline formatters for bold, italic, code, and links)
+(Arbitrary nesting depth for complex list structures)
+(Type-safe list construction preventing mismatched list types)
+(Powerful transformations for definition lists and data formatting)
+>md.ul
+
+(Quick Example)
+>md.h2
+
+(Here's a simple SOMA program that generates markdown:)
+>md.p
+
+(\28\python\29\ >use)
+(\28\markdown\29\ >use)
+()
+(>md.start)
+()
+(\28\Hello World\29\ >md.h1)
+(\28\This is a paragraph.\29\ >md.p)
+()
+(\28\Item 1\29\)
+(\28\Item 2\29\)
+(\28\Item 3\29\)
+(>md.ul)
+()
+(\28\output.md\29\ >md.render)
+Nil >md.code
+
+(This generates a markdown file with a heading, paragraph, and unordered list!)
+>md.p
+
+>md.hr
+
+) ============================================================================
+) GETTING STARTED
+) ============================================================================
+
+(Getting Started)
+>md.h1
+
+(Setup and Basic Structure)
+>md.h2
+
+(Every SOMA markdown program follows this basic structure:)
+>md.p
+
+(Step 1: Load Extensions)
+>md.h3
+
+(Load the required extensions at the top of your file:)
+>md.p
+
+(\28\python\29\ >use)
+(\28\markdown\29\ >use)
+Nil >md.code
+
+(The ) (python) >md.c ( extension provides FFI capabilities, and ) (markdown) >md.c ( provides all markdown operations)
+>md.t
+>md.p
+
+(Step 2: Initialize State Machine)
+>md.h3
+
+(Before generating any markdown, initialize the state machine:)
+>md.p
+
+(>md.start)
+Nil >md.code
+
+(This sets up:)
+>md.p
+
+(The document accumulator \28\md.state.doc)
+(The nesting stack \28\md.state.stack)
+(List item accumulators \28\md.state.oli.items\29\ and \28\md.state.uli.items)
+(Table state for header, rows, and alignment)
+(The Void sentinel on the activation list)
+>md.ul
+
+(Step 3: Build Your Document)
+>md.h3
+
+(Use markdown operations to build content:)
+>md.p
+
+(\28\My Document\29\ >md.h1)
+(\28\Introduction paragraph.\29\ >md.p)
+(\28\Feature A\29\)
+(\28\Feature B\29\)
+(>md.ul)
+Nil >md.code
+
+(Step 4: Render or Print)
+>md.h3
+
+(Finally, output your document:)
+>md.p
+
+() (To write to a file:) >md.b >md.t >md.p
+
+(\28\output.md\29\ >md.render)
+Nil >md.code
+
+() (To print to stdout:) >md.b >md.t >md.p
+
+(>md.print)
+Nil >md.code
+
+(Your First Complete Document)
+>md.h2
+
+(Here's a complete working example:)
+>md.p
+
+(\28\python\29\ >use)
+(\28\markdown\29\ >use)
+(>md.start)
+()
+(\28\My First Document\29\ >md.h1)
+()
+(\28\This is my first paragraph.\29\)
+(\28\This is my second paragraph.\29\)
+(>md.p)
+()
+(\28\Section 1\29\ >md.h2)
+()
+(\28\Some interesting content here.\29\ >md.p)
+()
+(\28\First item\29\)
+(\28\Second item\29\)
+(\28\Third item\29\)
+(>md.ul)
+()
+(\28\output.md\29\ >md.render)
+Nil >md.code
+
+(Save this to a ) (.soma) >md.c ( file and run it with the SOMA interpreter!)
+>md.t
+>md.p
+
+>md.hr
+
+) ============================================================================
+) CORE CONCEPTS
+) ============================================================================
+
+(Core Concepts)
+>md.h1
+
+(Understanding the Void Sentinel)
+>md.h2
+
+(The Void sentinel is the foundation of SOMA markdown's clean syntax.
+It sits at the bottom of the activation list and marks where to stop
+draining items)
+>md.p
+
+(How it works:)
+>md.p
+
+(>md.start) >md.oli
+(Pushes Void onto the activation list)
+>md.nest
+(Void is always at the bottom)
+(Marks the end of items to process)
+>md.ul
+
+(>md.p, >md.ul, >md.ol, etc) >md.oli
+(These operations drain the AL until they hit Void)
+>md.nest
+(All items above Void are consumed)
+(Void itself is left on the stack)
+(New Void is pushed back after processing)
+>md.ul
+
+(>md.render) >md.oli
+(Outputs the document and cleans up state)
+>md.nest
+(Void is consumed and state is reset)
+>md.ul
+
+>md.ol
+
+(Example:)
+>md.p
+
+(>md.start           \29\ Void is now on AL)
+(\28\Text A\29\          \29\ Items stack above Void)
+(\28\Text B\29\)
+(\28\Text C\29\)
+(>md.p              \29\ Drains A, B, C \28\until\29\ Void)
+(                   \29\ Void remains, ready for next operation)
+Nil >md.code
+
+(Stack-Based Operations)
+>md.h2
+
+(SOMA markdown leverages SOMA's stack-based nature. Understanding how
+items flow through the activation list is key to mastering the extension)
+>md.p
+
+(Basic Pattern)
+>md.h3
+
+(Items are pushed onto the AL, then consumed by operations:)
+>md.p
+
+(Push items:) ( item1 item2 item3)
+(Consume with operation:) ( >md.ul)
+(Void prevents over-draining:) ( Everything stops at Void)
+>md.dol
+
+(Inline Formatters Return Values)
+>md.h3
+
+(Unlike block operations ) (>md.p) >md.c ( and ) (>md.ul) >md.c (, inline formatters like ) (>md.b) >md.c ( and ) (>md.i) >md.c ( consume a value and return a transformed value on the AL)
+>md.t
+>md.p
+
+(\28\text\29\ >md.b      \29\ Consumes \5C\"text\5C\", returns \5C\"**text**\5C\" on AL)
+(\28\text\29\ >md.i      \29\ Consumes \5C\"text\5C\", returns \5C\"_text_\5C\" on AL)
+(\28\code\29\ >md.c      \29\ Consumes \5C\"code\5C\", returns \5C\"\60\code\60\\5C\" on AL)
+Nil >md.code
+
+(This enables composition:)
+>md.p
+
+(\28\text\29\ >md.b >md.i  \29\ Returns \5C\"_**text**_\5C\")
+Nil >md.code
+
+(The Rendering Workflow)
+>md.h2
+
+(Documents are built in phases:)
+>md.p
+
+Void
+(Initialization) (>md.start sets up state and Void sentinel)
+(Construction) (Operations like >md.h1, >md.p, >md.ul append to md.state.doc)
+(Validation) (>md.render checks for unconsumed placeholders)
+(Output) (Document is written to file or printed to stdout)
+(Cleanup) (State is reset for potential reuse)
+>md.dol
+
+(Each block operation appends to the document string ) (md.state.doc) >md.c (.
+The final step validates and outputs the complete document)
+>md.t
+>md.p
+
+>md.hr
+
+) ============================================================================
+) DOCUMENT ELEMENTS
+) ============================================================================
+
+(Document Elements)
+>md.h1
+
+(Headings)
+>md.h2
+
+(Markdown supports multiple heading levels. SOMA provides ) (md.h1) >md.c ( through ) (md.h4) >md.c ()
+>md.t
+>md.p
+
+(Heading Level 1 - md.h1)
+>md.h3
+
+(The top-level heading for document titles:)
+>md.p
+
+(\28\Document Title\29\ >md.h1)
+Nil >md.code
+
+(Renders as:)
+>md.p
+
+(\23\ Document Title)
+Nil >md.code
+
+(Heading Level 2 - md.h2)
+>md.h3
+
+(Major sections:)
+>md.p
+
+(\28\Major Section\29\ >md.h2)
+Nil >md.code
+
+(Renders as:)
+>md.p
+
+(\23\\23\ Major Section)
+Nil >md.code
+
+(Heading Level 3 - md.h3)
+>md.h3
+
+(Subsections:)
+>md.p
+
+(\28\Subsection\29\ >md.h3)
+Nil >md.code
+
+(Renders as:)
+>md.p
+
+(\23\\23\\23\ Subsection)
+Nil >md.code
+
+(Heading Level 4 - md.h4)
+>md.h3
+
+(Detailed sections:)
+>md.p
+
+(\28\Detailed Section\29\ >md.h4)
+Nil >md.code
+
+(Renders as:)
+>md.p
+
+(\23\\23\\23\\23\ Detailed Section)
+Nil >md.code
+
+(Paragraphs)
+>md.h2
+
+(Paragraphs are created with ) (md.p) >md.c (. Each string becomes a separate paragraph with proper spacing)
+>md.t
+>md.p
+
+(Single Paragraph)
+>md.h3
+
+(\28\This is a single paragraph.\29\ >md.p)
+Nil >md.code
+
+(Multiple Paragraphs)
+>md.h3
+
+(Pass multiple strings to create multiple paragraphs:)
+>md.p
+
+(\28\First paragraph.\29\)
+(\28\Second paragraph.\29\)
+(\28\Third paragraph.\29\)
+(>md.p)
+Nil >md.code
+
+(Each string becomes its own paragraph with double newline spacing)
+>md.p
+
+(Horizontal Rules)
+>md.h2
+
+(Create visual separators with ) (md.hr) >md.c (:)
+>md.t
+>md.p
+
+(>md.hr)
+Nil >md.code
+
+(Renders as:)
+>md.p
+
+(---)
+Nil >md.code
+
+(Use horizontal rules to separate major sections or mark transitions in your document)
+>md.p
+
+>md.hr
+
+) ============================================================================
+) TEXT FORMATTING
+) ============================================================================
+
+(Text Formatting)
+>md.h1
+
+(Inline formatters transform text on the activation list. They consume
+a value and push back a formatted version)
+>md.p
+
+(Bold - md.b)
+>md.h2
+
+(Wrap text in double asterisks for bold:)
+>md.p
+
+(\28\important text\29\ >md.b)
+Nil >md.code
+
+(Result on AL: ) (**important text**) >md.c >md.p
+
+(Use in a paragraph:)
+>md.p
+
+(\28\This is \29\ \28\very important\29\ >md.b \28\ information.\29\ >md.t >md.p)
+Nil >md.code
+
+(Italic - md.i)
+>md.h2
+
+(Wrap text in underscores for italic:)
+>md.p
+
+(\28\emphasized text\29\ >md.i)
+Nil >md.code
+
+(Result on AL: ) (_emphasized text_) >md.c >md.p
+
+(Example in context:)
+>md.p
+
+(\28\The book \29\ \28\Gödel, Escher, Bach\29\ >md.i \28\ is fascinating.\29\ >md.t >md.p)
+Nil >md.code
+
+(Inline Code - md.c)
+>md.h2
+
+(Format code snippets with backticks:)
+>md.p
+
+(\28\function_name\29\ >md.c
+Nil >md.code
+
+(Result on AL: ) (`function_name`) >md.c >md.p
+
+(Perfect for variable names, function names, or short code snippets:)
+>md.p
+
+(\28\Call \29\ \28\process_data\29\ >md.c \28\ to begin.\29\ >md.t >md.p)
+Nil >md.code
+
+(Links - md.l)
+>md.h2
+
+(Create markdown links with ) (md.l) >md.c (. It takes two arguments: text and URL)
+>md.t
+>md.p
+
+(Syntax:)
+>md.p
+
+(\28\link text\29\ \28\https://example.com\29\ >md.l)
+Nil >md.code
+
+(Result on AL: ) ([link text](https://example.com)) >md.c >md.p
+
+(Example in paragraph:)
+>md.p
+
+(\28\Visit \29\ \28\our website\29\ \28\https://soma-lang.org\29\ >md.l \28\ for more.\29\ >md.t >md.p)
+Nil >md.code
+
+(Composing Formatters)
+>md.h2
+
+(Formatters compose beautifully because they operate on the activation list.
+The output of one formatter becomes the input of the next)
+>md.p
+
+(Bold + Italic)
+>md.h3
+
+(\28\text\29\ >md.b >md.i  \29\ Produces _**text**_)
+Nil >md.code
+
+(The result is italic bold text (both asterisks and underscores))
+>md.p
+
+(Italic Link)
+>md.h3
+
+(\28\documentation\29\ \28\https://docs.example.com\29\ >md.l >md.i)
+Nil >md.code
+
+(Creates an italicized link)
+>md.p
+
+(Bold Code)
+>md.h3
+
+(\28\IMPORTANT_CONSTANT\29\ >md.c >md.b)
+Nil >md.code
+
+(Bold inline code \28\for\29\ extra emphasis)
+>md.p
+
+(Complex Compositions)
+>md.h3
+
+(Build sophisticated inline formatting by chaining operations:)
+>md.p
+
+(\28\See the )
+(\28\API reference\29\ \28\https://api.docs.com\29\ >md.l >md.b)
+(\28\ for \29\)
+(\28\detailed\29\ >md.i)
+(\28\ information.\29\)
+(>md.t)
+(>md.p)
+Nil >md.code
+
+(Text Concatenation with md.t)
+>md.h2
+
+(The ) (md.t) >md.c ( formatter drains all items until Void and concatenates them into a single string. This is essential for building complex inline content)
+>md.t
+>md.p
+
+(Basic concatenation:)
+>md.p
+
+(\28\Part 1 \29\ \28\Part 2 \29\ \28\Part 3\29\ >md.t)
+Nil >md.code
+(Result: ) (Part 1 Part 2 Part 3) >md.c >md.p
+
+(With formatting:)
+>md.p
+
+(\28\The \29\ \28\quick\29\ >md.b \28\ brown \29\ \28\fox\29\ >md.i >md.t)
+Nil >md.code
+
+(Result: ) (The **quick** brown _fox_) >md.c >md.p
+
+(Why md.t is essential:)
+>md.p
+
+(Without ) (md.t) >md.c (, multiple items would become separate paragraphs)
+>md.t
+>md.oli
+(With ) (md.t) >md.c (, they merge into a single inline string)
+>md.t
+>md.oli
+(Enables rich inline formatting within paragraphs and list items)
+>md.oli
+>md.ol
+
+>md.hr
+
+) ============================================================================
+) LISTS
+) ============================================================================
+
+(Lists)
+>md.h1
+
+(SOMA markdown supports both simple lists and complex nested structures
+with multiple ways to build list items)
+>md.p
+
+(Simple Unordered Lists)
+>md.h2
+
+(Create bulleted lists with ) (md.ul) >md.c (:)
+>md.t
+>md.p
+
+(\28\First item\29\)
+(\28\Second item\29\)
+(\28\Third item\29\)
+(>md.ul)
+Nil >md.code
+
+(Renders as:)
+>md.p
+
+(- First item)
+(- Second item)
+(- Third item)
+Nil >md.code
+
+(The operation drains all strings from the AL until it hits Void,
+creating one list item per string)
+>md.p
+
+(Simple Ordered Lists)
+>md.h2
+
+(Create numbered lists with ) (md.ol) >md.c (:)
+>md.t
+>md.p
+
+(\28\Step one\29\)
+(\28\Step two\29\)
+(\28\Step three\29\)
+(>md.ol)
+Nil >md.code
+
+(Renders as:)
+>md.p
+
+(1. Step one\29\)
+(2. Step two\29\)
+(3. Step three\29\)
+Nil >md.code
+
+(Nested Lists)
+>md.h2
+
+(Create hierarchical structures with ) (md.nest) >md.c (. SOMA supports arbitrary nesting depth and mixing ordered and unordered lists)
+>md.t
+>md.p
+
+(Basic Two-Level Nesting)
+>md.h3
+
+(\28\Outer item 1\29\)
+(\28\Outer item 2\29\)
+(>md.nest)
+(  \28\Inner item A\29\)
+(  \28\Inner item B\29\)
+(  >md.ul)
+(\28\Outer item 3\29\)
+(>md.ol)
+Nil >md.code
+
+(How it works:)
+>md.p
+
+(Push outer items on AL) >md.oli
+(Call ) (>md.nest) >md.c ( - this saves pending items and increases depth)
+>md.t >md.oli
+(Push inner items on AL) >md.oli
+(Call inner list operation ) (>md.ul) >md.c ( or ) (>md.ol) >md.c
+>md.t >md.oli
+(Push remaining outer items) >md.oli
+(Call outer list operation) >md.oli
+>md.ol
+
+(Mixed List Types)
+>md.h3
+
+(Combine ordered and unordered at different levels:)
+>md.p
+
+(\28\Installation\29\)
+(>md.nest)
+(  \28\Download package\29\)
+(  \28\Extract files\29\)
+(  \28\Run installer\29\)
+(  >md.ol)
+(\28\Configuration\29\)
+(>md.nest)
+(  \28\Edit config file\29\)
+(  \28\Set parameters\29\)
+(  >md.ul)
+(>md.ul)
+Nil >md.code
+
+(Three-Level Deep)
+>md.h3
+
+(Nest as deep as needed:)
+>md.p
+
+(\28\Level 1\29\)
+(>md.nest)
+(  \28\Level 2a\29\)
+(  >md.nest)
+(    \28\Level 3i\29\)
+(    \28\Level 3ii\29\)
+(    >md.ul)
+(  \28\Level 2b\29\)
+(  >md.ol)
+(>md.ul)
+Nil >md.code
+
+(Complex List Items with md.oli and md.uli)
+>md.h2
+
+(For list items that need inline formatting, use the list item
+accumulators ) (md.oli) >md.c ( and ) (md.uli) >md.c ()
+>md.t
+>md.p
+
+(Why Use md.oli and md.uli?)
+>md.h3
+
+(Simple lists work great for plain text, but what if you need:)
+>md.p
+
+(Bold or italic text ) (within) >md.i ( a list item)
+>md.t >md.uli
+(Links embedded in list items)
+>md.uli
+(Mixed formatting: ) (code) >md.c (, bold, and normal text)
+>md.t >md.uli
+(Structured glossaries or definition-style lists)
+>md.uli
+>md.ul
+
+(That's where ) (md.oli) >md.c ( and ) (md.uli) >md.c ( shine!)
+>md.t
+>md.p
+
+(Ordered List Items - md.oli)
+>md.h3
+
+(Build individual ordered list items with formatting:)
+>md.p
+
+(\28\Term:\29\ >md.b \28\ Definition here.\29\ >md.t >md.oli)
+(\28\Term2:\29\ >md.b \28\ Another definition.\29\ >md.t >md.oli)
+(>md.ol)
+Nil >md.code
+
+(How it works:)
+>md.p
+
+(>md.oli) >md.c ( drains AL until Void)
+>md.t >md.oli
+(Concatenates all items into one list item)
+>md.oli
+(Stores a ) (placeholder) >md.i ( in the accumulator )
+(md.state.oli.items)
+>md.t >md.c
+>md.oli
+(>md.ol) >md.c ( consumes all placeholders and renders the list)
+>md.t >md.oli
+>md.ol
+
+(Unordered List Items - md.uli)
+>md.h3
+
+(Same concept for unordered lists:)
+>md.p
+
+(\28\Feature:\29\ >md.b \28\ See \29\ \28\docs\29\ \28\https://example.com\29\ >md.l >md.t >md.uli)
+(\28\Bug:\29\ >md.b \28\ Status \29\ \28\pending\29\ >md.i >md.t >md.uli)
+(>md.ul)
+Nil >md.code
+
+(The Placeholder Pattern)
+>md.h3
+
+(When you call ) (md.oli) >md.c ( or ) (md.uli) >md.c (, a placeholder is placed on the AL. This placeholder is later replaced when you call ) (>md.ol) >md.c ( or ) (>md.ul) >md.c ()
+>md.t
+>md.p
+
+(Critical rules:)
+>md.p
+
+(You ) (must) >md.i ( call ) (>md.ol) >md.c ( after ) (>md.oli) >md.c
+>md.t >md.oli
+(You ) (must) >md.i ( call ) (>md.ul) >md.c ( after ) (>md.uli) >md.c
+>md.t >md.oli
+(Don't mix ) (md.oli) >md.c ( with ) (>md.ul) >md.c ( or vice versa)
+>md.t >md.oli
+(Can't render with unconsumed placeholders)
+>md.oli
+>md.ol
+
+(Glossary Example)
+>md.h3
+
+(Perfect for technical glossaries:)
+>md.p
+
+(\28\GIL:\29\ >md.b \28\ Global Interpreter Lock\29\ >md.t >md.oli)
+(\28\P99 latency:\29\ >md.b \28\ 99th percentile latency\29\ >md.t >md.oli)
+(\28\Zero-copy:\29\ >md.b \28\ Technique avoiding memory copies\29\ >md.t >md.oli)
+(>md.ol)
+Nil >md.code
+
+(Renders as:)
+>md.p
+
+(1. **GIL:** Global Interpreter Lock)
+(2. **P99 latency:** 99th percentile latency)
+(3. **Zero-copy:** Technique avoiding memory copies)
+Nil >md.code
+
+(Also, you can make this even simpler using ) (md.dol)>md.c (  and ) (md.dul)>md.c >md.t >md.p
+
+(Complex Formatting Example)
+>md.h3
+
+(Combine multiple formatters in a single list item:)
+>md.p
+
+(\28\Method:\29\ >md.b \28\ \29\ \28\getValue\29\ >md.c \28\ returns \29\ \28\number\29\ >md.i >md.t >md.oli)
+(\28\See \29\ \28\docs\29\ \28\https://example.com\29\ >md.l \28\ for details\29\ >md.t >md.oli)
+(>md.ol)
+Nil >md.code
+
+(Nesting with md.oli and md.uli)
+>md.h3
+
+(List item accumulators work with nesting:)
+>md.p
+
+(\28\Outer 1\29\ >md.oli)
+(>md.nest)
+(  \28\Inner A:\29\ >md.b \28\ details\29\ >md.t >md.uli)
+(  \28\Inner B:\29\ >md.b \28\ more details\29\ >md.t >md.uli)
+(  >md.ul)
+(\28\Outer 2\29\ >md.oli)
+(>md.ol)
+Nil >md.code
+
+(Mixing Simple and Complex Items)
+>md.h3
+
+(You can mix simple items and complex items - just don't use
+md.oli with >md.ul or md.uli with >md.ol:)
+>md.p
+
+(Valid:) >md.b >md.p
+
+(\28\Simple item\29\)
+(\28\Another simple\29\)
+(\28\Complex:\29\ >md.b \28\ with formatting\29\ >md.t >md.uli)
+(>md.ul)
+Nil >md.code
+
+(Invalid - Type Mismatch:) >md.b >md.p
+
+(\28\Item\29\ >md.oli      \29\ Creates OliPlaceholder)
+(>md.ul             \29\ ERROR! Expects UliPlaceholder or strings)
+Nil >md.code
+
+>md.hr
+
+) ============================================================================
+) DEFINITION LISTS AND TRANSFORMATIONS
+) ============================================================================
+
+(Definition Lists and Transformations)
+>md.h1
+
+(SOMA markdown provides powerful transformations for creating
+definition-style lists and formatted data displays)
+>md.p
+
+(Understanding Transformations vs Rendering)
+>md.h2
+
+(This is ) (critical) >md.i (: ) (md.dt) >md.c ( and ) (md.dl) >md.c ( are ) (transformations) >md.i (, not rendering operations)
+>md.t
+>md.p
+
+(What this means:)
+>md.p
+
+(They consume items from AL and produce ) (new items) >md.i ( on AL)
+>md.t >md.oli
+(They don't append to the document)
+>md.oli
+(Their output must be consumed by another operation like ) (>md.p) >md.c ( or ) (>md.ul) >md.c
+>md.t >md.oli
+(They operate on items ) (above) >md.i ( Void only)
+>md.t >md.oli
+>md.ol
+
+(Definition Lists - md.dl)
+>md.h2
+
+(md.dl) >md.c ( transforms pairs of items into formatted definition items:)
+>md.t
+>md.p
+
+(Void \28\Label1\29\ \28\Value1\29\ \28\Label2\29\ \28\Value2\29\ >md.dl)
+Nil >md.code
+
+(Produces on AL:)
+>md.p
+
+(\28\**Label1**: Value1\29\)
+(\28\**Label2**: Value2\29\)
+Nil >md.code
+
+(These items can then be consumed by a list operation:)
+>md.p
+
+(Void \28\API\29\ \28\Application Programming Interface\29\ \28\CLI\29\ \28\Command Line Interface\29\ >md.dl)
+(>md.ul)
+Nil >md.code
+
+(Renders as:)
+>md.p
+
+(- **API**: Application Programming Interface)
+(- **CLI**: Command Line Interface)
+Nil >md.code
+
+(Data Titles - md.dt)
+>md.h2
+
+(md.dt) >md.c ( alternates bold formatting across pairs, then concatenates into a single string:)
+>md.t
+>md.p
+
+(Void \28\Name\29\ \28\Alice\29\ \28\Age\29\ \28\30\29\ \28\City\29\ \28\NYC\29\ >md.dt)
+Nil >md.code
+
+(Produces on AL:)
+>md.p
+
+(\28\**Name** Alice **Age** 30 **City** NYC)
+Nil >md.code
+
+(Perfect for displaying structured data in a paragraph:)
+>md.p
+
+(Void \28\Status\29\ \28\Active\29\ \28\Type\29\ \28\Production\29\ >md.dt)
+(>md.p)
+Nil >md.code
+
+(Renders as:)
+>md.p
+
+(**Status** Active **Type** Production)
+>md.p
+
+(Convenience Combinators - md.dul and md.dol)
+>md.h2
+
+(For common cases, SOMA provides shortcuts:)
+>md.p
+
+(md.dul - Definition Unordered List)
+>md.h3
+
+(Combines ) (md.dl) >md.c ( and ) (md.ul) >md.c (:)
+>md.t
+>md.p
+
+(Void \28\Term1\29\ \28\Def1\29\ \28\Term2\29\ \28\Def2\29\ >md.dul)
+Nil >md.code
+
+(Equivalent to:)
+>md.p
+
+(Void \28\Term1\29\ \28\Def1\29\ \28\Term2\29\ \28\Def2\29\ >md.dl >md.ul)
+Nil >md.code
+
+(md.dol - Definition Ordered List)
+>md.h3
+
+(Combines ) (md.dl) >md.c ( and ) (md.ol) >md.c (:)
+>md.t
+>md.p
+
+(Void \28\First\29\ \28\The beginning\29\ \28\Second\29\ \28\The middle\29\ >md.dol)
+Nil >md.code
+
+(Equivalent to:)
+>md.p
+
+(Void \28\First\29\ \28\The beginning\29\ \28\Second\29\ \28\The middle\29\ >md.dl >md.ol)
+Nil >md.code
+
+(Critical: Placeholder Interactions)
+>md.h2
+
+(WARNING) >md.b (: ) (md.dl) >md.c ( and ) (md.dt) >md.c ( will ) (fail) >md.i ( if placeholders from ) (md.oli) >md.c ( or ) (md.uli) >md.c ( are part of the items being paired!)
+>md.t
+>md.p
+
+(Why This Matters)
+>md.h3
+
+(When you call ) (md.oli) >md.c ( or ) (md.uli) >md.c (, a placeholder object is placed on the AL. If this placeholder is ) (above) >md.i ( Void when you call ) (md.dl) >md.c ( or ) (md.dt) >md.c (, the transformation will fail)
+>md.t
+>md.p
+
+(WRONG - Placeholder in pairs: ) >md.b >md.p
+
+(\28\Item 1\29\ >md.uli              \29\ Creates placeholder on AL)
+(Void \28\Label\29\ \28\Item 1\29\ >md.uli \28\Value\29\ >md.dl)
+(                             \29\ ERROR! Placeholder in the pairs)
+Nil >md.code
+
+(CORRECT - Transform before accumulating: ) >md.b >md.p
+
+(Void \28\Label\29\ \28\Value\29\ >md.dl)
+(>md.ul)
+Nil >md.code
+
+(ALSO CORRECT - Placeholders below Void are safe: ) >md.b >md.p
+
+(\28\Item 1\29\ >md.uli           \29\ Placeholder below)
+(Void \28\A\29\ \28\B\29\ >md.dl    \29\ Void separates items)
+(>md.ul                    \29\ Consumes dl output and placeholders)
+Nil >md.code
+
+(Best Practices)
+>md.h3
+
+(Use ) (md.dl) >md.c ( and ) (md.dt) >md.c ( on constant data \28\only)
+>md.t
+>md.oli
+(Consume all ) (md.oli) >md.c ( / ) (md.uli) >md.c ( with ) (>md.ol) >md.c ( / ) (>md.ul) >md.c ( ) (before) >md.i ( using transformations)
+>md.t
+>md.oli
+(Remember: Void separates \28\items to transform\28\ from \28\items below\28\)
+>md.oli
+(Items ) (above) >md.i ( Void are transformed)
+>md.t
+>md.oli
+(Items ) (below) >md.i ( Void \28\including placeholders\29\ are safe)
+>md.t
+>md.oli
+>md.ol
+
+(Practical Examples)
+>md.h2
+
+(Configuration List)
+>md.h3
+
+(Void \28\timeout\29\ \28\30s\29\ \28\retries\29\ \28\3\29\ \28\cache\29\ \28\enabled\29\ >md.dul)
+Nil >md.code
+
+(Renders as:)
+>md.p
+
+(- **timeout**: 30s)
+(- **retries**: 3)
+(- **cache**: enabled)
+Nil >md.code
+
+(Feature Comparison)
+>md.h3
+
+(Void \28\Speed\29\ \28\Fast\29\ \28\Memory\29\ \28\Low\29\ \28\Ease\29\ \28\High\29\ >md.dol)
+Nil >md.code
+
+(Renders as:)
+>md.p
+
+(1. **Speed**: Fast)
+(2. **Memory**: Low)
+(3. **Ease**: High)
+Nil >md.code
+
+(Inline Data Display)
+>md.h3
+
+(Void \28\User\29\ \28\admin\29\ \28\Role\29\ \28\superuser\29\ \28\Status\29\ \28\active\29\ >md.dt)
+(>md.p)
+Nil >md.code
+
+(Renders as:)
+>md.p
+
+(**User** admin **Role** superuser **Status** active)
+>md.p
+
+(Error Handling)
+>md.h2
+
+(The extension provides clear error messages:)
+>md.p
+
+Void
+(Odd number of items) (md.dl and md.dt require pairs - odd count fails)
+(Placeholder in pairs) (Clear error indicates placeholder detected)
+(Type mismatches) (Using md.oli with >md.ul fails with type error)
+>md.dul
+
+>md.hr
+
+) ============================================================================
+) TABLES
+) ============================================================================
+
+(Tables)
+>md.h1
+
+(SOMA markdown supports full-featured tables with headers, multiple rows,
+and column alignment)
+>md.p
+
+(Basic Tables)
+>md.h2
+
+(Create a table with header and rows:)
+>md.p
+
+(\28\Name\29\ \28\Age\29\ \28\Role\29\)
+(>md.table.header)
+(\28\Alice\29\ \28\30\29\ \28\Engineer\29\)
+(>md.table.row)
+(\28\Bob\29\ \28\25\29\ \28\Designer\29\)
+(>md.table.row)
+(>md.table)
+Nil >md.code
+
+(How it works:)
+>md.p
+
+(Push header cells on AL) >md.oli
+(Call ) (>md.table.header) >md.c ( to save header)
+>md.t >md.oli
+(Push row cells on AL) >md.oli
+(Call ) (>md.table.row) >md.c ( to save row \28\repeat for each row)
+>md.t >md.oli
+(Call ) (>md.table) >md.c ( to render and append to document)
+>md.t >md.oli
+>md.ol
+
+(Tables with Alignment)
+>md.h2
+
+(Specify column alignment with ) (md.table.align) >md.c (:)
+>md.t
+>md.p
+
+(\28\Feature\29\ \28\Status\29\ \28\Priority\29\)
+(>md.table.header)
+(>md.table.left >md.table.centre >md.table.right)
+(>md.table.align)
+(\28\Tables\29\ \28\Complete\29\ \28\High)
+(>md.table.row)
+(\28\Nesting\29\ \28\Complete\29\ \28\High)
+(>md.table.row)
+(>md.table)
+Nil >md.code
+
+(Alignment options:)
+>md.p
+
+(>md.table.left) >md.c ( for left-aligned columns)
+>md.t >md.oli
+(>md.table.centre) >md.c ( for center-aligned columns)
+>md.t >md.oli
+(>md.table.right) >md.c ( for right-aligned columns)
+>md.t >md.oli
+>md.ol
+
+(Push one alignment marker per column, then call ) (>md.table.align) >md.c ()
+>md.t
+>md.p
+
+(Tables with Inline Formatting)
+>md.h2
+
+(Table cells can contain formatted content:)
+>md.p
+
+(\28\Item\29\ \28\Description\29\ \28\Link\29\)
+(>md.table.header)
+(\28\SOMA\29\ \28\Stack-based language\29\ >md.b \28\repo\29\ \28\https://github.com/soma-lang\29\ >md.l)
+(>md.table.row)
+(\28\Markdown\29\ \28\Document generation\29\ >md.i \28\docs\29\ \28\https://example.com\29\ >md.l)
+(>md.table.row)
+(>md.table)
+Nil >md.code
+
+(Each cell can use:)
+>md.p
+
+(Bold and italic formatting)
+>md.uli
+(Inline code)
+>md.uli
+(Links)
+>md.uli
+(Any combination of formatters)
+>md.uli
+>md.ul
+
+(Table State Management)
+>md.h2
+
+(Tables maintain state across operations:)
+>md.p
+
+(md.state.table.header) >md.c ( stores header cells)
+>md.t >md.oli
+(md.state.table.rows) >md.c ( accumulates row arrays)
+>md.t >md.oli
+(md.state.table.alignment) >md.c ( stores alignment markers)
+>md.t >md.oli
+(>md.table) >md.c ( renders everything and clears state)
+>md.t >md.oli
+>md.ol
+
+(After ) (>md.table) >md.c (, state is reset and you can build a new table)
+>md.t
+>md.p
+
+>md.hr
+
+) ============================================================================
+) BLOCKQUOTES AND CODE
+) ============================================================================
+
+(Blockquotes and Code Blocks)
+>md.h1
+
+(Blockquotes)
+>md.h2
+
+(Create quoted text or callouts with ) (md.q) >md.c (:)
+>md.t
+>md.p
+
+(Simple Blockquote)
+>md.h3
+
+(\28\This is an important callout.\29\ >md.q)
+Nil >md.code
+
+(Renders as:)
+>md.p
+
+(> This is an important callout)
+Nil >md.code
+
+(Multi-line Blockquotes)
+>md.h3
+
+(Pass multiple strings for multi-line quotes:)
+>md.p
+
+(\28\First line of quote.\29\)
+(\28\Second line of quote.\29\)
+(\28\Third line of quote.\29\)
+(>md.q)
+Nil >md.code
+
+(Each string becomes a separate quoted line:)
+>md.p
+
+(> First line of quote)
+(> Second line of quote)
+(> Third line of quote)
+Nil >md.code
+
+(Use Cases)
+>md.h3
+
+(Highlighting important information)
+>md.uli
+(Extended quotes from documentation)
+>md.uli
+(Warnings or notes to readers)
+>md.uli
+(Attribution blocks)
+>md.uli
+>md.ul
+
+(Code Blocks)
+>md.h2
+
+(Create fenced code blocks with ) (md.code) >md.c (. Optionally specify a language for syntax highlighting)
+>md.t
+>md.p
+
+(Code Without Language)
+>md.h3
+
+(For generic code or pseudocode:)
+>md.p
+
+(\28\function greet\29\)
+(\28\  echo Hello World\29\)
+(Nil >md.code)
+Nil >md.code
+
+(The ) (Nil) >md.c ( or empty string means no language tag)
+>md.t
+>md.p
+
+(Renders as:)
+>md.p
+
+(\60\\60\\60\)
+(function greet)
+(  echo Hello World)
+(\60\\60\\60\)
+Nil >md.code
+
+(Code With Language)
+>md.h3
+
+(Specify the language as the last argument before ) (>md.code) >md.c (:)
+>md.t
+>md.p
+
+(def factorial n:)
+(    return 1 if n == 0 else n times factorial n-1)
+(\28\python\29\ >md.code)
+Nil >md.code
+
+(Limitations to Markdown prevent inlining the rendering of the above in this document) >md.i >md.p
+
+(Common languages:)
+>md.p
+
+(python) >md.c >md.oli
+(javascript) >md.c >md.oli
+(ruby) >md.c >md.oli
+(java) >md.c >md.oli
+(rust) >md.c >md.oli
+(go) >md.c >md.oli
+(bash) >md.c >md.oli
+(sql) >md.c >md.oli
+>md.ol
+
+(Multi-line Code Blocks)
+>md.h3
+
+(Pass multiple strings for multi-line code:)
+>md.p
+
+(class Example)
+(  def initialize)
+(    @value = 0)
+(  end)
+(end)
+(\28\ruby\29\ >md.code)
+Nil >md.code
+
+(Each string becomes a line in the code block)
+>md.p
+
+>md.hr
+
+) ============================================================================
+) BEST PRACTICES
+) ============================================================================
+
+(Best Practices)
+>md.h1
+
+(Document Structure Patterns)
+>md.h2
+
+(Follow these patterns for maintainable markdown generation:)
+>md.p
+
+(Start Simple, Build Up)
+>md.h3
+
+(Begin with basic structure:)
+>md.p
+
+(>md.start)
+(\28\Title\29\ >md.h1)
+(\28\Introduction\29\ >md.p)
+(\28\Section 1\29\ >md.h2)
+(\28\Content here.\29\ >md.p)
+(\28\output.md\29\ >md.render)
+Nil >md.code
+
+(Then add complexity:)
+>md.p
+
+(Add lists and nesting)
+>md.uli
+(Introduce inline formatting)
+>md.uli
+(Add tables for structured data)
+>md.uli
+(Use advanced features like md.dl and md.dt)
+>md.uli
+>md.ul
+
+(Separate Concerns with Comments)
+>md.h3
+
+(Use SOMA comments to organize sections:)
+>md.p
+
+(\29\ ============)
+(\29\ INTRODUCTION SECTION)
+(\29\ ============)
+(\28\Title\29\ >md.h1)
+(\28\Intro text\29\ >md.p)
+()
+(\29\ ============)
+(\29\ FEATURES SECTION)
+(\29\ ============)
+(\28\Features\29\ >md.h2)
+Nil >md.code
+
+(Consistent Indentation for Nesting)
+>md.h3
+
+(Indent nested content for readability:)
+>md.p
+
+(\28\Outer\29\)
+(>md.nest)
+(  \28\Inner item 1\29\)
+(  \28\Inner item 2\29\)
+(  >md.ul)
+(\28\Outer 2\28\)
+(>md.ol)
+Nil >md.code
+
+(When to Use Which Features)
+>md.h2
+
+(Choosing the right markdown operation:)
+>md.p
+
+(Simple Lists)
+>md.h3
+
+(Use when:)
+>md.p
+
+(Items are plain text)
+>md.uli
+(No inline formatting needed)
+>md.uli
+(Quick and simple structure)
+>md.uli
+>md.ul
+
+(Example:)
+>md.p
+
+(\28\Item 1\29\ \28\Item 2\29\ \28\Item 3\29\ >md.ul)
+Nil >md.code
+
+(md.oli / md.uli)
+>md.h3
+
+(Use when:)
+>md.p
+
+(Items need bold, italic, code, or links)
+>md.uli
+(Building glossaries or term lists)
+>md.uli
+(Each item has complex structure)
+>md.uli
+>md.ul
+
+(Example:)
+>md.p
+
+(\28\Term:\29\ >md.b \28\ definition\29\ >md.t >md.oli)
+(>md.ol)
+Nil >md.code
+
+(md.dl and md.dul/dol)
+>md.h3
+
+(Use when:)
+>md.p
+
+(Displaying key-value pairs)
+>md.uli
+(Configuration listings)
+>md.uli
+(Feature comparisons)
+>md.uli
+(Structured data display)
+>md.uli
+>md.ul
+
+(Example:)
+>md.p
+
+(Void \28\key1\29\ \28\value1\29\ \28\key2\29\ \28\value2\29\ >md.dul)
+Nil >md.code
+
+(md.dt)
+>md.h3
+
+(Use when:)
+>md.p
+
+(Inline data display in paragraphs)
+>md.uli
+(Alternating emphasis on labels)
+>md.uli
+(Compact key-value presentation)
+>md.uli
+>md.ul
+
+(Example:)
+>md.p
+
+(Void \28\Name\29\ \28\Alice\29\ \28\Age\29\ \28\30\29\ >md.dt >md.p)
+Nil >md.code
+
+(Tables)
+>md.h3
+
+(Use when:)
+>md.p
+
+(Data has clear rows and columns)
+>md.uli
+(Need alignment control)
+>md.uli
+(Structured comparison of features)
+>md.uli
+(Displaying datasets)
+>md.uli
+>md.ul
+
+(Common Patterns)
+>md.h2
+
+(Here are proven patterns for common documentation tasks:)
+>md.p
+
+(API Documentation)
+>md.h3
+
+(\28\API Reference\29\ >md.h1)
+()
+(\28\authenticate)
+(>md.h2)
+()
+(\28\Authenticates a user with credentials.\29\ >md.p)
+()
+(\28\Parameters\29\ >md.h3)
+(\28\username\29\ \28\string\29\ >md.c \28\ - User's login name\29\ >md.t >md.oli)
+>md.t
+(\28\password\29\ \28\string\29\ >md.c \28\ - User's password\29\ >md.t >md.oli)
+>md.t
+(>md.ol)
+Nil >md.code
+
+(Feature Lists)
+>md.h3
+
+(\28\Features\29\ >md.h2)
+()
+(\28\Performance\29\)
+(>md.nest)
+(  \28\Fast execution\29\)
+(  \28\Low memory footprint\29\)
+(  >md.ul)
+(\28\Reliability\29\)
+(>md.nest)
+(  \28\Error handling\29\)
+(  \28\Automatic retries\29\)
+(  >md.ul)
+(>md.ul)
+Nil >md.code
+
+(Configuration Documentation)
+>md.h3
+
+(\28\Configuration\29\ >md.h2)
+()
+(Void)
+(\28\timeout\29\ \28\Request timeout in seconds\29\)
+(\28\retries\29\ \28\Number of retry attempts\29\)
+(\28\log_level\29\ \28\Logging verbosity\29\)
+(>md.dul)
+Nil >md.code
+
+(Performance Tips)
+>md.h2
+
+(Keep these in mind for efficient document generation:)
+>md.p
+
+Void
+(Minimize AL operations) (Build items in batches rather than one at a time)
+(Reuse patterns) (Define custom combinators for repeated structures)
+(Clear state) (>md.render and >md.print clean up automatically)
+(Validate early) (Test small sections before building large documents)
+>md.dul
+
+>md.hr
+
+) ============================================================================
+) TROUBLESHOOTING
+) ============================================================================
+
+(Troubleshooting)
+>md.h1
+
+(Common Errors and Solutions)
+>md.h2
+
+(Unconsumed OliPlaceholder Error)
+>md.h3
+
+(Error message: ) >md.b >md.p
+
+(>md.render/print encountered unconsumed OliPlaceholder)
+(All placeholders from >md.oli must be consumed by >md.ol)
+(before rendering)
+Nil >md.code
+
+() (Cause:) >md.b ( Called ) (>md.oli) >md.c ( but forgot ) (>md.ol) >md.c
+>md.t
+>md.p
+
+(Solution: ) >md.b >md.p
+
+(\28\Item 1\29\ >md.oli)
+(\28\Item 2\29\ >md.oli)
+(>md.ol              \29\ Don't forget this!)
+Nil >md.code
+
+(Unconsumed UliPlaceholder Error)
+>md.h3
+
+(Error message: ) >md.b >md.p
+
+(>md.render/print encountered unconsumed UliPlaceholder)
+(All placeholders from >md.uli must be consumed by >md.ul)
+(before rendering)
+Nil >md.code
+
+() (Cause:) >md.b ( Called ) (>md.uli) >md.c ( but forgot ) (>md.ul) >md.c
+>md.t
+>md.p
+
+(Solution: ) >md.b >md.p
+
+(\28\Item A\29\ >md.uli)
+(\28\Item B\29\ >md.uli)
+(>md.ul              \29\ Don't forget this!)
+Nil >md.code
+
+(Wrong List Type Error)
+>md.h3
+
+(Error message: ) >md.b >md.p
+
+(Expected UliPlaceholder but found OliPlaceholder)
+Nil >md.code
+
+() (Cause:) >md.b ( Mixed ) (>md.oli) >md.c ( with ) (>md.ul) >md.c ( or ) (>md.uli) >md.c ( with ) (>md.ol) >md.c
+>md.t
+>md.p
+
+(Wrong: ) >md.b >md.p
+
+(\28\Item\29\ >md.oli)
+(>md.ul          \29\ ERROR! Should be >md.ol)
+Nil >md.code
+
+(Correct: ) >md.b >md.p
+
+(\28\Item\29\ >md.oli)
+(>md.ol          \29\ Matches oli)
+Nil >md.code
+
+(Placeholder in md.dl Transformation)
+>md.h3
+
+(Error message: ) >md.b >md.p
+
+(Cannot pair items: found placeholder in items to pair)
+Nil >md.code
+
+() (Cause:) >md.b ( Placeholder from ) (>md.oli) >md.c ( or ) (>md.uli) >md.c ( is ) (above) >md.i ( Void when calling ) (>md.dl) >md.c
+>md.t
+>md.p
+
+(Wrong: ) >md.b >md.p
+
+(Void \28\Label\29\ \28\Item 1\29\ >md.uli \28\Value\29\ >md.dl)
+(\29\ UliPlaceholder is in the pairs!)
+Nil >md.code
+
+(Correct: ) >md.b >md.p
+
+(Void \28\Label\29\ \28\Value\29\ >md.dl)
+(>md.ul)
+Nil >md.code
+
+(Odd Number of Items for md.dl or md.dt)(\28\class Example)
+(\28\  def initialize)
+(\28\    @value = 0)
+(\28\  end)
+(\28\end)
+(\28\ruby\29\ >md.code)
+Nil >md.code
+>md.h3
+
+(Error message: ) >md.b >md.p
+
+(md.dl/md.dt requires even number of items \28\pairs)
+Nil >md.code
+
+() (Cause:) >md.b ( Forgot one item in a pair)
+>md.t
+>md.p
+
+(Wrong: ) >md.b >md.p
+
+(Void \28\A\29\ \28\B\29\ \28\C\29\ >md.dl  \29\ 3 items = odd!)
+Nil >md.code
+
+(Correct: ) >md.b >md.p
+
+(Void \28\A\29\ \28\B\29\ \28\C\29\ \28\D\29\ >md.dl  \29\ 4 items = 2 pairs)
+Nil >md.code
+
+(Placeholder Errors)
+>md.h2
+
+(Understanding placeholders is key to avoiding errors:)
+>md.p
+
+(What Are Placeholders?)
+>md.h3
+
+(When you call ) (>md.oli) >md.c ( or ) (>md.uli) >md.c (, the accumulated item is stored in ) (md.state.oli.items) >md.c ( or ) (md.state.uli.items) >md.c (. A special ) (placeholder object) >md.i ( is placed on the AL to mark where the item should be inserted)
+>md.t
+>md.p
+
+(When Placeholders Are Consumed)
+>md.h3
+
+(>md.ol) >md.c ( consumes ) (OliPlaceholder) >md.i ( objects)
+>md.t >md.oli
+(>md.ul) >md.c ( consumes ) (UliPlaceholder) >md.i ( objects)
+>md.t >md.oli
+(Placeholders are replaced with accumulated items from state)
+>md.oli
+>md.ol
+
+(Placeholder Lifecycle)
+>md.h3
+
+((Text\29\ >md.oli
+>md.ol)
+Nil >md.code
+
+(How it works:)
+>md.p
+
+(When you call ) (>md.oli) >md.c (, two things happen:)
+>md.t >md.p
+
+(Item is accumulated to md.state.oli.items)
+(OliPlaceholder is pushed to AL)
+>md.ul
+
+(When you call ) (>md.ol) >md.c (, placeholders are consumed and items are rendered.)
+>md.t >md.p
+
+(Rules to Remember)
+>md.h3
+
+(Placeholders ) (must) >md.i ( be consumed before rendering)
+>md.t >md.oli
+(Use matching list types: oli→ol, uli→ul)
+>md.oli
+(Transformations like ) (md.dl) >md.c ( fail if placeholders are in the pairs)
+>md.t >md.oli
+(Placeholders ) (below) >md.i ( Void are safe from transformations)
+>md.t >md.oli
+>md.ol
+
+(Rendering Issues)
+>md.h2
+
+(Document Not Generated)
+>md.h3
+
+() (Check:) >md.b ( Did you call ) (>md.render) >md.c ( or ) (>md.print) >md.c (?)
+>md.t
+>md.p
+
+() (Check:) >md.b ( Is the filename correct?)
+>md.t
+>md.p
+
+() (Check:) >md.b ( Do you have write permissions for the output directory?)
+>md.t
+>md.p
+
+(Unexpected Output)
+>md.h3
+
+() (Check:) >md.b ( Are items in the correct order on the AL?)
+>md.t
+>md.p
+
+() (Check:) >md.b ( Did you call ) (>md.start) >md.c ( before building content?)
+>md.t
+>md.p
+
+() (Check:) >md.b ( Are inline formatters composed correctly?)
+>md.t
+>md.p
+
+(Missing Content)
+>md.h3
+
+() (Check:) >md.b ( Did you forget ) (>md.p) >md.c (, ) (>md.ul) >md.c (, or ) (>md.ol) >md.c ( to consume items?)
+>md.t
+>md.p
+
+() (Check:) >md.b ( Are items below Void? Only items above Void are processed)
+>md.t
+>md.p
+
+(Debugging Tips)
+>md.h2
+
+(Use ) (>md.print) >md.c ( during development to see output immediately)
+>md.t >md.oli
+(Test small sections independently)
+>md.oli
+(Add SOMA comments to mark sections)
+>md.oli
+(Check the test suite for examples: ) (test_markdown_extension.py) >md.c
+>md.t >md.oli
+(Read error messages carefully - they include helpful context)
+>md.oli
+>md.ol
+
+>md.hr
+
+) ============================================================================
+) COMPLETE REFERENCE
+) ============================================================================
+
+(Complete Reference)
+>md.h1
+
+(Quick Reference Card)
+>md.h2
+
+(All markdown operations at a glance:)
+>md.p
+
+(Initialization and Output)
+>md.h3
+
+(Operation) (Description) (Example)
+>md.table.header
+(>md.start) (Initialize state machine) (>md.start)
+>md.table.row
+(>md.render) (Write to file and cleanup) (\28\file.md\29\ >md.render)
+>md.table.row
+(>md.print) (Print to stdout and cleanup) (>md.print)
+>md.table.row
+>md.table
+
+(Block Elements)
+>md.h3
+
+(Operation) (Description) (Example)
+>md.table.header
+(>md.h1) (Level 1 heading) (\28\Title\29\ >md.h1)
+>md.table.row
+(>md.h2) (Level 2 heading) (\28\Section\29\ >md.h2)
+>md.table.row
+(>md.h3) (Level 3 heading) (\28\Subsection\29\ >md.h3)
+>md.table.row
+(>md.h4) (Level 4 heading) (\28\Details\29\ >md.h4)
+>md.table.row
+(>md.p) (Paragraph\28\s) (\28\Text\29\ >md.p)
+>md.table.row
+(>md.hr) (Horizontal rule) (>md.hr)
+>md.table.row
+(>md.q) (Blockquote\28\s) (\28\Quote\29\ >md.q)
+>md.table.row
+(>md.code) (Code block with optional lang) (\28\code\29\ \28\python\29\ >md.code)
+>md.table.row
+>md.table
+
+(Inline Formatters)
+>md.h3
+
+(Operation) (Description) (Example)
+>md.table.header
+(>md.b) (Bold text) (\28\text\29\ >md.b)
+>md.table.row
+(>md.i) (Italic text) (\28\text\29\ >md.i)
+>md.table.row
+(>md.c) (Inline code) (\28\code\29\ >md.c)
+>md.table.row
+(>md.l) (Link) (\28\text\29\ \28\url\29\ >md.l)
+>md.table.row
+(>md.t) (Concatenate text) (\28\a\29\ \28\b\29\ >md.t)
+>md.table.row
+>md.table
+
+(Lists - Simple)
+>md.h3
+
+(Operation) (Description) (Example)
+>md.table.header
+(>md.ul) (Unordered list) (\28\Item 1\29\ \28\Item 2\29\ >md.ul)
+>md.table.row
+(>md.ol) (Ordered list) (\28\Step 1\29\ \28\Step 2\29\ >md.ol)
+>md.table.row
+(>md.nest) (Begin nested list) (\28\Outer\29\ >md.nest ... >md.ul)
+>md.table.row
+>md.table
+
+(Lists - Complex Items)
+>md.h3
+
+(Operation) (Description) (Example)
+>md.table.header
+(>md.oli) (Accumulate ordered list item) (\28\Term:\29\ >md.b \28\ def\29\ >md.t >md.oli)
+>md.table.row
+(>md.uli) (Accumulate unordered list item) (\28\Bold\29\ >md.b \28\ text\29\ >md.t >md.uli)
+>md.table.row
+>md.table
+
+(Transformations)
+>md.h3
+
+(Operation) (Description) (Example)
+>md.table.header
+(>md.dl) (Definition list pairs) (Void \28\K\29\ \28\V\29\ >md.dl)
+>md.table.row
+(>md.dt) (Data title \28\alternating bold) (Void \28\K\29\ \28\V\29\ >md.dt)
+>md.table.row
+(>md.dul) (Definition unordered list) (Void \28\K\29\ \28\V\29\ >md.dul)
+>md.table.row
+(>md.dol) (Definition ordered list) (Void \28\K\29\ \28\V\29\ >md.dol)
+>md.table.row
+>md.table
+
+(Tables)
+>md.h3
+
+(Operation) (Description) (Example)
+>md.table.header
+(>md.table.header) (Define table header) (\28\Col1\29\ \28\Col2\29\ >md.table.header)
+>md.table.row
+(>md.table.row) (Add table row) (\28\A\29\ \28\B\29\ >md.table.row)
+>md.table.row
+(>md.table.align) (Set column alignment) (>md.table.left >md.table.right >md.table.align)
+>md.table.row
+(>md.table) (Render table) (>md.table)
+>md.table.row
+(>md.table.left) (Left align marker) (>md.table.left)
+>md.table.row
+(>md.table.centre) (Center align marker) (>md.table.centre)
+>md.table.row
+(>md.table.right) (Right align marker) (>md.table.right)
+>md.table.row
+>md.table
+
+(Function Signatures)
+>md.h2
+
+(Detailed signatures for all operations:)
+>md.p
+
+(Block Operations)
+>md.h3
+
+(md.h1: \28\text...\29\ -> Void)
+(md.h2: \28\text...\29\ -> Void)
+(md.h3: \28\text...\29\ -> Void)
+(md.h4: \28\text...\29\ -> Void)
+(md.p: \28\text...\29\ -> Void)
+(md.q: \28\text...\29\ -> Void)
+(md.code: \28\line...\29\ \28\language\29\ -> Void)
+(md.hr: -> Void)
+Nil >md.code
+
+(Inline Operations)
+>md.h3
+
+(md.b: \28\text\29\ -> \28\**text**)
+(md.i: \28\text\29\ -> \28\_text_)
+(md.c: \28\text\29\ -> \28\\60\text\60\)
+(md.l: \28\text\29\ \28\url\29\ -> \28\[text]\28\url\29\)
+(md.t: \28\text...\29\ -> \28\concatenated)
+Nil >md.code
+
+(List Operations)
+>md.h3
+
+(md.ul: \28\item...\29\ -> Void)
+(md.ol: \28\item...\29\ -> Void)
+(md.nest: \28\item...\29\ -> Void)
+(md.oli: \28\content...\29\ -> OliPlaceholder)
+(md.uli: \28\content...\29\ -> UliPlaceholder)
+Nil >md.code
+
+(Transformation Operations)
+>md.h3
+
+(md.dl: \28\label1\29\ \28\value1\29\ ... -> \28\**label1**: value1\29\ ..)
+(md.dt: \28\k1\29\ \28\v1\29\ ... -> \28\**k1** v1 **k2** v2...)
+(md.dul: \28\label1\29\ \28\value1\29\ ... -> Void)
+(md.dol: \28\label1\29\ \28\value1\29\ ... -> Void)
+Nil >md.code
+
+(Table Operations)
+>md.h3
+
+(md.table.header: \28\cell...\29\ -> Void)
+(md.table.row: \28\cell...\29\ -> Void)
+(md.table.align: alignment_marker... -> Void)
+(md.table: -> Void)
+(md.table.left: -> \28\left)
+(md.table.centre: -> \28\centre)
+(md.table.right: -> \28\right)
+Nil >md.code
+
+(State Variables)
+>md.h2
+
+(Internal state maintained by the extension:)
+>md.p
+
+Void
+(md.state.doc) (Accumulated document string)
+(md.state.stack) (Nesting stack for lists)
+(md.state.depth) (Current nesting depth)
+(md.state.oli.items) (Ordered list item accumulator)
+(md.state.uli.items) (Unordered list item accumulator)
+(md.state.table.header) (Table header cells)
+(md.state.table.rows) (Table row arrays)
+(md.state.table.alignment) (Table column alignment)
+>md.dul
+
+(Note: These are internal state variables. Do not modify directly!)
+>md.p
+
+>md.hr
+
+) ============================================================================
+) CONCLUSION
+) ============================================================================
+
+(Conclusion)
+>md.h1
+
+(You now have a complete understanding of the SOMA markdown extension.
+From basic headings and paragraphs to complex nested lists, tables,
+and transformations, you can generate any markdown document programmatically)
+>md.p
+
+(Key takeaways:)
+>md.p
+
+(Always start with ) (>md.start) >md.c ( and end with ) (>md.render) >md.c ( or ) (>md.print) >md.c
+>md.t >md.oli
+(Void sentinel pattern enables clean draining syntax)
+>md.oli
+(Inline formatters compose beautifully)
+>md.oli
+(Use ) (md.oli) >md.c ( / ) (md.uli) >md.c ( for formatted list items)
+>md.t >md.oli
+(Use ) (md.dl) >md.c ( / ) (md.dt) >md.c ( for key-value transformations)
+>md.t >md.oli
+(Watch out for placeholder interactions with transformations)
+>md.oli
+(Test incrementally and read error messages carefully)
+>md.oli
+>md.ol
+
+(Happy documenting with SOMA markdown!)
+>md.p
+
+) ============================================================================
+) RENDER OUTPUT
+) ============================================================================
+
+(markdown-user-guide.md) >md.render

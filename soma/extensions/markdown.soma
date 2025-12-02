@@ -23,6 +23,12 @@
   _.empty_list !md.state.table.rows
   _.empty_list !md.state.table.alignment
 
+  ) Initialize list item accumulators
+  Void (soma.extensions.soma_markdown.list_new) >use.python.call
+  !_.exception !_.empty_list
+  _.empty_list !md.state.oli.items
+  _.empty_list !md.state.uli.items
+
   Void                     ) Push Void sentinel to bottom of AL
 } !md.start
 
@@ -180,96 +186,69 @@
   () >use.md.drain.join
 } !md.t
 
-) Data title - alternating bold formatting (PURE SOMA)
+) Ordered list item - accumulate one item from AL
+) Drains AL until Void, concatenates, appends to md.state.oli.items
+) Use when building complex list items with inline formatting
+{
+  (md) (state) (oli) (items)   ) Push path components
+  >use.md.accumulate.item
+} !md.oli
+
+) Unordered list item - accumulate one item from AL
+) Drains AL until Void, concatenates, appends to md.state.uli.items
+) Use when building complex list items with inline formatting
+{
+  (md) (state) (uli) (items)   ) Push path components
+  >use.md.accumulate.item
+} !md.uli
+
+) ============================================================================
+) Inline Transformations (md.dt, md.dl)
+) ============================================================================
+)
+) IMPORTANT: md.dt and md.dl are TRANSFORMATIONS, not rendering operations.
+) They consume items from AL and produce new items on AL.
+)
+) Interaction with Placeholders:
+) - md.dt and md.dl will FAIL if placeholders are part of the items being paired
+) - Placeholders BELOW the Void sentinel are not processed (they're safe)
+) - ALWAYS consume placeholders with >md.ol/ul BEFORE using md.dt/dl
+)
+) Common Pitfalls:
+) 1. Placeholder as part of a pair:
+)    (Item 1) >md.uli              ) Creates placeholder on AL
+)    Void (Label) (Value) >md.dl   ) Works - placeholder is below Void
+)    BUT:
+)    Void (Label) (Item 1) >md.uli (Value) >md.dl  ) FAILS - placeholder in pairs
+)
+) 2. Orphaned placeholders:
+)    (Item 1) >md.uli
+)    Void (A) (B) >md.dl
+)    >md.ul                         ) Consumes dl output, clears accumulator
+)                                   ) Placeholder is orphaned (no accumulator items)
+)
+) 3. Order matters:
+)    Items between Void and >md.dl are paired left-to-right
+)    Placeholders cannot split pairs
+)
+) Best Practices:
+) - Use md.dt/dl on constant data (no placeholders in pairs)
+) - Consume all >md.oli/uli with >md.ol/ul BEFORE calling md.dt/dl
+) - Remember: Void separates "items to transform" from "items below"
+)
+) ============================================================================
+
+) Data title - alternating bold formatting
 ) Drains AL, transforms pairs with alternating bold, concatenates with spaces
 ) Example: (a) (b) (c) (d) >md.dt → **a** b **c** d
 {
-  ) Build linked list by draining AL (using Store for loop state)
-  Nil !md.dt.list
-  0 !md.dt.counter
-  {
-    >dup >isVoid >not
-  } {
-    !_.item
-
-    ) Create new node with unique path using counter
-    _.item !md.dt.temp.value
-    md.dt.list !md.dt.temp.next
-    md.dt.temp. !md.dt.list
-
-    md.dt.counter 1 >+ !md.dt.counter
-  } >while
-
-  >drop  ) Drop the Void
-
-  ) Walk list and build result string with transformations
-  () !md.dt.result
-  0 !md.dt.index
-  {
-    md.dt.list >isNil >not
-  } {
-    ) Get current item
-    md.dt.list.value
-
-    ) Apply bold to even indices (0, 2, 4...)
-    md.dt.index 2 >% 0 >=
-      { >md.b }
-      { }
-    >ifelse
-
-    ) Add to result with space separator (except first item)
-    md.dt.index 0 >>
-      { ( ) md.dt.result >concat >concat !md.dt.result }
-      { !md.dt.result }
-    >ifelse
-
-    md.dt.index 1 >+ !md.dt.index
-    md.dt.list.next !md.dt.list
-  } >while
-
-  ) Push Void and result back to AL
-  Void
-  md.dt.result
+  >use.md.drain.dt
 } !md.dt
 
-) Definition list - transforms pairs into separate "**label**: value" items (PURE SOMA)
+) Definition list - transforms pairs into separate "**label**: value" items
 ) Example: (a) (b) (c) (d) >md.dl → (**a**: b) (**c**: d) on AL
 {
-  ) Build linked list by draining AL (using Store for loop state)
-  Nil !md.dl.list
-  {
-    >dup >isVoid >not
-  } {
-    !_.item
-    _.item !_.node.value
-    md.dl.list !_.node.next
-    _.node. !_.node
-    _.node !md.dl.list
-  } >while
-
-  >drop  ) Drop the Void
-
-  ) Walk list in pairs and format
-  Void  ) Push sentinel first
-  Nil !md.dl.first
-  0 !md.dl.index
-  {
-    md.dl.list >isNil >not
-  } {
-    md.dl.index 2 >% 0 >=
-      {
-        ) Even index - save as first of pair (label)
-        md.dl.list.value !md.dl.first
-      }
-      {
-        ) Odd index - combine with first to make "**label**: value"
-        md.dl.first >md.b (:_) >concat md.dl.list.value >concat
-      }
-    >ifelse
-
-    md.dl.index 1 >+ !md.dl.index
-    md.dl.list.next !md.dl.list
-  } >while
+  >use.md.drain.dl
 } !md.dl
 
 ) Definition unordered list - combines md.dl with md.ul
@@ -362,14 +341,21 @@
 
 ) Unordered list
 {
-  ) Push depth and stack onto AL for builtin
-  md.state.depth md.state.stack
+  ) Note: Items may include placeholders from >md.uli calls
+  ) The drain builtin will replace placeholders with accumulated items
+
+  md.state.depth md.state.stack md.state.uli.items
   >use.md.drain.ul
   !_.list_text !_.new_depth !_.new_stack
 
   ) Update state with new depth and stack
   _.new_depth !md.state.depth
   _.new_stack !md.state.stack
+
+  ) Clear accumulator after use
+  Void (soma.extensions.soma_markdown.list_new) >use.python.call
+  !_.exc !_.empty
+  _.empty !md.state.uli.items
 
   ) Append list text to document
   md.state.doc !_.doc
@@ -382,14 +368,21 @@
 
 ) Ordered list
 {
-  ) Push depth and stack onto AL for builtin
-  md.state.depth md.state.stack
+  ) Note: Items may include placeholders from >md.oli calls
+  ) The drain builtin will replace placeholders with accumulated items
+
+  md.state.depth md.state.stack md.state.oli.items
   >use.md.drain.ol
   !_.list_text !_.new_depth !_.new_stack
 
   ) Update state with new depth and stack
   _.new_depth !md.state.depth
   _.new_stack !md.state.stack
+
+  ) Clear accumulator after use
+  Void (soma.extensions.soma_markdown.list_new) >use.python.call
+  !_.exc !_.empty
+  _.empty !md.state.oli.items
 
   ) Append list text to document
   md.state.doc !_.doc
@@ -411,54 +404,120 @@
 {
   !_.filename
 
-  ) Get accumulated document
-  md.state.doc
-  !_.content
+  ) Check for unconsumed oli/uli items
+  md.state.oli.items >use.python.list_length !_.oli_count !_.oli_exc
+  md.state.uli.items >use.python.list_length !_.uli_count !_.uli_exc
 
-  ) Write to file using Python FFI
-  Void _.filename _.content (soma.extensions.soma_markdown.write_file) >use.python.call
-  !_.exception !_.result
-
-  ) Check if write succeeded
-  _.
-  _.exception >isVoid
-  {
-    ) Success - clean up state
-    >{
-      !_.
-      () !md.state.doc
-
-      Void (soma.extensions.soma_markdown.list_new) >use.python.call
-      !_.exc !_.empty_list
-      _.empty_list !md.state.stack
-
-      0 !md.state.depth
+  _.    ) Push context for nested blocks
+  _.oli_count 0 >>
+    {
+      >drop   ) Drop context
+      (>md.render/print encountered unconsumed OliPlaceholder. All placeholders from >md.oli must be consumed by >md.ol before rendering. Did you forget to call >md.ol or >md.ul?)
+      >use.python.throw
     }
-  }
-  {
-    ) Error
-    >{
-      !_.
-      (Error writing markdown file: ) >print
-      _.exception >print
-      _.exception >drop
+    {
+      >{    ) Execute with context
+        !_.   ) Pop context
+
+        _.    ) Push context for next level
+        _.uli_count 0 >>
+          {
+            >drop   ) Drop context
+            (>md.render/print encountered unconsumed UliPlaceholder. All placeholders from >md.uli must be consumed by >md.ul before rendering. Did you forget to call >md.ol or >md.ul?)
+            >use.python.throw
+          }
+          {
+            >{    ) Execute with context
+              !_.   ) Pop context
+
+              ) All good - proceed with render
+              md.state.doc !_.content
+
+              ) Write to file using Python FFI
+              Void _.filename _.content (soma.extensions.soma_markdown.write_file) >use.python.call
+              !_.exception !_.result
+
+              ) Check if write succeeded
+              _.
+              _.exception >isVoid
+              {
+                ) Success - clean up state
+                >{
+                  !_.
+                  () !md.state.doc
+
+                  Void (soma.extensions.soma_markdown.list_new) >use.python.call
+                  !_.exc !_.empty_list
+                  _.empty_list !md.state.stack
+
+                  0 !md.state.depth
+                }
+              }
+              {
+                ) Error
+                >{
+                  !_.
+                  (Error writing markdown file: ) >print
+                  _.exception >print
+                  _.exception >drop
+                }
+              }
+              >choose >^
+            }
+          }
+        >choose >^
+      }
     }
-  }
   >choose >^
 } !md.render
 
 ) Print document to stdout - outputs generated markdown and cleans up state
 {
-  md.state.doc >print
+  ) Check for unconsumed oli/uli items
+  md.state.oli.items >use.python.list_length !_.oli_count !_.oli_exc
+  md.state.uli.items >use.python.list_length !_.uli_count !_.uli_exc
 
-  ) Clean up state
-  () !md.state.doc
+  _.    ) Push context for nested blocks
+  _.oli_count 0 >>
+    {
+      >drop   ) Drop context
+      (>md.render/print encountered unconsumed OliPlaceholder. All placeholders from >md.oli must be consumed by >md.ol before rendering. Did you forget to call >md.ol or >md.ul?)
+      >use.python.throw
+    }
+    {
+      >{    ) Execute with context
+        !_.   ) Pop context
 
-  Void (soma.extensions.soma_markdown.list_new) >use.python.call
-  !_.exc !_.empty_list
-  _.empty_list !md.state.stack
+        _.    ) Push context for next level
+        _.uli_count 0 >>
+          {
+            >drop   ) Drop context
+            (>md.render/print encountered unconsumed UliPlaceholder. All placeholders from >md.uli must be consumed by >md.ul before rendering. Did you forget to call >md.ol or >md.ul?)
+            >use.python.throw
+          }
+          {
+            >{    ) Execute with context
+              !_.   ) Pop context
 
-  0 !md.state.depth
+              ) All good - validate and print
+              md.state.doc
+              >use.md.validate.document
+              >print
 
-  Void
+              ) Clean up state
+              () !md.state.doc
+
+              Void (soma.extensions.soma_markdown.list_new) >use.python.call
+              !_.exc !_.empty_list
+              _.empty_list !md.state.stack
+
+              0 !md.state.depth
+
+              Void
+            }
+          }
+        >choose >^
+      }
+    }
+  >choose >^
 } !md.print

@@ -2,10 +2,12 @@
 """
 SOMA Markdown Extension Example Runner
 
-This script executes the markdown_examples.soma file which demonstrates
-all features of the SOMA markdown extension.
+This script executes the SOMA markdown example files:
+- markdown-examples.soma -> markdown-examples.md
+- markdown-user-guide.soma -> markdown-user-guide.md
 
-The SOMA file will render itself as a markdown document to output.md.
+The SOMA files demonstrate all features of the SOMA markdown extension
+and render themselves as markdown documents.
 """
 
 import sys
@@ -16,34 +18,24 @@ from pathlib import Path
 soma_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(soma_root))
 
-from soma.vm import VM, run_soma_program
-from soma.parser import Parser
-from soma.lexer import lex
+from soma.vm import run_soma_program
 
 
-def main():
-    """Run the markdown example."""
-    example_dir = Path(__file__).parent
-    soma_file = example_dir / "markdown_examples.soma"
-    output_file = example_dir / "output.md"
-
-    print("=" * 70)
-    print("SOMA Markdown Extension Example")
-    print("=" * 70)
-    print(f"Input:  {soma_file}")
-    print(f"Output: {output_file}")
-    print()
+def run_soma_file(soma_file: Path, expected_output: Path) -> bool:
+    """Run a SOMA file and verify output was created."""
+    print(f"\nProcessing: {soma_file.name}")
+    print(f"  Input:  {soma_file}")
+    print(f"  Output: {expected_output}")
 
     # Read the SOMA file
     with open(soma_file, 'r') as f:
         code = f.read()
 
-    # Execute it (change to example directory so output.md goes to the right place)
-    print("Executing SOMA program...")
+    # Execute it (change to example directory so output goes to the right place)
     try:
         # Save current directory and change to example directory
         original_dir = os.getcwd()
-        os.chdir(example_dir)
+        os.chdir(soma_file.parent)
 
         try:
             run_soma_program(code)
@@ -51,44 +43,59 @@ def main():
             # Restore original directory
             os.chdir(original_dir)
 
-        print("✓ Execution complete!")
-        print()
-
         # Check if output was created
-        if output_file.exists():
-            print(f"✓ Output file created: {output_file}")
-
-            # Show file size
-            size = output_file.stat().st_size
-            print(f"  Size: {size} bytes")
-
-            # Show first few lines
-            print()
-            print("Preview (first 20 lines):")
-            print("-" * 70)
-            with open(output_file, 'r') as f:
-                lines = f.readlines()
-                for i, line in enumerate(lines[:20], 1):
-                    print(f"{i:3d}: {line}", end='')
-                if len(lines) > 20:
-                    print(f"... ({len(lines) - 20} more lines)")
-            print("-" * 70)
-            print()
-            print(f"Full output available in: {output_file}")
+        if expected_output.exists():
+            size = expected_output.stat().st_size
+            lines = len(expected_output.read_text().splitlines())
+            print(f"  ✓ Generated: {size:,} bytes, {lines:,} lines")
+            return True
         else:
-            print(f"✗ Output file not created")
-            return 1
+            print(f"  ✗ Output file not created")
+            return False
 
     except Exception as e:
-        print(f"✗ Error executing SOMA program:")
-        print(f"  {type(e).__name__}: {e}")
-        import traceback
-        traceback.print_exc()
-        return 1
+        print(f"  ✗ Error: {type(e).__name__}: {e}")
+        return False
 
+
+def main():
+    """Run both markdown example files."""
+    example_dir = Path(__file__).parent
+
+    print("=" * 70)
+    print("SOMA Markdown Extension Examples")
+    print("=" * 70)
+
+    files_to_run = [
+        ("markdown-examples.soma", "markdown-examples.md"),
+        ("markdown-user-guide.soma", "markdown-user-guide.md"),
+    ]
+
+    results = []
+    for soma_name, md_name in files_to_run:
+        soma_file = example_dir / soma_name
+        output_file = example_dir / md_name
+
+        if not soma_file.exists():
+            print(f"\n✗ {soma_name} not found")
+            results.append(False)
+            continue
+
+        success = run_soma_file(soma_file, output_file)
+        results.append(success)
+
+    # Summary
     print()
     print("=" * 70)
-    print("Example complete!")
+    successful = sum(results)
+    total = len(results)
+
+    if successful == total:
+        print(f"✓ All {total} files processed successfully!")
+    else:
+        print(f"✗ {successful}/{total} files processed successfully")
+        return 1
+
     print("=" * 70)
     return 0
 

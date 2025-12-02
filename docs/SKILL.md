@@ -86,7 +86,7 @@ Nil                    ) Explicit null/none
 Void                   ) Undefined/missing value
 { code }               ) Block (unevaluated code)
 (Hello)                ) String (parentheses, not quotes!)
-(Hello (world\29\\52\) ) ) and \ must be escaped in strings
+(Hello (world\29\\5C\) ) ) and \ must be escaped in strings
 ```
 
 ### Operators and Modifiers
