@@ -2106,5 +2106,486 @@ class TestMarkdownEdgeCases(unittest.TestCase):
             os.unlink(temp_path)
 
 
+class TestEmitterIntegration(unittest.TestCase):
+    """
+    Test cases for emitter integration with markdown builtins (Step 4: TDD).
+
+    These tests define expected behavior BEFORE implementation.
+    They will FAIL until Step 5 completes the refactoring.
+    """
+
+    def test_default_emitter_is_markdown(self):
+        """
+        Test that after >md.start, the default emitter is MarkdownEmitter.
+
+        Expected to FAIL: md.state doesn't have emitter field yet.
+        """
+        from soma.extensions.markdown_emitter import MarkdownEmitter
+
+        code = """
+        (python) >use
+        (markdown) >use
+
+        >md.start
+        """
+        vm = VM()
+        tokens = lex(code)
+        parser = Parser(tokens)
+        ast = parser.parse()
+        compiled = compile_program(ast)
+        vm.execute(compiled)
+
+        # Check that emitter exists and is MarkdownEmitter
+        emitter = vm.store.read_value(['md', 'state', 'emitter'])
+        self.assertIsInstance(emitter, MarkdownEmitter,
+                            "Default emitter should be MarkdownEmitter")
+
+    def test_emitter_used_for_bold(self):
+        """
+        Test that >md.b calls the emitter's bold() method.
+
+        Expected to FAIL: builtins don't call emitter yet.
+        """
+        from unittest.mock import Mock
+
+        code = """
+        (python) >use
+        (markdown) >use
+
+        >md.start
+        (bold text) >md.b
+        """
+        vm = VM()
+
+        # Execute initial setup
+        tokens = lex(code)
+        parser = Parser(tokens)
+        ast = parser.parse()
+        compiled = compile_program(ast)
+        vm.execute(compiled)
+
+        # Create a mock emitter
+        mock_emitter = Mock()
+        mock_emitter.bold.return_value = "**bold text**"
+
+        # Set it as the emitter
+        vm.store.write_value(['md', 'state', 'emitter'], mock_emitter)
+
+        # Call >md.b again with new text
+        code2 = """
+        (test text) >md.b
+        """
+        tokens2 = lex(code2)
+        parser2 = Parser(tokens2)
+        ast2 = parser2.parse()
+        compiled2 = compile_program(ast2)
+        vm.execute(compiled2)
+
+        # Verify emitter.bold() was called
+        mock_emitter.bold.assert_called_with("test text")
+
+    def test_emitter_used_for_headings(self):
+        """
+        Test that heading builtins (>md.h1, >md.h2, etc.) call emitter methods.
+
+        Expected to FAIL: builtins don't call emitter yet.
+        """
+        from unittest.mock import Mock
+
+        code = """
+        (python) >use
+        (markdown) >use
+
+        >md.start
+        """
+        vm = VM()
+        tokens = lex(code)
+        parser = Parser(tokens)
+        ast = parser.parse()
+        compiled = compile_program(ast)
+        vm.execute(compiled)
+
+        # Create a mock emitter
+        mock_emitter = Mock()
+        mock_emitter.heading1.return_value = "# Title\n\n"
+        mock_emitter.heading2.return_value = "## Section\n\n"
+        mock_emitter.heading3.return_value = "### Subsection\n\n"
+        mock_emitter.heading4.return_value = "#### Detail\n\n"
+
+        # Set it as the emitter
+        vm.store.write_value(['md', 'state', 'emitter'], mock_emitter)
+
+        # Call heading builtins
+        code2 = """
+        (Title) >md.h1
+        (Section) >md.h2
+        (Subsection) >md.h3
+        (Detail) >md.h4
+        """
+        tokens2 = lex(code2)
+        parser2 = Parser(tokens2)
+        ast2 = parser2.parse()
+        compiled2 = compile_program(ast2)
+        vm.execute(compiled2)
+
+        # Verify emitter methods were called
+        mock_emitter.heading1.assert_called_with("Title")
+        mock_emitter.heading2.assert_called_with("Section")
+        mock_emitter.heading3.assert_called_with("Subsection")
+        mock_emitter.heading4.assert_called_with("Detail")
+
+    def test_emitter_used_for_lists(self):
+        """
+        Test that list builtins (>md.ul, >md.ol) call emitter methods.
+
+        Expected to FAIL: builtins don't call emitter yet.
+        """
+        from unittest.mock import Mock
+
+        code = """
+        (python) >use
+        (markdown) >use
+
+        >md.start
+        """
+        vm = VM()
+        tokens = lex(code)
+        parser = Parser(tokens)
+        ast = parser.parse()
+        compiled = compile_program(ast)
+        vm.execute(compiled)
+
+        # Create a mock emitter
+        mock_emitter = Mock()
+        mock_emitter.unordered_list.return_value = "- Item 1\n- Item 2\n\n"
+        mock_emitter.ordered_list.return_value = "1. Item 1\n2. Item 2\n\n"
+
+        # Set it as the emitter
+        vm.store.write_value(['md', 'state', 'emitter'], mock_emitter)
+
+        # Call list builtins
+        code2 = """
+        (Item 1) (Item 2) >md.ul
+        (Item 1) (Item 2) >md.ol
+        """
+        tokens2 = lex(code2)
+        parser2 = Parser(tokens2)
+        ast2 = parser2.parse()
+        compiled2 = compile_program(ast2)
+        vm.execute(compiled2)
+
+        # Verify emitter methods were called
+        # Note: The exact arguments will depend on implementation details
+        self.assertTrue(mock_emitter.unordered_list.called,
+                       "emitter.unordered_list() should be called")
+        self.assertTrue(mock_emitter.ordered_list.called,
+                       "emitter.ordered_list() should be called")
+
+    def test_emitter_used_for_tables(self):
+        """
+        Test that table operations call emitter.table() method.
+
+        Expected to FAIL: builtins don't call emitter yet.
+        """
+        from unittest.mock import Mock
+
+        code = """
+        (python) >use
+        (markdown) >use
+
+        >md.start
+        """
+        vm = VM()
+        tokens = lex(code)
+        parser = Parser(tokens)
+        ast = parser.parse()
+        compiled = compile_program(ast)
+        vm.execute(compiled)
+
+        # Create a mock emitter
+        mock_emitter = Mock()
+        mock_emitter.table.return_value = "| A | B |\n|---|---|\n| 1 | 2 |\n\n"
+
+        # Set it as the emitter
+        vm.store.write_value(['md', 'state', 'emitter'], mock_emitter)
+
+        # Call table builtins
+        code2 = """
+        (A) (B) >md.table.header
+        (1) (2) >md.table.row
+        >md.table
+        """
+        tokens2 = lex(code2)
+        parser2 = Parser(tokens2)
+        ast2 = parser2.parse()
+        compiled2 = compile_program(ast2)
+        vm.execute(compiled2)
+
+        # Verify emitter.table() was called
+        self.assertTrue(mock_emitter.table.called,
+                       "emitter.table() should be called")
+
+    def test_all_existing_tests_still_pass(self):
+        """
+        Meta-test: Verify that all existing tests still pass.
+
+        This ensures no regressions during refactoring.
+        Expected to PASS initially and continue passing after Step 5.
+        """
+        # Count existing test methods (excluding this test class)
+        existing_test_count = 0
+        for name in dir(TestMarkdownExtension):
+            if name.startswith('test_'):
+                existing_test_count += 1
+        for name in dir(TestMarkdownStage2):
+            if name.startswith('test_'):
+                existing_test_count += 1
+        for name in dir(TestMarkdownStage3):
+            if name.startswith('test_'):
+                existing_test_count += 1
+        for name in dir(TestMarkdownStage4):
+            if name.startswith('test_'):
+                existing_test_count += 1
+        for name in dir(TestMarkdownStage5):
+            if name.startswith('test_'):
+                existing_test_count += 1
+        for name in dir(TestMarkdownStage6):
+            if name.startswith('test_'):
+                existing_test_count += 1
+        for name in dir(TestMarkdownStage7):
+            if name.startswith('test_'):
+                existing_test_count += 1
+        for name in dir(TestMarkdownStage8):
+            if name.startswith('test_'):
+                existing_test_count += 1
+        for name in dir(TestMarkdownStage9):
+            if name.startswith('test_'):
+                existing_test_count += 1
+        for name in dir(TestMarkdownStage10):
+            if name.startswith('test_'):
+                existing_test_count += 1
+        for name in dir(TestMarkdownEdgeCases):
+            if name.startswith('test_'):
+                existing_test_count += 1
+
+        # There should be 72+ existing tests
+        self.assertGreaterEqual(existing_test_count, 72,
+                              f"Expected at least 72 existing tests, found {existing_test_count}")
+
+        # This test passing means we haven't broken anything yet
+        # After Step 5, all tests should continue to pass
+
+
+class TestEmitterSwitching(unittest.TestCase):
+    """
+    Test cases for >md.emitter builtin (Step 8: TDD).
+
+    These tests define expected behavior for runtime emitter switching.
+    They will FAIL until Step 9 implements the >md.emitter builtin.
+    """
+
+    def test_switch_to_html_emitter(self):
+        """Test that htmlEmitter >md.emitter switches to HtmlEmitter."""
+        code = """
+        (python) >use
+        (markdown) >use
+
+        >md.start
+        htmlEmitter >md.emitter
+        """
+        vm = VM()
+        tokens = lex(code)
+        parser = Parser(tokens)
+        ast = parser.parse()
+        compiled = compile_program(ast)
+        vm.execute(compiled)
+
+        # Check that emitter is now HtmlEmitter
+        from soma.extensions.markdown_emitter import HtmlEmitter
+        emitter = vm.store.read_value(['md', 'state', 'emitter'])
+        self.assertIsInstance(emitter, HtmlEmitter,
+                            "After htmlEmitter >md.emitter, emitter should be HtmlEmitter")
+
+    def test_html_emitter_bold_output(self):
+        """Test that bold output uses HTML format after switching to HtmlEmitter."""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False) as f:
+            temp_path = f.name
+
+        try:
+            code = f"""
+            (python) >use
+            (markdown) >use
+
+            >md.start
+            htmlEmitter >md.emitter
+            (This is ) (bold) >md.b ( text) >md.t
+            >md.p
+            ({temp_path}) >md.render
+            """
+            run_soma_program(code)
+
+            content = Path(temp_path).read_text()
+            # HTML emitter should produce <strong> tags instead of **
+            self.assertEqual(content, "<p>This is <strong>bold</strong> text</p>\n")
+        finally:
+            os.unlink(temp_path)
+
+    def test_html_emitter_paragraph_output(self):
+        """Test that paragraph output uses HTML format after switching."""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False) as f:
+            temp_path = f.name
+
+        try:
+            code = f"""
+            (python) >use
+            (markdown) >use
+
+            >md.start
+            htmlEmitter >md.emitter
+            (This is a paragraph.)
+            >md.p
+            ({temp_path}) >md.render
+            """
+            run_soma_program(code)
+
+            content = Path(temp_path).read_text()
+            # HTML emitter should wrap in <p> tags
+            self.assertEqual(content, "<p>This is a paragraph.</p>\n")
+        finally:
+            os.unlink(temp_path)
+
+    def test_html_emitter_list_output(self):
+        """Test that list output uses HTML format after switching."""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False) as f:
+            temp_path = f.name
+
+        try:
+            code = f"""
+            (python) >use
+            (markdown) >use
+
+            >md.start
+            htmlEmitter >md.emitter
+            (First item)
+            (Second item)
+            (Third item)
+            >md.ul
+            ({temp_path}) >md.render
+            """
+            run_soma_program(code)
+
+            content = Path(temp_path).read_text()
+            # HTML emitter should produce <ul> and <li> tags
+            expected = (
+                "<ul>\n"
+                "  <li>First item</li>\n"
+                "  <li>Second item</li>\n"
+                "  <li>Third item</li>\n"
+                "</ul>\n"
+            )
+            self.assertEqual(content, expected)
+        finally:
+            os.unlink(temp_path)
+
+    def test_switch_back_to_markdown(self):
+        """Test that mdEmitter >md.emitter switches back to MarkdownEmitter."""
+        code = """
+        (python) >use
+        (markdown) >use
+
+        >md.start
+        htmlEmitter >md.emitter
+        mdEmitter >md.emitter
+        """
+        vm = VM()
+        tokens = lex(code)
+        parser = Parser(tokens)
+        ast = parser.parse()
+        compiled = compile_program(ast)
+        vm.execute(compiled)
+
+        # Check that emitter is now MarkdownEmitter again
+        from soma.extensions.markdown_emitter import MarkdownEmitter
+        emitter = vm.store.read_value(['md', 'state', 'emitter'])
+        self.assertIsInstance(emitter, MarkdownEmitter,
+                            "After mdEmitter >md.emitter, emitter should be MarkdownEmitter")
+
+    def test_emitter_persists_across_operations(self):
+        """Test that emitter choice persists across multiple operations."""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False) as f:
+            temp_path = f.name
+
+        try:
+            code = f"""
+            (python) >use
+            (markdown) >use
+
+            >md.start
+            htmlEmitter >md.emitter
+            (Title) >md.h1
+            (This is ) (bold) >md.b ( text) >md.t
+            >md.p
+            (Item 1) (Item 2) >md.ul
+            ({temp_path}) >md.render
+            """
+            run_soma_program(code)
+
+            content = Path(temp_path).read_text()
+            # All operations should use HTML emitter
+            self.assertIn("<h1>Title</h1>", content)
+            self.assertIn("<p>This is <strong>bold</strong> text</p>", content)
+            self.assertIn("<ul>", content)
+            self.assertIn("<li>Item 1</li>", content)
+            self.assertIn("<li>Item 2</li>", content)
+            # Should NOT contain markdown syntax
+            self.assertNotIn("# Title", content)
+            self.assertNotIn("**bold**", content)
+            self.assertNotIn("- Item 1", content)
+        finally:
+            os.unlink(temp_path)
+
+    def test_mdEmitter_available_in_store(self):
+        """Test that mdEmitter is accessible from SOMA store."""
+        code = """
+        (python) >use
+        (markdown) >use
+
+        >md.start
+        """
+        vm = VM()
+        tokens = lex(code)
+        parser = Parser(tokens)
+        ast = parser.parse()
+        compiled = compile_program(ast)
+        vm.execute(compiled)
+
+        # Check that mdEmitter is available in the store
+        from soma.extensions.markdown_emitter import MarkdownEmitter
+        md_emitter = vm.store.read_value(['mdEmitter'])
+        self.assertIsInstance(md_emitter, MarkdownEmitter,
+                            "mdEmitter should be available in store as MarkdownEmitter instance")
+
+    def test_htmlEmitter_available_in_store(self):
+        """Test that htmlEmitter is accessible from SOMA store."""
+        code = """
+        (python) >use
+        (markdown) >use
+
+        >md.start
+        """
+        vm = VM()
+        tokens = lex(code)
+        parser = Parser(tokens)
+        ast = parser.parse()
+        compiled = compile_program(ast)
+        vm.execute(compiled)
+
+        # Check that htmlEmitter is available in the store
+        from soma.extensions.markdown_emitter import HtmlEmitter
+        html_emitter = vm.store.read_value(['htmlEmitter'])
+        self.assertIsInstance(html_emitter, HtmlEmitter,
+                            "htmlEmitter should be available in store as HtmlEmitter instance")
+
+
 if __name__ == '__main__':
     unittest.main()

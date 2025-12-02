@@ -5,6 +5,8 @@ Provides markdown generation via state machine pattern.
 All logic implemented in pure SOMA using Python FFI primitives.
 """
 
+from soma.extensions.markdown_emitter import MarkdownEmitter
+
 
 class OliPlaceholder:
     """Opaque placeholder for ordered list items accumulated via >md.oli"""
@@ -122,13 +124,19 @@ def drain_and_format_ul_builtin(vm):
     """
     >use.md.drain.ul builtin - Drain AL, check nesting stack, format as unordered list.
 
-    AL before: [void, item1, item2, ..., itemN, depth, stack, accumulator, ...]
+    AL before: [void, item1, item2, ..., itemN, depth, stack, accumulator, emitter, ...]
     AL after: ["- item1\n...\n\n", new_depth, new_stack, void, ...]
 
     Items may include placeholders like "__MD_ITEM_PLACEHOLDER_N__" which are
     replaced with accumulated items from the accumulator list.
+    Uses emitter.unordered_list() to format.
     """
     from soma.vm import Void, VoidSingleton
+
+    # Pop emitter
+    if len(vm.al) < 1:
+        raise RuntimeError("AL underflow: md.drain.ul requires emitter")
+    emitter = vm.al.pop()
 
     # Pop accumulator, stack and depth
     if len(vm.al) < 3:
@@ -177,7 +185,7 @@ def drain_and_format_ul_builtin(vm):
             # Regular item - convert to string
             items[i] = str(item)
 
-    # Build result
+    # Build result - use emitter for simple non-nested lists
     result_parts = []
 
     # Check if we have a parent context on the stack
@@ -187,6 +195,7 @@ def drain_and_format_ul_builtin(vm):
 
         if depth > parent_depth:
             # We're a nested formatter - render only our items, add to parent context
+            # For nested lists, use manual formatting to preserve exact spacing
             indent = "  " * depth
             for item in items:
                 result_parts.append(f"{indent}- {item}\n")
@@ -252,17 +261,10 @@ def drain_and_format_ul_builtin(vm):
                 if new_depth == 0:
                     result += "\n"
     else:
-        # No nesting - normal list
+        # No nesting - use emitter for simple case
         new_stack = []
-        indent = "  " * depth
-        for item in items:
-            result_parts.append(f"{indent}- {item}\n")
         new_depth = depth
-        result = ''.join(result_parts)
-
-        # Add final blank line only at depth 0
-        if new_depth == 0:
-            result += "\n"
+        result = emitter.unordered_list(items, depth)
 
     # Push Void sentinel back first, then new stack, then new_depth, then result (LIFO order)
     vm.al.append(Void)
@@ -275,13 +277,19 @@ def drain_and_format_ol_builtin(vm):
     """
     >use.md.drain.ol builtin - Drain AL, check nesting stack, format as ordered list.
 
-    AL before: [void, item1, item2, ..., itemN, depth, stack, accumulator, ...]
+    AL before: [void, item1, item2, ..., itemN, depth, stack, accumulator, emitter, ...]
     AL after: ["1. item1\n...\n\n", new_depth, new_stack, void, ...]
 
     Items may include placeholders like "__MD_ITEM_PLACEHOLDER_N__" which are
     replaced with accumulated items from the accumulator list.
+    Uses emitter.ordered_list() to format.
     """
     from soma.vm import Void, VoidSingleton
+
+    # Pop emitter
+    if len(vm.al) < 1:
+        raise RuntimeError("AL underflow: md.drain.ol requires emitter")
+    emitter = vm.al.pop()
 
     # Pop accumulator, stack and depth
     if len(vm.al) < 3:
@@ -330,7 +338,7 @@ def drain_and_format_ol_builtin(vm):
             # Regular item - convert to string
             items[i] = str(item)
 
-    # Build result
+    # Build result - use emitter for simple non-nested lists
     result_parts = []
 
     # Check if we have a parent context on the stack
@@ -340,6 +348,7 @@ def drain_and_format_ol_builtin(vm):
 
         if depth > parent_depth:
             # We're a nested formatter - render only our items, add to parent context
+            # For nested lists, use manual formatting to preserve exact spacing
             indent = "  " * depth
             counter = 1
             for item in items:
@@ -410,19 +419,10 @@ def drain_and_format_ol_builtin(vm):
                 if new_depth == 0:
                     result += "\n"
     else:
-        # No nesting - normal list
+        # No nesting - use emitter for simple case
         new_stack = []
-        indent = "  " * depth
-        counter = 1
-        for item in items:
-            result_parts.append(f"{indent}{counter}. {item}\n")
-            counter += 1
         new_depth = depth
-        result = ''.join(result_parts)
-
-        # Add final blank line only at depth 0
-        if new_depth == 0:
-            result += "\n"
+        result = emitter.ordered_list(items, depth)
 
     # Push Void sentinel back first, then new stack, then new_depth, then result (LIFO order)
     vm.al.append(Void)
@@ -435,12 +435,18 @@ def drain_and_format_paragraphs_builtin(vm):
     """
     >use.md.drain.p builtin - Drain AL until Void, format each string as a separate paragraph.
 
-    AL before: [void, item1, item2, ..., itemN, ...]
+    AL before: [void, item1, item2, ..., itemN, emitter, ...]
     AL after: ["item1\n\nitem2\n\n...\n\n", void, ...]
 
     Each string becomes its own paragraph with double newline suffix.
+    Uses emitter.paragraph() to format.
     """
     from soma.vm import Void, VoidSingleton
+
+    # Pop emitter
+    if len(vm.al) < 1:
+        raise RuntimeError("AL underflow: md.drain.p requires emitter")
+    emitter = vm.al.pop()
 
     # Pop items until Void
     items = []
@@ -461,12 +467,11 @@ def drain_and_format_paragraphs_builtin(vm):
     # Validate no placeholders
     validate_no_placeholders(items, ">md.p")
 
-    # Format each item as a separate paragraph
-    result_parts = []
-    for item in items:
-        result_parts.append(f"{str(item)}\n\n")
+    # Convert to strings
+    items = [str(item) for item in items]
 
-    result = ''.join(result_parts)
+    # Use emitter to format paragraphs
+    result = emitter.paragraph(items)
 
     # Push Void sentinel back first, then result (LIFO order)
     vm.al.append(Void)
@@ -477,12 +482,18 @@ def drain_and_format_blockquote_builtin(vm):
     """
     >use.md.drain.q builtin - Drain AL until Void, format as blockquote.
 
-    AL before: [void, item1, item2, ..., itemN, ...]
+    AL before: [void, item1, item2, ..., itemN, emitter, ...]
     AL after: ["> item1\n> item2\n...\n\n", void, ...]
 
     Each string becomes a blockquote line prefixed with "> ".
+    Uses emitter.blockquote() to format.
     """
     from soma.vm import Void, VoidSingleton
+
+    # Pop emitter
+    if len(vm.al) < 1:
+        raise RuntimeError("AL underflow: md.drain.q requires emitter")
+    emitter = vm.al.pop()
 
     # Pop items until Void
     items = []
@@ -503,15 +514,11 @@ def drain_and_format_blockquote_builtin(vm):
     # Validate no placeholders
     validate_no_placeholders(items, ">md.q")
 
-    # Format each item as a blockquote line
-    result_parts = []
-    for item in items:
-        result_parts.append(f"> {str(item)}\n")
+    # Convert to strings
+    items = [str(item) for item in items]
 
-    result = ''.join(result_parts)
-
-    # Add final blank line
-    result += "\n"
+    # Use emitter to format blockquote
+    result = emitter.blockquote(items)
 
     # Push Void sentinel back first, then result (LIFO order)
     vm.al.append(Void)
@@ -522,12 +529,18 @@ def drain_and_format_code_block_builtin(vm):
     """
     >use.md.drain.code builtin - Drain AL until Void, format as code block.
 
-    AL before: [void, line1, line2, ..., lineN, language, ...]
+    AL before: [void, line1, line2, ..., lineN, language, emitter, ...]
     AL after: ["```lang\nline1\nline2\n...\n```\n\n", void, ...]
 
     Language can be Nil or empty string for no language specification.
+    Uses emitter.code_block() to format.
     """
     from soma.vm import Void, VoidSingleton, NilSingleton
+
+    # Pop emitter
+    if len(vm.al) < 1:
+        raise RuntimeError("AL underflow: md.code requires emitter")
+    emitter = vm.al.pop()
 
     # Pop language parameter
     if len(vm.al) < 1:
@@ -538,6 +551,9 @@ def drain_and_format_code_block_builtin(vm):
     is_nil = isinstance(language, NilSingleton)
     is_empty = (not is_nil) and (str(language) == "")
     has_language = not (is_nil or is_empty)
+
+    # Convert language to string or None
+    language_str = str(language) if has_language else None
 
     # Pop lines until Void
     lines = []
@@ -558,23 +574,11 @@ def drain_and_format_code_block_builtin(vm):
     # Validate no placeholders
     validate_no_placeholders(lines, ">md.code")
 
-    # Build code block
-    result_parts = []
+    # Convert to strings
+    lines = [str(line) for line in lines]
 
-    # Opening triple backticks with optional language
-    if has_language:
-        result_parts.append(f"```{language}\n")
-    else:
-        result_parts.append("```\n")
-
-    # Add each line
-    for line in lines:
-        result_parts.append(f"{str(line)}\n")
-
-    # Closing triple backticks
-    result_parts.append("```\n\n")
-
-    result = ''.join(result_parts)
+    # Use emitter to format code block
+    result = emitter.code_block(lines, language_str)
 
     # Push Void sentinel back first, then result (LIFO order)
     vm.al.append(Void)
@@ -940,6 +944,49 @@ def throw_error_builtin(vm):
     raise RuntimeError(str(message))
 
 
+def create_markdown_emitter_builtin(vm):
+    """
+    >use.md.create_emitter builtin - Create a new MarkdownEmitter instance.
+
+    AL before: [...]
+    AL after: [emitter, ...]
+
+    Pushes a new MarkdownEmitter instance onto the AL.
+    """
+    emitter = MarkdownEmitter()
+    vm.al.append(emitter)
+
+
+def create_html_emitter_builtin(vm):
+    """
+    >use.md.create_html_emitter builtin - Create a new HtmlEmitter instance.
+
+    AL before: [...]
+    AL after: [emitter, ...]
+
+    Pushes a new HtmlEmitter instance onto the AL.
+    """
+    from soma.extensions.markdown_emitter import HtmlEmitter
+    emitter = HtmlEmitter()
+    vm.al.append(emitter)
+
+
+def set_emitter_builtin(vm):
+    """
+    >use.md.set_emitter builtin - Set the active emitter in md.state.emitter.
+
+    AL before: [emitter, ...]
+    AL after: [...]
+
+    Pops an emitter from the AL and sets it as the active emitter in the store.
+    """
+    if len(vm.al) < 1:
+        raise RuntimeError("AL underflow: set_emitter requires emitter")
+
+    emitter = vm.al.pop()
+    vm.store.write_value(['md', 'state', 'emitter'], emitter)
+
+
 def register(vm):
     """Register markdown builtins."""
     # Register drain_and_join as a builtin under use.* namespace
@@ -959,6 +1006,10 @@ def register(vm):
     vm.register_extension_builtin('use.python.list_to_al', list_to_al_builtin)
     vm.register_extension_builtin('use.md.validate.document', validate_document_builtin)
     vm.register_extension_builtin('use.python.throw', throw_error_builtin)
+    # Register emitter creation and switching builtins
+    vm.register_extension_builtin('use.md.create_emitter', create_markdown_emitter_builtin)
+    vm.register_extension_builtin('use.md.create_html_emitter', create_html_emitter_builtin)
+    vm.register_extension_builtin('use.md.set_emitter', set_emitter_builtin)
 
 
 def get_soma_setup():

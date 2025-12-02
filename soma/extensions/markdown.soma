@@ -9,6 +9,16 @@
 {
   () !md.state.doc        ) Accumulated document (empty string)
 
+  ) Create MarkdownEmitter instance and export to store
+  >use.md.create_emitter
+  >dup                    ) Duplicate for two stores
+  !mdEmitter              ) Export to store
+  !md.state.emitter       ) Set as default emitter
+
+  ) Create HtmlEmitter instance and export to store
+  >use.md.create_html_emitter
+  !htmlEmitter            ) Export to store
+
   ) Create empty stack for nesting
   Void (soma.extensions.soma_markdown.list_new) >use.python.call
   !_.exception !_.stack
@@ -37,9 +47,13 @@
   ( ) >use.md.drain.join
   !_.text
 
-  ) Create markdown: "# text\n\n"
+  ) Call emitter.heading1(text)
+  Void md.state.emitter _.text (soma.extensions.soma_markdown.emitter_heading1) >use.python.call
+  !_.exc !_.heading_text
+
+  ) Append to document
   md.state.doc !_.doc
-  Void _.doc (# ) _.text (\a\\a\) (soma.extensions.soma_markdown.string_concat_all) >use.python.call
+  Void _.doc _.heading_text (soma.extensions.soma_markdown.string_concat_all) >use.python.call
   !_.exc !_.new_doc
   _.new_doc !md.state.doc
 
@@ -51,8 +65,13 @@
   ( ) >use.md.drain.join
   !_.text
 
+  ) Call emitter.heading2(text)
+  Void md.state.emitter _.text (soma.extensions.soma_markdown.emitter_heading2) >use.python.call
+  !_.exc !_.heading_text
+
+  ) Append to document
   md.state.doc !_.doc
-  Void _.doc (## ) _.text (\a\\a\) (soma.extensions.soma_markdown.string_concat_all) >use.python.call
+  Void _.doc _.heading_text (soma.extensions.soma_markdown.string_concat_all) >use.python.call
   !_.exc !_.new_doc
   _.new_doc !md.state.doc
 
@@ -64,8 +83,13 @@
   ( ) >use.md.drain.join
   !_.text
 
+  ) Call emitter.heading3(text)
+  Void md.state.emitter _.text (soma.extensions.soma_markdown.emitter_heading3) >use.python.call
+  !_.exc !_.heading_text
+
+  ) Append to document
   md.state.doc !_.doc
-  Void _.doc (### ) _.text (\a\\a\) (soma.extensions.soma_markdown.string_concat_all) >use.python.call
+  Void _.doc _.heading_text (soma.extensions.soma_markdown.string_concat_all) >use.python.call
   !_.exc !_.new_doc
   _.new_doc !md.state.doc
 
@@ -77,8 +101,13 @@
   ( ) >use.md.drain.join
   !_.text
 
+  ) Call emitter.heading4(text)
+  Void md.state.emitter _.text (soma.extensions.soma_markdown.emitter_heading4) >use.python.call
+  !_.exc !_.heading_text
+
+  ) Append to document
   md.state.doc !_.doc
-  Void _.doc (#### ) _.text (\a\\a\) (soma.extensions.soma_markdown.string_concat_all) >use.python.call
+  Void _.doc _.heading_text (soma.extensions.soma_markdown.string_concat_all) >use.python.call
   !_.exc !_.new_doc
   _.new_doc !md.state.doc
 
@@ -87,6 +116,7 @@
 
 ) Paragraph - each string becomes a separate paragraph
 {
+  md.state.emitter
   >use.md.drain.p
   !_.text
 
@@ -100,6 +130,7 @@
 
 ) Blockquote - each string becomes a quoted line
 {
+  md.state.emitter
   >use.md.drain.q
   !_.text
 
@@ -113,6 +144,7 @@
 
 ) Code block - formats lines as fenced code block with optional language
 {
+  md.state.emitter
   >use.md.drain.code
   !_.text
 
@@ -126,8 +158,13 @@
 
 ) Horizontal rule - inserts --- separator
 {
+  ) Call emitter.horizontal_rule()
+  Void md.state.emitter (soma.extensions.soma_markdown.emitter_horizontal_rule) >use.python.call
+  !_.exc !_.hr_text
+
+  ) Append to document
   md.state.doc !_.doc
-  Void _.doc (---\a\\a\) (soma.extensions.soma_markdown.string_concat_all) >use.python.call
+  Void _.doc _.hr_text (soma.extensions.soma_markdown.string_concat_all) >use.python.call
   !_.exc !_.new_doc
   _.new_doc !md.state.doc
 
@@ -141,9 +178,7 @@
 ) Bold - wraps text in **text**
 {
   !_.text
-  (**) !_.prefix
-  (**) !_.suffix
-  Void _.prefix _.text _.suffix (soma.extensions.soma_markdown.string_concat_all) >use.python.call
+  Void md.state.emitter _.text (soma.extensions.soma_markdown.emitter_bold) >use.python.call
   !_.exc !_.result
   _.result
 } !md.b
@@ -151,9 +186,7 @@
 ) Italic - wraps text in _text_
 {
   !_.text
-  (_) !_.prefix
-  (_) !_.suffix
-  Void _.prefix _.text _.suffix (soma.extensions.soma_markdown.string_concat_all) >use.python.call
+  Void md.state.emitter _.text (soma.extensions.soma_markdown.emitter_italic) >use.python.call
   !_.exc !_.result
   _.result
 } !md.i
@@ -161,9 +194,7 @@
 ) Inline code - wraps text in `text`
 {
   !_.text
-  (`) !_.prefix
-  (`) !_.suffix
-  Void _.prefix _.text _.suffix (soma.extensions.soma_markdown.string_concat_all) >use.python.call
+  Void md.state.emitter _.text (soma.extensions.soma_markdown.emitter_code) >use.python.call
   !_.exc !_.result
   _.result
 } !md.c
@@ -171,12 +202,7 @@
 ) Link - creates [text](url)
 {
   !_.url !_.text
-  ) Build [text](url) format
-  ([) !_.left
-  (]() !_.middle
-
-  ) Concatenate: [ + text + ]( + url + )
-  Void _.left _.text _.middle _.url (soma.extensions.soma_markdown.link_format) >use.python.call
+  Void md.state.emitter _.text _.url (soma.extensions.soma_markdown.emitter_link) >use.python.call
   !_.exc !_.result
   _.result
 } !md.l
@@ -315,8 +341,8 @@
   md.state.table.rows !_.rows
   md.state.table.alignment !_.alignment
 
-  ) Render table using Python builtin
-  Void _.header _.rows _.alignment (soma.extensions.soma_markdown.render_table) >use.python.call
+  ) Render table using emitter
+  Void md.state.emitter _.header _.rows _.alignment (soma.extensions.soma_markdown.render_table) >use.python.call
   !_.exc !_.table_text
 
   ) Append to document
@@ -344,7 +370,7 @@
   ) Note: Items may include placeholders from >md.uli calls
   ) The drain builtin will replace placeholders with accumulated items
 
-  md.state.depth md.state.stack md.state.uli.items
+  md.state.depth md.state.stack md.state.uli.items md.state.emitter
   >use.md.drain.ul
   !_.list_text !_.new_depth !_.new_stack
 
@@ -371,7 +397,7 @@
   ) Note: Items may include placeholders from >md.oli calls
   ) The drain builtin will replace placeholders with accumulated items
 
-  md.state.depth md.state.stack md.state.oli.items
+  md.state.depth md.state.stack md.state.oli.items md.state.emitter
   >use.md.drain.ol
   !_.list_text !_.new_depth !_.new_stack
 
@@ -521,3 +547,8 @@
     }
   >choose >^
 } !md.print
+
+) Emitter switching - sets the active emitter
+{
+  >use.md.set_emitter
+} !md.emitter

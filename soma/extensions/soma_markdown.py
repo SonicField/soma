@@ -1,6 +1,51 @@
 """Python FFI helpers for SOMA markdown library."""
 
 
+def emitter_bold(emitter, text):
+    """Call emitter.bold(text)."""
+    return emitter.bold(str(text))
+
+
+def emitter_italic(emitter, text):
+    """Call emitter.italic(text)."""
+    return emitter.italic(str(text))
+
+
+def emitter_code(emitter, text):
+    """Call emitter.code(text)."""
+    return emitter.code(str(text))
+
+
+def emitter_link(emitter, text, url):
+    """Call emitter.link(text, url)."""
+    return emitter.link(str(text), str(url))
+
+
+def emitter_heading1(emitter, text):
+    """Call emitter.heading1(text)."""
+    return emitter.heading1(str(text))
+
+
+def emitter_heading2(emitter, text):
+    """Call emitter.heading2(text)."""
+    return emitter.heading2(str(text))
+
+
+def emitter_heading3(emitter, text):
+    """Call emitter.heading3(text)."""
+    return emitter.heading3(str(text))
+
+
+def emitter_heading4(emitter, text):
+    """Call emitter.heading4(text)."""
+    return emitter.heading4(str(text))
+
+
+def emitter_horizontal_rule(emitter):
+    """Call emitter.horizontal_rule()."""
+    return emitter.horizontal_rule()
+
+
 def drain_and_join(separator, *items):
     """
     Join items with separator.
@@ -111,87 +156,21 @@ def link_format(left_bracket, text, middle, url):
     return f"{left_bracket}{text}{middle}{url})"
 
 
-def render_table(header, rows, alignment):
+def render_table(emitter, header, rows, alignment):
     """
-    Render a markdown table with column-width-aware formatting.
+    Render a markdown table using the emitter.
 
     Args:
+        emitter: The emitter instance (MarkdownEmitter or HtmlEmitter)
         header: List of header cell strings
         rows: List of row lists (each row is list of cell strings)
         alignment: List of alignment strings ("left", "centre", "right", None)
                    or None if no alignment specified
 
     Returns:
-        String containing formatted markdown table
+        String containing formatted table
     """
-    if not isinstance(header, list) or len(header) == 0:
-        return ""
-
-    num_cols = len(header)
-
-    # Calculate column widths
-    col_widths = [len(str(cell)) for cell in header]
-
-    if isinstance(rows, list):
-        for row in rows:
-            if isinstance(row, list):
-                for i, cell in enumerate(row):
-                    if i < num_cols:
-                        col_widths[i] = max(col_widths[i], len(str(cell)))
-
-    result_parts = []
-
-    # Build header row with padding
-    result_parts.append("| ")
-    header_cells = []
-    for i, cell in enumerate(header):
-        header_cells.append(str(cell).ljust(col_widths[i]))
-    result_parts.append(" | ".join(header_cells))
-    result_parts.append(" |\n")
-
-    # Build separator row with alignment
-    result_parts.append("|")
-    has_alignment = isinstance(alignment, list) and len(alignment) > 0
-
-    for i in range(num_cols):
-        align = None
-        if isinstance(alignment, list) and i < len(alignment):
-            align = alignment[i]
-
-        width = col_widths[i]
-
-        if align == "left":
-            # :------ (colon + width+1 dashes)
-            result_parts.append(":" + "-" * (width + 1) + "|")
-        elif align == "centre":
-            # :---: (colon + width dashes + colon)
-            result_parts.append(":" + "-" * width + ":|")
-        elif align == "right":
-            # -------: (width+1 dashes + colon)
-            result_parts.append("-" * (width + 1) + ":|")
-        else:
-            # ------- (width+2 dashes for padding spaces)
-            result_parts.append("-" * (width + 2) + "|")
-
-    result_parts.append("\n")
-
-    # Build data rows with padding
-    if isinstance(rows, list):
-        for row in rows:
-            if isinstance(row, list):
-                result_parts.append("| ")
-                # Pad cells to column width
-                cells = []
-                for i in range(num_cols):
-                    if i < len(row):
-                        cells.append(str(row[i]).ljust(col_widths[i]))
-                    else:
-                        cells.append(" " * col_widths[i])
-                result_parts.append(" | ".join(cells))
-                result_parts.append(" |\n")
-
-    result_parts.append("\n")
-    return ''.join(result_parts)
+    return emitter.table(header, rows, alignment)
 
 
 def data_title_format(*items):
@@ -252,3 +231,9 @@ def write_file(filename, content):
     with open(str(filename), 'w') as f:
         f.write(str(content))
     return None
+
+
+def create_html_emitter():
+    """Create a new HtmlEmitter instance."""
+    from soma.extensions.markdown_emitter import HtmlEmitter
+    return HtmlEmitter()
