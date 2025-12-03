@@ -43,9 +43,12 @@ md.htmlEmitter >md.emitter    # ← Key difference: switch to HTML!
 # 2. Run it and wrap with styling
 cd examples/markdown
 soma ../../my-doc.soma
-./wrap-html.sh ../../my-doc.html
+./wrap-html.sh --inline ../../my-doc.html    # ← Standalone HTML with inlined CSS!
 
 # 3. Open my-doc-styled.html in browser
+#    (No external CSS file needed - completely standalone!)
 ```
+
+**Note:** Use `--inline` for standalone documents, or omit for linked CSS.
 
 That's it! See `html_example.soma` for a complete working example.
