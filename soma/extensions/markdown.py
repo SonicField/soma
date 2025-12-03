@@ -120,6 +120,12 @@ def drain_and_join_builtin(vm):
     vm.al.append(result)
 
 
+def is_html_emitter(emitter):
+    """Check if emitter is HtmlEmitter."""
+    from soma.extensions.markdown_emitter import HtmlEmitter
+    return isinstance(emitter, HtmlEmitter)
+
+
 def drain_and_format_ul_builtin(vm):
     """
     >use.md.drain.ul builtin - Drain AL, check nesting stack, format as unordered list.
@@ -195,12 +201,15 @@ def drain_and_format_ul_builtin(vm):
 
         if depth > parent_depth:
             # We're a nested formatter - render only our items, add to parent context
-            # For nested lists, use manual formatting to preserve exact spacing
-            indent = "  " * depth
-            for item in items:
-                result_parts.append(f"{indent}- {item}\n")
-
-            nested_result = ''.join(result_parts)
+            if is_html_emitter(emitter):
+                # HTML: Use proper nested <ul> structure
+                nested_result = emitter.unordered_list(items, depth)
+            else:
+                # Markdown: Use manual formatting to preserve exact spacing
+                indent = "  " * depth
+                for item in items:
+                    result_parts.append(f"{indent}- {item}\n")
+                nested_result = ''.join(result_parts)
 
             # Update parent context with nested text
             parent_ctx['nested_text'] = parent_ctx.get('nested_text', '') + nested_result
@@ -224,29 +233,52 @@ def drain_and_format_ul_builtin(vm):
                 else:
                     new_stack.append(ctx)
 
-            # Render all parent contexts first
-            parent_indent = "  " * parent_depth
-            for ctx in contexts_to_render:
-                parent_items = ctx['items']
-                nested_text = ctx.get('nested_text', '')
-                # Get the accumulator that was active when these items were created
-                parent_accumulator = ctx.get('uli_accumulator', [])
+            if is_html_emitter(emitter):
+                # HTML: Build proper nested structure with nested lists inside <li> tags
+                all_items = []
 
-                # Render parent items using UL format (replace placeholders if needed)
-                for item in parent_items:
-                    # Replace placeholder with accumulated value from parent context
-                    item_text = replace_placeholder(item, parent_accumulator)
-                    result_parts.append(f"{parent_indent}- {item_text}\n")
+                # Process parent contexts
+                for ctx in contexts_to_render:
+                    parent_items = ctx['items']
+                    nested_text = ctx.get('nested_text', '')
+                    parent_accumulator = ctx.get('uli_accumulator', [])
 
-                # Insert nested text
-                if nested_text:
-                    result_parts.append(nested_text)
+                    for item in parent_items:
+                        item_text = replace_placeholder(item, parent_accumulator)
+                        # Append nested content to the item
+                        if nested_text:
+                            all_items.append(item_text + nested_text)
+                            nested_text = ''  # Use it once
+                        else:
+                            all_items.append(item_text)
 
-            # Render current items at same depth
-            for item in items:
-                result_parts.append(f"{parent_indent}- {item}\n")
+                # Add current items
+                all_items.extend(items)
 
-            result = ''.join(result_parts)
+                # Use emitter to format
+                result = emitter.unordered_list(all_items, parent_depth)
+            else:
+                # Markdown: Use manual formatting to preserve exact spacing
+                parent_indent = "  " * parent_depth
+                for ctx in contexts_to_render:
+                    parent_items = ctx['items']
+                    nested_text = ctx.get('nested_text', '')
+                    parent_accumulator = ctx.get('uli_accumulator', [])
+
+                    # Render parent items using UL format (replace placeholders if needed)
+                    for item in parent_items:
+                        item_text = replace_placeholder(item, parent_accumulator)
+                        result_parts.append(f"{parent_indent}- {item_text}\n")
+
+                    # Insert nested text
+                    if nested_text:
+                        result_parts.append(nested_text)
+
+                # Render current items at same depth
+                for item in items:
+                    result_parts.append(f"{parent_indent}- {item}\n")
+
+                result = ''.join(result_parts)
 
             # Set new depth based on remaining stack
             if new_stack:
@@ -258,7 +290,7 @@ def drain_and_format_ul_builtin(vm):
                 # Top level - add to document
                 new_depth = 0
                 # Add final blank line only at depth 0
-                if new_depth == 0:
+                if new_depth == 0 and not is_html_emitter(emitter):
                     result += "\n"
     else:
         # No nesting - use emitter for simple case
@@ -348,14 +380,17 @@ def drain_and_format_ol_builtin(vm):
 
         if depth > parent_depth:
             # We're a nested formatter - render only our items, add to parent context
-            # For nested lists, use manual formatting to preserve exact spacing
-            indent = "  " * depth
-            counter = 1
-            for item in items:
-                result_parts.append(f"{indent}{counter}. {item}\n")
-                counter += 1
-
-            nested_result = ''.join(result_parts)
+            if is_html_emitter(emitter):
+                # HTML: Use proper nested <ol> structure
+                nested_result = emitter.ordered_list(items, depth)
+            else:
+                # Markdown: Use manual formatting to preserve exact spacing
+                indent = "  " * depth
+                counter = 1
+                for item in items:
+                    result_parts.append(f"{indent}{counter}. {item}\n")
+                    counter += 1
+                nested_result = ''.join(result_parts)
 
             # Update parent context with nested text
             parent_ctx['nested_text'] = parent_ctx.get('nested_text', '') + nested_result
@@ -379,32 +414,55 @@ def drain_and_format_ol_builtin(vm):
                 else:
                     new_stack.append(ctx)
 
-            # Render all parent contexts first
-            parent_indent = "  " * parent_depth
-            counter = 1
-            for ctx in contexts_to_render:
-                parent_items = ctx['items']
-                nested_text = ctx.get('nested_text', '')
-                # Get the accumulator that was active when these items were created
-                parent_accumulator = ctx.get('oli_accumulator', [])
+            if is_html_emitter(emitter):
+                # HTML: Build proper nested structure with nested lists inside <li> tags
+                all_items = []
 
-                # Render parent items using OL format (replace placeholders if needed)
-                for item in parent_items:
-                    # Replace placeholder with accumulated value from parent context
-                    item_text = replace_placeholder(item, parent_accumulator)
-                    result_parts.append(f"{parent_indent}{counter}. {item_text}\n")
+                # Process parent contexts
+                for ctx in contexts_to_render:
+                    parent_items = ctx['items']
+                    nested_text = ctx.get('nested_text', '')
+                    parent_accumulator = ctx.get('oli_accumulator', [])
+
+                    for item in parent_items:
+                        item_text = replace_placeholder(item, parent_accumulator)
+                        # Append nested content to the item
+                        if nested_text:
+                            all_items.append(item_text + nested_text)
+                            nested_text = ''  # Use it once
+                        else:
+                            all_items.append(item_text)
+
+                # Add current items
+                all_items.extend(items)
+
+                # Use emitter to format
+                result = emitter.ordered_list(all_items, parent_depth)
+            else:
+                # Markdown: Use manual formatting to preserve exact spacing
+                parent_indent = "  " * parent_depth
+                counter = 1
+                for ctx in contexts_to_render:
+                    parent_items = ctx['items']
+                    nested_text = ctx.get('nested_text', '')
+                    parent_accumulator = ctx.get('oli_accumulator', [])
+
+                    # Render parent items using OL format (replace placeholders if needed)
+                    for item in parent_items:
+                        item_text = replace_placeholder(item, parent_accumulator)
+                        result_parts.append(f"{parent_indent}{counter}. {item_text}\n")
+                        counter += 1
+
+                    # Insert nested text
+                    if nested_text:
+                        result_parts.append(nested_text)
+
+                # Render current items at same depth (continue counter)
+                for item in items:
+                    result_parts.append(f"{parent_indent}{counter}. {item}\n")
                     counter += 1
 
-                # Insert nested text
-                if nested_text:
-                    result_parts.append(nested_text)
-
-            # Render current items at same depth (continue counter)
-            for item in items:
-                result_parts.append(f"{parent_indent}{counter}. {item}\n")
-                counter += 1
-
-            result = ''.join(result_parts)
+                result = ''.join(result_parts)
 
             # Set new depth based on remaining stack
             if new_stack:
@@ -416,7 +474,7 @@ def drain_and_format_ol_builtin(vm):
                 # Top level - add to document
                 new_depth = 0
                 # Add final blank line only at depth 0
-                if new_depth == 0:
+                if new_depth == 0 and not is_html_emitter(emitter):
                     result += "\n"
     else:
         # No nesting - use emitter for simple case

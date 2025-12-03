@@ -539,7 +539,55 @@ class TestNestedStructures(unittest.TestCase):
             os.unlink(temp_path)
 
     def test_nested_lists_html(self):
-        """Test complex nested lists with HTML emitter."""
+        """Test nested lists produce proper HTML structure, not markdown syntax."""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.html', delete=False) as f:
+            temp_path = f.name
+
+        try:
+            code = f"""
+            (python) >use
+            (markdown) >use
+
+            >md.start
+            md.htmlEmitter >md.emitter
+
+            (Test Section)
+            >md.h2
+
+            (Item 1) >md.b
+            >md.nest
+              (Nested A)
+              >md.ul
+            (Item 2) >md.b
+            >md.nest
+              (Nested B)
+              >md.ul
+            >md.ul
+
+            ({temp_path}) >md.render
+            """
+            run_soma_program(code)
+
+            content = Path(temp_path).read_text()
+
+            # Verify NO markdown syntax in HTML output
+            self.assertNotIn("- <strong>", content, "HTML output should not contain markdown list syntax '- '")
+            self.assertNotIn("  - ", content, "HTML output should not contain markdown nested list syntax '  - '")
+
+            # Verify proper HTML structure instead
+            self.assertIn("<h2>Test Section</h2>", content)
+            self.assertIn("<ul>", content)
+            self.assertIn("<li>", content)
+            self.assertIn("<strong>Item 1</strong>", content)
+            self.assertIn("<strong>Item 2</strong>", content)
+            self.assertIn("Nested A", content)
+            self.assertIn("Nested B", content)
+            self.assertIn("</ul>", content)
+        finally:
+            os.unlink(temp_path)
+
+    def test_simple_lists_html(self):
+        """Test that simple (non-nested) lists work correctly with HTML emitter."""
         with tempfile.NamedTemporaryFile(mode='w', suffix='.html', delete=False) as f:
             temp_path = f.name
 
