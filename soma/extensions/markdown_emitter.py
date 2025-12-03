@@ -1077,7 +1077,7 @@ class HtmlEmitter:
         Render a complete table with header, rows, and optional column alignment.
 
         Args:
-            header: List of header cell strings
+            header: List of header cell strings (may contain formatted HTML)
             rows: List of row lists (each row is a list of cell strings)
             alignment: Optional list of alignment specifiers per column
                       Valid values: "left", "centre", "right", or None
@@ -1097,6 +1097,9 @@ class HtmlEmitter:
         Note:
             - HTML uses text-align CSS styles for alignment
             - Alignment "centre" is converted to "center" for CSS
+            - Cell content is NOT escaped - it may contain already-formatted HTML
+              from inline formatters (bold, italic, code, links). Caller is
+              responsible for escaping raw text before passing to table().
         """
         if not header:
             return ""
@@ -1117,7 +1120,7 @@ class HtmlEmitter:
         result_parts.append("<thead>\n<tr>")
         for i, cell in enumerate(header):
             style = get_align_style(i)
-            result_parts.append(f"<th{style}>{self._escape_html(cell)}</th>")
+            result_parts.append(f"<th{style}>{cell}</th>")
         result_parts.append("</tr>\n</thead>\n")
 
         # Build tbody with data rows
@@ -1126,7 +1129,7 @@ class HtmlEmitter:
             result_parts.append("<tr>")
             for i, cell in enumerate(row):
                 style = get_align_style(i)
-                result_parts.append(f"<td{style}>{self._escape_html(cell)}</td>")
+                result_parts.append(f"<td{style}>{cell}</td>")
             result_parts.append("</tr>\n")
         result_parts.append("</tbody>\n")
 
