@@ -1,0 +1,164 @@
+) ============================================================================
+) HTML Output Example - Demonstrating the HtmlEmitter
+) ============================================================================
+) This example shows how to generate HTML output instead of markdown
+) by switching to the htmlEmitter.
+)
+) To run: soma html_example.soma
+) Output: html_example.html
+) ============================================================================
+
+) Load required extensions
+(python) >use
+(markdown) >use
+
+) Initialize markdown state
+>md.start
+
+) Switch to HTML emitter (this is the key line!)
+md.htmlEmitter >md.emitter
+
+) ============================================================================
+) Now everything generates HTML tags instead of markdown syntax
+) ============================================================================
+
+(HTML Output Example)
+>md.h1
+
+(Introduction)
+>md.h2
+
+(This document was generated using SOMA's markdown extension with the )
+(htmlEmitter) >md.c ( enabled. Notice that all output uses HTML tags like )
+(strong) (<strong>) >md.c (, ) (em) (<em>) >md.c (, and ) (code) (<code>) >md.c ( instead of markdown syntax)
+>md.t
+>md.p
+
+(Key Features)
+>md.h2
+
+(HTML emitter support)
+>md.uli
+(Automatic HTML escaping for security)
+>md.uli
+(Display-oriented tags: ) (b) (<b>) >md.c (, ) (i) (<i>) >md.c (, ) (code) (<code>) >md.c
+>md.t
+>md.uli
+(Full table support with alignment)
+>md.uli
+>md.ul
+
+(Text Formatting)
+>md.h2
+
+(The ) (htmlEmitter) >md.b ( generates ) (strong) (<strong>) >md.c ( tags for bold text)
+>md.t
+>md.p
+
+(The ) (htmlEmitter) >md.i ( generates ) (em) (<em>) >md.c ( tags for italic text)
+>md.t
+>md.p
+
+(Inline ) (code snippets) >md.c ( use the ) (code) (<code>) >md.c ( tag)
+>md.t
+>md.p
+
+(Links work too: ) (SOMA Documentation) (https://example.com/soma) >md.l
+>md.t
+>md.p
+
+(Definition Lists)
+>md.h2
+
+(The ) (md.dul) >md.c ( and ) (md.dol) >md.c ( commands work with HTML, generating )
+(strong) (<strong>) >md.c ( tags for labels:)
+>md.t
+>md.p
+
+Void
+(API) (Application Programming Interface)
+(SDK) (Software Development Kit)
+(CLI) (Command Line Interface)
+>md.dul
+
+(Data Titles)
+>md.h2
+
+(The ) (md.dt) >md.c ( transformation also works:)
+>md.t
+>md.p
+
+Void (Name) (Alice) (Status) (Active) (Role) (Administrator) >md.dt
+>md.p
+
+(Tables)
+>md.h2
+
+(Tables render as proper HTML ) (table) (<table>) >md.c ( elements with alignment support:)
+>md.t
+>md.p
+
+(Feature) (Markdown) (HTML)
+>md.table.header
+
+>md.table.left >md.table.centre >md.table.right
+>md.table.align
+
+(Bold) (**text**) >md.c (strong) (<strong>text</strong>) >md.c >md.t
+>md.table.row
+
+(Italic) (_text_) >md.c (em) (<em>text</em>) >md.c >md.t
+>md.table.row
+
+(Code) (`code`) >md.c (code) (<code>code</code>) >md.c >md.t
+>md.table.row
+
+>md.table
+
+(Code Blocks)
+>md.h2
+
+(Code blocks become ) (pre) (<pre>) >md.c ( and ) (code) (<code>) >md.c ( elements:)
+>md.t
+>md.p
+
+(def greet(name):)
+(    return f"Hello, {name}!")
+(python) >md.code
+
+(HTML Escaping)
+>md.h2
+
+(Special characters are automatically escaped for security:)
+>md.p
+
+(Characters like <, >, &, and " are escaped)
+>md.uli
+(Prevents XSS vulnerabilities)
+>md.uli
+(Example: ) (<script>alert('XSS')</script>) >md.c ( is safely escaped)
+>md.t
+>md.uli
+>md.ul
+
+(Switching Back to Markdown)
+>md.h2
+
+(You can switch back to markdown output anytime with:)
+>md.p
+
+(md.mdEmitter >md.emitter)
+Nil >md.code
+
+(Conclusion)
+>md.h2
+
+(The HtmlEmitter makes it easy to generate HTML from the same SOMA code
+that would normally produce markdown. Just add one line at the start!)
+>md.p
+
+) ============================================================================
+) Render to HTML file
+) ============================================================================
+
+(html_example.html) >md.render

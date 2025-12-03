@@ -90,15 +90,75 @@ Nil >md.code
 (Output Formats)
 >md.h2
 
-(By default, SOMA markdown generates markdown syntax. You can switch to HTML output
-using the htmlEmitter:)
+(By default, SOMA markdown generates markdown syntax. However, you can switch to HTML
+output using the pluggable emitter system. This allows the ) (same SOMA code) >md.i ( to
+generate different output formats)
+>md.t
 >md.p
 
-(htmlEmitter >md.emitter)
+(Switching to HTML Output)
+>md.h3
+
+(To generate HTML instead of markdown, add this line after ) (>md.start) >md.c (:)
+>md.t
+>md.p
+
+(md.htmlEmitter >md.emitter)
 Nil >md.code
 
-(After switching, all operations generate HTML tags instead of markdown syntax.
-Use ) (mdEmitter >md.emitter) >md.c ( to switch back to markdown output)
+(Now all operations generate HTML tags instead of markdown syntax:)
+>md.p
+
+(Bold) (**text**) >md.c ( becomes ) (<strong>text</strong>) >md.c
+>md.t >md.uli
+(Italic) (_text_) >md.c ( becomes ) (<em>text</em>) >md.c
+>md.t >md.uli
+(Code) (`code`) >md.c ( becomes ) (<code>code</code>) >md.c
+>md.t >md.uli
+(Headings become ) (h1) (<h1>) >md.c (, ) (h2) (<h2>) >md.c (, etc.)
+>md.t >md.uli
+(Lists become ) (ul) (<ul>) >md.c ( and ) (ol) (<ol>) >md.c ( with ) (li) (<li>) >md.c ( tags)
+>md.t >md.uli
+>md.ul
+
+(Switching Back to Markdown)
+>md.h3
+
+(You can switch back to markdown output anytime:)
+>md.p
+
+(md.mdEmitter >md.emitter)
+Nil >md.code
+
+(Complete Example)
+>md.h3
+
+(\28\python\29\ >use)
+(\28\markdown\29\ >use)
+(>md.start)
+(md.htmlEmitter >md.emitter  \29\ Key line - switch to HTML)
+()
+(\28\My Page\29\ >md.h1)
+(\28\Hello \29\ \28\world\29\ >md.b \28\!\29\ >md.t >md.p)
+(\28\output.html\29\ >md.render)
+Nil >md.code
+
+(This generates:)
+>md.p
+
+(<h1>My Page</h1>)
+(<p>Hello <strong>world</strong>!</p>)
+Nil >md.code
+
+(When to Use Each Emitter)
+>md.h3
+
+Void
+(md.mdEmitter) (Default - generates .md files for documentation, README files, etc.)
+(md.htmlEmitter) (Generates .html files for web pages, email templates, static sites)
+>md.dul
+
+(See ) (html_example.soma) >md.c ( for a complete working example of HTML output)
 >md.t
 >md.p
 
