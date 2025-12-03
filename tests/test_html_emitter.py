@@ -25,7 +25,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 # This import will FAIL - that's expected! (TDD: write tests first)
-from soma.extensions.markdown_emitter import HtmlEmitter
+from soma.extensions.markdown_emitter import HtmlEmitter, untag
 
 
 class TestHtmlEmitterInlineFormatting(unittest.TestCase):
@@ -39,7 +39,7 @@ class TestHtmlEmitterInlineFormatting(unittest.TestCase):
         """Test bold() wraps text in <strong>text</strong> format."""
         result = self.emitter.bold("hello")
         self.assertEqual(
-            result,
+            untag(result),
             "<strong>hello</strong>",
             "bold() should wrap text in <strong> tags"
         )
@@ -48,7 +48,7 @@ class TestHtmlEmitterInlineFormatting(unittest.TestCase):
         """Test italic() wraps text in <i>text</i> format."""
         result = self.emitter.italic("hello")
         self.assertEqual(
-            result,
+            untag(result),
             "<i>hello</i>",
             "italic() should wrap text in <i> tags"
         )
@@ -57,7 +57,7 @@ class TestHtmlEmitterInlineFormatting(unittest.TestCase):
         """Test code() wraps text in <code>text</code> format."""
         result = self.emitter.code("x = 42")
         self.assertEqual(
-            result,
+            untag(result),
             "<code>x = 42</code>",
             "code() should wrap text in <code> tags"
         )
@@ -66,7 +66,7 @@ class TestHtmlEmitterInlineFormatting(unittest.TestCase):
         """Test link() creates <a href="url">text</a> format."""
         result = self.emitter.link("Google", "https://google.com")
         self.assertEqual(
-            result,
+            untag(result),
             '<a href="https://google.com">Google</a>',
             "link() should create HTML anchor tag"
         )
@@ -176,6 +176,34 @@ class TestHtmlEmitterLists(unittest.TestCase):
             "ordered_list() should create <ol> with <li> tags"
         )
 
+    def test_html_emitter_definition_unordered_list(self):
+        """Test unordered_list() with formatted definition items (md.dul scenario)."""
+        # Simulate what md.dul does: format pairs with list_item_formatted, then create list
+        formatted_items = [
+            self.emitter.list_item_formatted("Name", "Alice"),
+            self.emitter.list_item_formatted("Age", "30")
+        ]
+        result = self.emitter.unordered_list(formatted_items, depth=0)
+        self.assertEqual(
+            result,
+            "<ul>\n  <li><strong>Name</strong>: Alice</li>\n  <li><strong>Age</strong>: 30</li>\n</ul>\n",
+            "unordered_list() with formatted items should create proper HTML list"
+        )
+
+    def test_html_emitter_definition_ordered_list(self):
+        """Test ordered_list() with formatted definition items (md.dol scenario)."""
+        # Simulate what md.dol does: format pairs with list_item_formatted, then create list
+        formatted_items = [
+            self.emitter.list_item_formatted("First", "Alpha"),
+            self.emitter.list_item_formatted("Second", "Beta")
+        ]
+        result = self.emitter.ordered_list(formatted_items, depth=0)
+        self.assertEqual(
+            result,
+            "<ol>\n  <li><strong>First</strong>: Alpha</li>\n  <li><strong>Second</strong>: Beta</li>\n</ol>\n",
+            "ordered_list() with formatted items should create proper HTML list"
+        )
+
     def test_html_emitter_nested_list(self):
         """Test nested list with depth=1 still produces proper HTML structure."""
         # Test unordered list at depth 1
@@ -198,7 +226,7 @@ class TestHtmlEmitterLists(unittest.TestCase):
         """Test list_item_formatted() creates <strong>label</strong>: value format."""
         result = self.emitter.list_item_formatted("Name", "Alice")
         self.assertEqual(
-            result,
+            untag(result),
             "<strong>Name</strong>: Alice",
             "list_item_formatted() should bold label with <strong> tag"
         )
@@ -305,7 +333,7 @@ class TestHtmlEmitterSpecialOperations(unittest.TestCase):
         """Test concat() joins items with no separator."""
         result = self.emitter.concat(["Hello", " ", "world"])
         self.assertEqual(
-            result,
+            untag(result),
             "Hello world",
             "concat() should join items with no separator"
         )
@@ -314,7 +342,7 @@ class TestHtmlEmitterSpecialOperations(unittest.TestCase):
         """Test join() joins items with specified separator."""
         result = self.emitter.join(["a", "b", "c"], separator=", ")
         self.assertEqual(
-            result,
+            untag(result),
             "a, b, c",
             "join() should join items with specified separator"
         )
@@ -323,7 +351,7 @@ class TestHtmlEmitterSpecialOperations(unittest.TestCase):
         """Test data_title() creates alternating <strong> pattern."""
         result = self.emitter.data_title(["Name", "Alice", "Age", "30"])
         self.assertEqual(
-            result,
+            untag(result),
             "<strong>Name</strong> Alice <strong>Age</strong> 30",
             "data_title() should bold even-indexed items with <strong> tags"
         )
@@ -376,26 +404,24 @@ class TestHtmlEmitterEdgeCases(unittest.TestCase):
         # Test escaping in bold text
         result = self.emitter.bold("A & B < C > D")
         self.assertEqual(
-            result,
+            untag(result),
             "<strong>A &amp; B &lt; C &gt; D</strong>",
             "bold() should escape &, <, > characters"
         )
 
-        # Test escaping in paragraph - Note: paragraph() does NOT escape because it receives
-        # already-formatted content from inline formatters. If you need to escape, do it before
-        # calling paragraph(), or use the full markdown extension which handles this correctly.
-        # This test verifies that paragraph() does NOT double-escape HTML from inline formatters.
+        # Test escaping in paragraph - paragraph() now uses _process_text which handles
+        # both raw (untagged) and formatted (tagged) content correctly
         result = self.emitter.paragraph(["<script>alert('xss')</script>"])
         self.assertEqual(
             result,
-            "<p><script>alert('xss')</script></p>\n",
-            "paragraph() should NOT escape - caller is responsible for escaping raw text"
+            "<p>&lt;script&gt;alert('xss')&lt;/script&gt;</p>\n",
+            "paragraph() should escape raw text using _process_text"
         )
 
         # Test escaping in code
         result = self.emitter.code("if x < 5 && y > 3")
         self.assertEqual(
-            result,
+            untag(result),
             "<code>if x &lt; 5 &amp;&amp; y &gt; 3</code>",
             "code() should escape special characters"
         )
@@ -403,7 +429,7 @@ class TestHtmlEmitterEdgeCases(unittest.TestCase):
         # Test escaping quotes in link URLs
         result = self.emitter.link("Click", 'http://example.com?q="test"')
         self.assertEqual(
-            result,
+            untag(result),
             '<a href="http://example.com?q=&quot;test&quot;">Click</a>',
             "link() should escape quotes in URLs"
         )

@@ -39,14 +39,23 @@ SOMA uses `\HEX\` format for escapes - backslash, hex digits, backslash:
 
 **Adjacent escapes** - each escape is independent, so they sit side-by-side:
 ```soma
-(\28\\5C\\29\)              ) Produces: (\)
-(Escape\29\\5C\\29\test)    ) Produces: Escape)\)test
+(A closing paren\29\ then backslash\5C\)  ) Produces: )\
+(Smiley\29\\5C\29\)                        ) Produces: )\ )
 ```
 
 **Critical:** Only `)` and `\` need escaping:
 - `)` → `\29\` (or it closes the string)
 - `\` → `\5C\` (or it starts an escape)
 - `(` does NOT need escaping - write it literally!
+
+**Examples of what NOT to escape:**
+```soma
+(Function call: foo(x, y))              ) Wrong! Closes string early
+(Function call: foo(x, y\29\)           ) Right! Escape closing paren
+(Inline (parenthetical remark\29\ text) ) Right! Opening ( is literal
+(Path: /usr/local/bin)                  ) Right! / needs no escaping
+(Quote: "Hello World")                  ) Right! " needs no escaping
+```
 
 ### 2. Formatters (Functions)
 ```soma
@@ -66,9 +75,10 @@ variable        ) Retrieve value
 ```
 
 ### 5. The Void Sentinel
-- Void sits at the bottom of the stack
+- Void sits at the bottom of the stack automatically
 - Formatters drain items from stack until they hit Void
-- You don't need to think about this - it's automatic
+- You don't need to explicitly add `Void` - it's already there
+- Examples may show `Void` for clarity, but it's optional
 
 ---
 
@@ -400,6 +410,8 @@ Use `>md.oli` (ordered list item) and `>md.uli` (unordered list item) to accumul
 
 These are **transformation operations** - they consume items from the stack and produce **new items** back on the stack. They do NOT render anything themselves.
 
+**Note on `Void` in examples:** The examples below show `Void` explicitly for clarity, but it's already at the bottom of the stack automatically. You can omit `Void` and the transformations will work the same way - they consume items until hitting the automatic Void sentinel.
+
 **Definition List Transformation (md.dl):**
 
 Takes pairs of items and transforms them into `**label**: value` format:
@@ -499,6 +511,8 @@ Void (Key1) (Value1) (Key2) (Value2) >md.dl
 ### Convenience Combinators (md.dul and md.dol)
 
 These are shortcuts that combine transformations with rendering in one operation:
+
+**Note on `Void`:** As with `>md.dl` and `>md.dt`, the `Void` shown in examples is optional - the stack already has Void at the bottom automatically.
 
 **Definition Unordered List (md.dul):**
 

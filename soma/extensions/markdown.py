@@ -104,13 +104,29 @@ def drain_and_join_builtin(vm):
             hit_placeholder = True
             break
 
-        items.append(str(item))
+        # Validate that item is a string (text concatenation only accepts strings)
+        if not isinstance(item, str):
+            raise TypeError(
+                f"Text concatenation (>md.t) requires string items, got {type(item).__name__}: {item!r}\n"
+                f"Hint: If you want to use a literal operator like '-', wrap it in parentheses: (-)\n"
+                f"      Example: (text ) (-) ( more text) >md.t"
+            )
+
+        items.append(item)
 
     # Items are in reverse order (LIFO), so reverse them
     items.reverse()
 
-    # Join with separator
-    result = str(separator).join(items)
+    # Get emitter from state and use its join/concat methods
+    emitter = vm.store.read_value(['md', 'state', 'emitter'])
+
+    # Use emitter's concat or join method to handle escaping and tagging
+    if str(separator) == "":
+        # Empty separator means concatenation (implements >md.t)
+        result = emitter.concat(items)
+    else:
+        # Non-empty separator means joining
+        result = emitter.join(items, str(separator))
 
     # Push Void back if we hit it, otherwise we stopped at placeholder (which is already back)
     if not hit_placeholder:

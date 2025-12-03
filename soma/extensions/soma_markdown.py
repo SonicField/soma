@@ -222,9 +222,16 @@ def definition_list_format(emitter, *items):
 
 
 def write_file(filename, content):
-    """Write content to file."""
+    """
+    Write content to file, stripping any escaped string tags.
+
+    Tags (U+100000) are used internally to prevent double-escaping but
+    should not appear in final output.
+    """
+    from soma.extensions.markdown_emitter import strip_all_tags
+    cleaned_content = strip_all_tags(str(content))
     with open(str(filename), 'w') as f:
-        f.write(str(content))
+        f.write(cleaned_content)
     return None
 
 

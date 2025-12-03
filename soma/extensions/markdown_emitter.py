@@ -11,9 +11,49 @@ Emitters included:
 
 These emitters are designed to be pluggable output formatters for the SOMA
 markdown extension, allowing the same code to generate different output formats.
+
+Escaped String Tagging:
+To prevent double-escaping, formatters use U+100000 as an "already escaped"
+tag. When a formatter escapes special characters, it prefixes the result with
+this tag. Other formatters check for this tag and skip re-escaping. Tags are
+stripped from final output.
 """
 
 from typing import List, Optional
+import re
+
+# ==============================================================================
+# Escaped String Tagging System
+# ==============================================================================
+#
+# Tag for marking strings that have already been escaped/formatted.
+# U+100000 is in the Supplementary Private Use Area-B plane, ensuring it won't
+# appear in normal text and won't conflict with valid Unicode characters.
+ESCAPED_TAG = '\U00100000'
+
+
+def is_tagged(text: str) -> bool:
+    """Check if string is tagged as already escaped."""
+    return text.startswith(ESCAPED_TAG)
+
+
+def tag(text: str) -> str:
+    """Tag string as already escaped. Idempotent (won't double-tag)."""
+    if is_tagged(text):
+        return text
+    return ESCAPED_TAG + text
+
+
+def untag(text: str) -> str:
+    """Remove escaped tag if present."""
+    if is_tagged(text):
+        return text[len(ESCAPED_TAG):]
+    return text
+
+
+def strip_all_tags(text: str) -> str:
+    """Remove all escaped tags from final output."""
+    return text.replace(ESCAPED_TAG, '')
 
 
 class MarkdownEmitter:
@@ -641,6 +681,28 @@ class HtmlEmitter:
         text = text.replace('"', "&quot;")
         return text
 
+    def _process_text(self, text: str) -> str:
+        """
+        Process text: escape if untagged, untag if tagged.
+
+        Args:
+            text: Text to process (may or may not be tagged)
+
+        Returns:
+            Untagged, escaped text ready for use in formatting
+
+        Note:
+            This is used by inline formatters to handle both raw user input
+            (which needs escaping) and already-formatted content from other
+            formatters (which is tagged and should not be re-escaped).
+        """
+        if is_tagged(text):
+            # Already escaped by another formatter - just untag
+            return untag(text)
+        else:
+            # Raw user input - needs escaping
+            return self._escape_html(text)
+
     # ====================
     # Inline Formatting
     # ====================
@@ -650,65 +712,70 @@ class HtmlEmitter:
         Wrap text in bold formatting.
 
         Args:
-            text: The text to make bold
+            text: The text to make bold (raw or tagged)
 
         Returns:
-            String with bold formatting (e.g., "<strong>text</strong>")
+            Tagged string with bold formatting
 
         Example:
             >>> emitter.bold("hello")
-            '<strong>hello</strong>'
+            '<ESCAPED_TAG><strong>hello</strong>'
         """
-        return f"<strong>{self._escape_html(text)}</strong>"
+        processed = self._process_text(text)
+        return tag(f"<strong>{processed}</strong>")
 
     def italic(self, text: str) -> str:
         """
         Wrap text in italic formatting.
 
         Args:
-            text: The text to italicize
+            text: The text to italicize (raw or tagged)
 
         Returns:
-            String with italic formatting (e.g., "<i>text</i>")
+            Tagged string with italic formatting
 
         Example:
             >>> emitter.italic("hello")
-            '<i>hello</i>'
+            '<ESCAPED_TAG><i>hello</i>'
         """
-        return f"<i>{self._escape_html(text)}</i>"
+        processed = self._process_text(text)
+        return tag(f"<i>{processed}</i>")
 
     def code(self, text: str) -> str:
         """
         Wrap text in inline code formatting.
 
         Args:
-            text: The text to format as code
+            text: The text to format as code (raw or tagged)
 
         Returns:
-            String with inline code formatting (e.g., "<code>text</code>")
+            Tagged string with inline code formatting
 
         Example:
             >>> emitter.code("x = 42")
-            '<code>x = 42</code>'
+            '<ESCAPED_TAG><code>x = 42</code>'
         """
-        return f"<code>{self._escape_html(text)}</code>"
+        processed = self._process_text(text)
+        return tag(f"<code>{processed}</code>")
 
     def link(self, text: str, url: str) -> str:
         """
         Create a hyperlink.
 
         Args:
-            text: The link text to display
-            url: The URL to link to
+            text: The link text to display (raw or tagged)
+            url: The URL to link to (always escaped)
 
         Returns:
-            String with link formatting (e.g., '<a href="url">text</a>')
+            Tagged string with link formatting
 
         Example:
             >>> emitter.link("Google", "https://google.com")
-            '<a href="https://google.com">Google</a>'
+            '<ESCAPED_TAG><a href="https://google.com">Google</a>'
         """
-        return f'<a href="{self._escape_html(url)}">{self._escape_html(text)}</a>'
+        processed_text = self._process_text(text)
+        escaped_url = self._escape_html(url)  # URLs always escaped
+        return tag(f'<a href="{escaped_url}">{processed_text}</a>')
 
     # ====================
     # Block Elements
@@ -719,7 +786,7 @@ class HtmlEmitter:
         Create a level 1 heading.
 
         Args:
-            text: The heading text
+            text: The heading text (raw or tagged)
 
         Returns:
             String with heading formatting and trailing newline
@@ -728,14 +795,15 @@ class HtmlEmitter:
             >>> emitter.heading1("Title")
             '<h1>Title</h1>\\n'
         """
-        return f"<h1>{self._escape_html(text)}</h1>\n"
+        processed = self._process_text(text)
+        return f"<h1>{processed}</h1>\n"
 
     def heading2(self, text: str) -> str:
         """
         Create a level 2 heading.
 
         Args:
-            text: The heading text
+            text: The heading text (raw or tagged)
 
         Returns:
             String with heading formatting and trailing newline
@@ -744,14 +812,15 @@ class HtmlEmitter:
             >>> emitter.heading2("Section")
             '<h2>Section</h2>\\n'
         """
-        return f"<h2>{self._escape_html(text)}</h2>\n"
+        processed = self._process_text(text)
+        return f"<h2>{processed}</h2>\n"
 
     def heading3(self, text: str) -> str:
         """
         Create a level 3 heading.
 
         Args:
-            text: The heading text
+            text: The heading text (raw or tagged)
 
         Returns:
             String with heading formatting and trailing newline
@@ -760,14 +829,15 @@ class HtmlEmitter:
             >>> emitter.heading3("Subsection")
             '<h3>Subsection</h3>\\n'
         """
-        return f"<h3>{self._escape_html(text)}</h3>\n"
+        processed = self._process_text(text)
+        return f"<h3>{processed}</h3>\n"
 
     def heading4(self, text: str) -> str:
         """
         Create a level 4 heading.
 
         Args:
-            text: The heading text
+            text: The heading text (raw or tagged)
 
         Returns:
             String with heading formatting and trailing newline
@@ -776,14 +846,15 @@ class HtmlEmitter:
             >>> emitter.heading4("Detail")
             '<h4>Detail</h4>\\n'
         """
-        return f"<h4>{self._escape_html(text)}</h4>\n"
+        processed = self._process_text(text)
+        return f"<h4>{processed}</h4>\n"
 
     def paragraph(self, items: List[str]) -> str:
         """
         Format multiple items as separate paragraphs.
 
         Args:
-            items: List of paragraph text strings (may contain HTML markup from inline formatters)
+            items: List of paragraph text strings (raw or tagged)
 
         Returns:
             String with each item as a separate <p> tag
@@ -793,15 +864,16 @@ class HtmlEmitter:
             '<p>First para</p>\\n<p>Second para</p>\\n'
 
         Note:
-            Each string in the list becomes its own paragraph with <p> tags.
-            Items are NOT escaped - they may contain HTML from inline formatters.
+            Each string becomes its own paragraph with <p> tags.
+            Items are processed (escaping if untagged, untagging if tagged).
         """
         if not items:
             return ""
 
         result_parts = []
         for item in items:
-            result_parts.append(f"<p>{item}</p>\n")
+            processed = self._process_text(item)
+            result_parts.append(f"<p>{processed}</p>\n")
 
         return ''.join(result_parts)
 
@@ -874,7 +946,8 @@ class HtmlEmitter:
 
         result_parts = ["<ul>\n"]
         for item in items:
-            result_parts.append(f"  <li>{item}</li>\n")
+            processed = self._process_text(item)
+            result_parts.append(f"  <li>{processed}</li>\n")
         result_parts.append("</ul>\n")
 
         return ''.join(result_parts)
@@ -904,7 +977,8 @@ class HtmlEmitter:
 
         result_parts = ["<ol>\n"]
         for item in items:
-            result_parts.append(f"  <li>{item}</li>\n")
+            processed = self._process_text(item)
+            result_parts.append(f"  <li>{processed}</li>\n")
         result_parts.append("</ol>\n")
 
         return ''.join(result_parts)
@@ -914,21 +988,24 @@ class HtmlEmitter:
         Format a definition-style list item with bold label and value.
 
         Args:
-            label: The label/term to bold
-            value: The value/definition
+            label: The label/term to bold (raw or tagged)
+            value: The value/definition (raw or tagged)
 
         Returns:
-            String formatted as "<strong>label</strong>: value"
+            Tagged string formatted as "<strong>label</strong>: value"
 
         Example:
             >>> emitter.list_item_formatted("Name", "Alice")
-            '<strong>Name</strong>: Alice'
+            '\U00100000<strong>Name</strong>: Alice'
 
         Note:
             - This is used by >md.dl to create definition list items
             - Output is meant to be passed to unordered_list() or ordered_list()
+            - Handles both raw text and tagged formatted content
         """
-        return f"<strong>{self._escape_html(label)}</strong>: {self._escape_html(value)}"
+        processed_label = self._process_text(label)
+        processed_value = self._process_text(value)
+        return tag(f"<strong>{processed_label}</strong>: {processed_value}")
 
     # ====================
     # Code
@@ -984,41 +1061,43 @@ class HtmlEmitter:
         Concatenate items into a single string with no separator.
 
         Args:
-            items: List of strings to concatenate
+            items: List of strings to concatenate (raw or tagged)
 
         Returns:
-            Single concatenated string
+            Tagged concatenated string
 
         Example:
             >>> emitter.concat(["Hello", " ", "world"])
-            'Hello world'
+            '<ESCAPED_TAG>Hello world'
 
         Note:
-            - Used for inline text joining
-            - No formatting or escaping added (items should already be formatted)
+            - Processes each item (escaping if untagged)
+            - Used for inline text joining (implements >md.t)
         """
-        return ''.join(items)
+        processed_items = [self._process_text(item) for item in items]
+        return tag(''.join(processed_items))
 
     def join(self, items: List[str], separator: str) -> str:
         """
         Join items with a separator.
 
         Args:
-            items: List of strings to join
+            items: List of strings to join (raw or tagged)
             separator: String to insert between items
 
         Returns:
-            Single joined string
+            Tagged joined string
 
         Example:
             >>> emitter.join(["a", "b", "c"], separator=", ")
-            'a, b, c'
+            '<ESCAPED_TAG>a, b, c'
 
         Note:
-            - Used internally for text operations
-            - No formatting or escaping added (items should already be formatted)
+            - Processes each item (escaping if untagged)
+            - Separator is NOT escaped (assumed to be literal punctuation)
         """
-        return separator.join(items)
+        processed_items = [self._process_text(item) for item in items]
+        return tag(separator.join(processed_items))
 
     def data_title(self, items: List[str]) -> str:
         """
@@ -1047,12 +1126,14 @@ class HtmlEmitter:
 
         formatted = []
         for i, item in enumerate(items):
+            processed = self._process_text(item)
             if i % 2 == 0:  # Even indices: 0, 2, 4... get bolded
-                formatted.append(f"<strong>{self._escape_html(item)}</strong>")
+                formatted.append(f"<strong>{processed}</strong>")
             else:
-                formatted.append(self._escape_html(item))
+                formatted.append(processed)
 
-        return " ".join(formatted)
+        # Tag the result since we've created formatted output
+        return tag(" ".join(formatted))
 
     def can_concat_lists(self) -> bool:
         """
@@ -1120,7 +1201,8 @@ class HtmlEmitter:
         result_parts.append("<thead>\n<tr>")
         for i, cell in enumerate(header):
             style = get_align_style(i)
-            result_parts.append(f"<th{style}>{cell}</th>")
+            processed_cell = self._process_text(cell)
+            result_parts.append(f"<th{style}>{processed_cell}</th>")
         result_parts.append("</tr>\n</thead>\n")
 
         # Build tbody with data rows
@@ -1129,7 +1211,8 @@ class HtmlEmitter:
             result_parts.append("<tr>")
             for i, cell in enumerate(row):
                 style = get_align_style(i)
-                result_parts.append(f"<td{style}>{cell}</td>")
+                processed_cell = self._process_text(cell)
+                result_parts.append(f"<td{style}>{processed_cell}</td>")
             result_parts.append("</tr>\n")
         result_parts.append("</tbody>\n")
 

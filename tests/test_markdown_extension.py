@@ -2211,6 +2211,9 @@ class TestEmitterIntegration(unittest.TestCase):
         mock_emitter.heading2.return_value = "## Section\n\n"
         mock_emitter.heading3.return_value = "### Subsection\n\n"
         mock_emitter.heading4.return_value = "#### Detail\n\n"
+        # Configure concat/join to pass through the first item (for single-item headings)
+        mock_emitter.concat.side_effect = lambda items: items[0] if items else ""
+        mock_emitter.join.side_effect = lambda items, sep: sep.join(str(i) for i in items)
 
         # Set it as the emitter
         vm.store.write_value(['md', 'state', 'emitter'], mock_emitter)

@@ -153,7 +153,7 @@ Nil >md.code
 (When to Use Each Emitter)
 >md.h3
 
-Void
+Void  ) Optional - already at stack bottom
 (md.mdEmitter) (Default - generates .md files for documentation, README files, etc.)
 (md.htmlEmitter) (Generates .html files for web pages, email templates, static sites)
 >md.dul
@@ -274,6 +274,92 @@ Nil >md.code
 >md.hr
 
 ) ============================================================================
+) ESCAPING SPECIAL CHARACTERS
+) ============================================================================
+
+(Escaping Special Characters)
+>md.h1
+
+(When writing SOMA markdown, you'll sometimes need to include special characters
+in your strings. SOMA uses a simple hex-escape format for this.)
+>md.p
+
+(The Escape Format)
+>md.h2
+
+(SOMA uses ) (\5C\HEX\5C\) >md.c ( format for escapes - backslash, hex digits, backslash:)
+>md.t
+>md.p
+
+(Error :-\29\)                    ) The \29\ escapes the closing paren
+(Path: C:\5C\Users\5C\Documents)  ) The \5C\ escapes each backslash
+(Degree: 98.6\B0\ F)              ) The \B0\ produces the ° symbol
+Nil >md.code
+
+(What Needs Escaping)
+>md.h2
+
+(Only ) (two) >md.b ( characters need escaping in SOMA strings:)
+>md.t
+>md.p
+
+(Closing parenthesis ) (\29\)) >md.c
+>md.nest
+  (Closes the string if not escaped)
+  (Must ) (always) >md.b ( be escaped when you want a literal \29\ in your string)
+  >md.t
+  >md.ul
+(Backslash ) (\5C\) >md.c
+>md.nest
+  (Starts an escape sequence if not escaped)
+  (Must be escaped when you want a literal \5C\ in your string)
+  >md.ul
+>md.ul
+
+(What Does NOT Need Escaping)
+>md.h2
+
+(Everything else can be written literally:)
+>md.p
+
+(Opening parenthesis () (Write literally - doesn't close strings)
+(Forward slash (/\29\) (Write literally)
+(Quotes ("\29\) (Write literally)
+(Single quotes ('\29\) (Write literally)
+(Brackets, braces, etc.) (Write literally)
+>md.ul
+
+(Common Examples)
+>md.h2
+
+(Function call: foo(x, y\29\)            ) Escape only the closing )
+(Inline (parenthetical remark\29\ text)  ) Opening ( is literal
+(Path: /usr/local/bin)                  ) Forward slashes are literal
+(Quote: "Hello World")                  ) Quotes are literal
+(Windows path: C:\5C\Users\5C\alex)      ) Only backslashes need escaping
+Nil >md.code
+
+(Adjacent Escapes)
+>md.h2
+
+(When you need multiple escaped characters in a row, each escape is independent:)
+>md.p
+
+(Close paren\29\ then text)    ) Shows: ) then text
+(Two backslashes\5C\\5C\)       ) Shows: two backslashes
+(Paren and slash\29\\5C\)       ) Shows: ) and \
+Nil >md.code
+
+(Key Takeaway)
+>md.h2
+
+(When in doubt: only escape ) (\29\) >md.c ( and ) (\5C\) >md.c (. Everything else is literal!)
+>md.t
+>md.p
+
+>md.hr
+
+) ============================================================================
 ) CORE CONCEPTS
 ) ============================================================================
 
@@ -284,18 +370,25 @@ Nil >md.code
 >md.h2
 
 (The Void sentinel is the foundation of SOMA markdown's clean syntax.
-It sits at the bottom of the activation list and marks where to stop
-draining items)
+It sits at the bottom of the activation list automatically and marks where to stop
+draining items. You don't need to explicitly add Void in your code - it's already there!)
+>md.p
+
+(Important: In the examples below, you may see ) (Void) >md.c ( written explicitly
+for educational purposes to show the stack structure. This is ) (optional) >md.i ( -
+the Void sentinel is automatically present at the stack bottom after ) (>md.start) >md.c (.)
+>md.t
 >md.p
 
 (How it works:)
 >md.p
 
 (>md.start) >md.oli
-(Pushes Void onto the activation list)
+(Pushes Void onto the activation list automatically)
 >md.nest
 (Void is always at the bottom)
 (Marks the end of items to process)
+(You don't need to type "Void" yourself)
 >md.ul
 
 (>md.p, >md.ul, >md.ol, etc) >md.oli
@@ -367,7 +460,7 @@ Nil >md.code
 (Documents are built in phases:)
 >md.p
 
-Void
+Void  ) Optional - already at stack bottom
 (Initialization) (>md.start sets up state and Void sentinel)
 (Construction) (Operations like >md.h1, >md.p, >md.ul append to md.state.doc)
 (Validation) (>md.render checks for unconsumed placeholders)
@@ -1190,7 +1283,7 @@ Nil >md.code
 (The extension provides clear error messages:)
 >md.p
 
-Void
+Void  ) Optional - already at stack bottom
 (Odd number of items) (md.dl and md.dt require pairs - odd count fails)
 (Placeholder in pairs) (Clear error indicates placeholder detected)
 (Type mismatches) (Using md.oli with >md.ul fails with type error)
@@ -1694,7 +1787,7 @@ Nil >md.code
 (Keep these in mind for efficient document generation:)
 >md.p
 
-Void
+Void  ) Optional - already at stack bottom
 (Minimize AL operations) (Build items in batches rather than one at a time)
 (Reuse patterns) (Define custom combinators for repeated structures)
 (Clear state) (>md.render and >md.print clean up automatically)
@@ -2135,7 +2228,7 @@ Nil >md.code
 (Internal state maintained by the extension:)
 >md.p
 
-Void
+Void  ) Optional - already at stack bottom
 (md.state.doc) (Accumulated document string)
 (md.state.stack) (Nesting stack for lists)
 (md.state.depth) (Current nesting depth)
