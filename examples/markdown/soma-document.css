@@ -20,28 +20,28 @@
   --font-body: "Atkinson Hyperlegible Next", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-mono: "Atkinson Hyperlegible Mono", "SF Mono", Monaco, "Cascadia Code", monospace;
 
-  /* Colors - Calm, professional palette */
-  --color-text: #2c3e50;
-  --color-text-light: #5a6c7d;
-  --color-heading: #1a252f;
-  --color-link: #2563eb;
-  --color-link-hover: #1d4ed8;
+  /* Colors - Warm, bookish palette (family bible aesthetic) */
+  --color-text: #3a3226;          /* Warm dark brown instead of cold gray */
+  --color-text-light: #6b5d4f;   /* Lighter warm brown */
+  --color-heading: #2a1f1a;       /* Deep warm brown for headings */
+  --color-link: #5b7c99;          /* Muted blue with warmth */
+  --color-link-hover: #4a6680;
 
-  /* Backgrounds */
-  --color-bg: #ffffff;
-  --color-bg-code: #f8fafc;
-  --color-bg-code-block: #f1f5f9;
+  /* Backgrounds - Warm cream tones like aged paper */
+  --color-bg: #fdfbf7;            /* Warm cream, not stark white */
+  --color-bg-code: #f5f1ea;       /* Slightly darker cream for code */
+  --color-bg-code-block: #f0ebe3; /* Warmer tan for code blocks */
 
-  /* Borders */
-  --color-border: #e2e8f0;
-  --color-border-table: #cbd5e1;
+  /* Borders - Warm neutrals */
+  --color-border: #e8dfd2;        /* Warm tan border */
+  --color-border-table: #d9cdb8;  /* Deeper warm border for tables */
 
-  /* Spacing - Less than Google Docs, but still comfortable */
-  --space-xs: 0.4rem;
-  --space-sm: 0.8rem;
-  --space-md: 1.2rem;
-  --space-lg: 1.8rem;
-  --space-xl: 2.4rem;
+  /* Spacing - Reduced by ~30% for tighter, book-like feel */
+  --space-xs: 0.3rem;
+  --space-sm: 0.6rem;
+  --space-md: 0.85rem;
+  --space-lg: 1.3rem;
+  --space-xl: 1.7rem;
 
   /* Line heights */
   --line-height-tight: 1.3;
@@ -261,11 +261,11 @@ th {
 }
 
 tbody tr:nth-child(even) {
-  background-color: #fafbfc;
+  background-color: #f9f6f0;  /* Warm cream for zebra striping */
 }
 
 tbody tr:hover {
-  background-color: #f1f5f9;
+  background-color: #f3ede1;  /* Warmer tan on hover */
 }
 
 /* Alignment from emitter (style="text-align: ...") */
