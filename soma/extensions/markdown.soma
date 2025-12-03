@@ -12,12 +12,12 @@
   ) Create MarkdownEmitter instance and export to store
   >use.md.create_emitter
   >dup                    ) Duplicate for two stores
-  !mdEmitter              ) Export to store
+  !md.mdEmitter           ) Export to store
   !md.state.emitter       ) Set as default emitter
 
   ) Create HtmlEmitter instance and export to store
   >use.md.create_html_emitter
-  !htmlEmitter            ) Export to store
+  !md.htmlEmitter         ) Export to store
 
   ) Create empty stack for nesting
   Void (soma.extensions.soma_markdown.list_new) >use.python.call

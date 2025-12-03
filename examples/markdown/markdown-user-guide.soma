@@ -1743,13 +1743,7 @@ Nil >md.code
 (>md.ul)
 Nil >md.code
 
-(Odd Number of Items for md.dl or md.dt)(\28\class Example)
-(\28\  def initialize)
-(\28\    @value = 0)
-(\28\  end)
-(\28\end)
-(\28\ruby\29\ >md.code)
-Nil >md.code
+(Odd Number of Items for md.dl or md.dt)
 >md.h3
 
 (Error message: ) >md.b >md.p

@@ -723,8 +723,11 @@ def drain_and_format_data_title_builtin(vm):
     # Validate no placeholders
     validate_no_placeholders(items, ">md.dt")
 
+    # Get emitter from state
+    emitter = vm.store.read_value(['md', 'state', 'emitter'])
+
     # Format with alternating bold
-    result = data_title_format(*items)
+    result = data_title_format(emitter, *items)
 
     # Push Void sentinel back first, then result (LIFO order)
     vm.al.append(Void)
@@ -763,8 +766,11 @@ def drain_and_format_definition_list_builtin(vm):
     # Validate no placeholders
     validate_no_placeholders(items, ">md.dl")
 
+    # Get emitter from state
+    emitter = vm.store.read_value(['md', 'state', 'emitter'])
+
     # Format as definition list items (returns list of formatted strings)
-    formatted_items = definition_list_format(*items)
+    formatted_items = definition_list_format(emitter, *items)
 
     # Push Void sentinel back first, then all formatted items (LIFO order)
     vm.al.append(Void)

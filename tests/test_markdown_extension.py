@@ -2385,13 +2385,13 @@ class TestEmitterSwitching(unittest.TestCase):
     """
 
     def test_switch_to_html_emitter(self):
-        """Test that htmlEmitter >md.emitter switches to HtmlEmitter."""
+        """Test that md.htmlEmitter >md.emitter switches to HtmlEmitter."""
         code = """
         (python) >use
         (markdown) >use
 
         >md.start
-        htmlEmitter >md.emitter
+        md.htmlEmitter >md.emitter
         """
         vm = VM()
         tokens = lex(code)
@@ -2404,7 +2404,7 @@ class TestEmitterSwitching(unittest.TestCase):
         from soma.extensions.markdown_emitter import HtmlEmitter
         emitter = vm.store.read_value(['md', 'state', 'emitter'])
         self.assertIsInstance(emitter, HtmlEmitter,
-                            "After htmlEmitter >md.emitter, emitter should be HtmlEmitter")
+                            "After md.htmlEmitter >md.emitter, emitter should be HtmlEmitter")
 
     def test_html_emitter_bold_output(self):
         """Test that bold output uses HTML format after switching to HtmlEmitter."""
@@ -2417,7 +2417,7 @@ class TestEmitterSwitching(unittest.TestCase):
             (markdown) >use
 
             >md.start
-            htmlEmitter >md.emitter
+            md.htmlEmitter >md.emitter
             (This is ) (bold) >md.b ( text) >md.t
             >md.p
             ({temp_path}) >md.render
@@ -2441,7 +2441,7 @@ class TestEmitterSwitching(unittest.TestCase):
             (markdown) >use
 
             >md.start
-            htmlEmitter >md.emitter
+            md.htmlEmitter >md.emitter
             (This is a paragraph.)
             >md.p
             ({temp_path}) >md.render
@@ -2465,7 +2465,7 @@ class TestEmitterSwitching(unittest.TestCase):
             (markdown) >use
 
             >md.start
-            htmlEmitter >md.emitter
+            md.htmlEmitter >md.emitter
             (First item)
             (Second item)
             (Third item)
@@ -2488,14 +2488,14 @@ class TestEmitterSwitching(unittest.TestCase):
             os.unlink(temp_path)
 
     def test_switch_back_to_markdown(self):
-        """Test that mdEmitter >md.emitter switches back to MarkdownEmitter."""
+        """Test that md.mdEmitter >md.emitter switches back to MarkdownEmitter."""
         code = """
         (python) >use
         (markdown) >use
 
         >md.start
-        htmlEmitter >md.emitter
-        mdEmitter >md.emitter
+        md.htmlEmitter >md.emitter
+        md.mdEmitter >md.emitter
         """
         vm = VM()
         tokens = lex(code)
@@ -2508,7 +2508,7 @@ class TestEmitterSwitching(unittest.TestCase):
         from soma.extensions.markdown_emitter import MarkdownEmitter
         emitter = vm.store.read_value(['md', 'state', 'emitter'])
         self.assertIsInstance(emitter, MarkdownEmitter,
-                            "After mdEmitter >md.emitter, emitter should be MarkdownEmitter")
+                            "After md.mdEmitter >md.emitter, emitter should be MarkdownEmitter")
 
     def test_emitter_persists_across_operations(self):
         """Test that emitter choice persists across multiple operations."""
@@ -2521,7 +2521,7 @@ class TestEmitterSwitching(unittest.TestCase):
             (markdown) >use
 
             >md.start
-            htmlEmitter >md.emitter
+            md.htmlEmitter >md.emitter
             (Title) >md.h1
             (This is ) (bold) >md.b ( text) >md.t
             >md.p
@@ -2561,7 +2561,7 @@ class TestEmitterSwitching(unittest.TestCase):
 
         # Check that mdEmitter is available in the store
         from soma.extensions.markdown_emitter import MarkdownEmitter
-        md_emitter = vm.store.read_value(['mdEmitter'])
+        md_emitter = vm.store.read_value(['md', 'mdEmitter'])
         self.assertIsInstance(md_emitter, MarkdownEmitter,
                             "mdEmitter should be available in store as MarkdownEmitter instance")
 
@@ -2582,7 +2582,7 @@ class TestEmitterSwitching(unittest.TestCase):
 
         # Check that htmlEmitter is available in the store
         from soma.extensions.markdown_emitter import HtmlEmitter
-        html_emitter = vm.store.read_value(['htmlEmitter'])
+        html_emitter = vm.store.read_value(['md', 'htmlEmitter'])
         self.assertIsInstance(html_emitter, HtmlEmitter,
                             "htmlEmitter should be available in store as HtmlEmitter instance")
 

@@ -173,12 +173,13 @@ def render_table(emitter, header, rows, alignment):
     return emitter.table(header, rows, alignment)
 
 
-def data_title_format(*items):
+def data_title_format(emitter, *items):
     """
     Format items with alternating bold (for data title pattern).
 
-    Takes even number of items and bolds every other one (0, 2, 4...).
-    Example: ('Name', 'Alice', 'Age', '30') -> '**Name** Alice **Age** 30'
+    Takes emitter and even number of items, uses emitter.data_title().
+    Example: (emitter, 'Name', 'Alice', 'Age', '30') -> '**Name** Alice **Age** 30'
+            or '<strong>Name</strong> Alice <strong>Age</strong> 30' for HTML
     """
     # Filter out None (Void representation)
     items = [str(item) for item in items if item is not None]
@@ -190,22 +191,16 @@ def data_title_format(*items):
             f"Hint: Each label needs a value. Did you forget an item or have an extra one?"
         )
 
-    formatted = []
-    for i, item in enumerate(items):
-        if i % 2 == 0:  # Even indices: 0, 2, 4... get bolded
-            formatted.append(f"**{item}**")
-        else:
-            formatted.append(item)
-
-    return " ".join(formatted)
+    return emitter.data_title(items)
 
 
-def definition_list_format(*items):
+def definition_list_format(emitter, *items):
     """
     Format items as definition list items (label: value pairs).
 
-    Takes even number of items and formats as "**label**: value" pairs.
-    Example: ('Name', 'Alice', 'Age', '30') -> ['**Name**: Alice', '**Age**: 30']
+    Takes emitter and even number of items, formats using emitter.list_item_formatted().
+    Example: (emitter, 'Name', 'Alice', 'Age', '30') -> ['**Name**: Alice', '**Age**: 30']
+            or ['<strong>Name</strong>: Alice', '<strong>Age</strong>: 30'] for HTML
     """
     # Filter out None (Void representation)
     items = [str(item) for item in items if item is not None]
@@ -221,7 +216,7 @@ def definition_list_format(*items):
     for i in range(0, len(items), 2):
         label = items[i]
         value = items[i + 1]
-        formatted.append(f"**{label}**: {value}")
+        formatted.append(emitter.list_item_formatted(label, value))
 
     return formatted
 
