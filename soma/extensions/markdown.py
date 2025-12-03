@@ -120,12 +120,6 @@ def drain_and_join_builtin(vm):
     vm.al.append(result)
 
 
-def is_html_emitter(emitter):
-    """Check if emitter is HtmlEmitter."""
-    from soma.extensions.markdown_emitter import HtmlEmitter
-    return isinstance(emitter, HtmlEmitter)
-
-
 def drain_and_format_ul_builtin(vm):
     """
     >use.md.drain.ul builtin - Drain AL, check nesting stack, format as unordered list.
@@ -201,7 +195,7 @@ def drain_and_format_ul_builtin(vm):
 
         if depth > parent_depth:
             # We're a nested formatter - render only our items, add to parent context
-            if is_html_emitter(emitter):
+            if emitter.can_concat_lists():
                 # HTML: Use proper nested <ul> structure
                 nested_result = emitter.unordered_list(items, depth)
             else:
@@ -233,7 +227,7 @@ def drain_and_format_ul_builtin(vm):
                 else:
                     new_stack.append(ctx)
 
-            if is_html_emitter(emitter):
+            if emitter.can_concat_lists():
                 # HTML: Build proper nested structure with nested lists inside <li> tags
                 all_items = []
 
@@ -290,7 +284,7 @@ def drain_and_format_ul_builtin(vm):
                 # Top level - add to document
                 new_depth = 0
                 # Add final blank line only at depth 0
-                if new_depth == 0 and not is_html_emitter(emitter):
+                if new_depth == 0 and not emitter.can_concat_lists():
                     result += "\n"
     else:
         # No nesting - use emitter for simple case
@@ -380,7 +374,7 @@ def drain_and_format_ol_builtin(vm):
 
         if depth > parent_depth:
             # We're a nested formatter - render only our items, add to parent context
-            if is_html_emitter(emitter):
+            if emitter.can_concat_lists():
                 # HTML: Use proper nested <ol> structure
                 nested_result = emitter.ordered_list(items, depth)
             else:
@@ -414,7 +408,7 @@ def drain_and_format_ol_builtin(vm):
                 else:
                     new_stack.append(ctx)
 
-            if is_html_emitter(emitter):
+            if emitter.can_concat_lists():
                 # HTML: Build proper nested structure with nested lists inside <li> tags
                 all_items = []
 
@@ -474,7 +468,7 @@ def drain_and_format_ol_builtin(vm):
                 # Top level - add to document
                 new_depth = 0
                 # Add final blank line only at depth 0
-                if new_depth == 0 and not is_html_emitter(emitter):
+                if new_depth == 0 and not emitter.can_concat_lists():
                     result += "\n"
     else:
         # No nesting - use emitter for simple case

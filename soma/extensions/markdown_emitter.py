@@ -467,6 +467,20 @@ class MarkdownEmitter:
 
         return " ".join(formatted)
 
+    def can_concat_lists(self) -> bool:
+        """
+        Indicate whether nested lists can be combined via string concatenation.
+
+        Returns:
+            False for markdown (uses indentation-based nesting, position-sensitive)
+
+        Note:
+            Markdown nested lists require precise indentation control and cannot
+            be built by simple string concatenation. Each nesting level needs
+            explicit indent calculation.
+        """
+        return False
+
     # ====================
     # Tables
     # ====================
@@ -1039,6 +1053,20 @@ class HtmlEmitter:
                 formatted.append(self._escape_html(item))
 
         return " ".join(formatted)
+
+    def can_concat_lists(self) -> bool:
+        """
+        Indicate whether nested lists can be combined via string concatenation.
+
+        Returns:
+            True for HTML (uses structural nesting, concatenation-friendly)
+
+        Note:
+            HTML nested lists can be built by concatenating strings because
+            nesting is structural (<li>item<ul>nested</ul></li>), not
+            position-dependent like markdown indentation.
+        """
+        return True
 
     # ====================
     # Tables
