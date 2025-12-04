@@ -896,8 +896,11 @@ def accumulate_list_item_builtin(vm):
     # Items are in reverse order (LIFO), so reverse them
     items.reverse()
 
-    # Concatenate into single item (like md.t does)
-    result = ''.join(items)
+    # Get emitter and use its concat method to properly handle tagged strings
+    # This processes each item (untagging/escaping as needed) and returns a tagged result
+    # We KEEP the tag so the list formatter knows this is already-processed HTML
+    emitter = vm.store.read_value(['md', 'state', 'emitter'])
+    result = emitter.concat(items)
 
     # Read current accumulator
     try:
@@ -977,14 +980,17 @@ def list_to_al_builtin(vm):
 
 def validate_document_builtin(vm):
     """
-    >use.md.validate.document builtin - Validate document has no placeholders.
+    >use.md.validate.document builtin - Validate document has no placeholders and strip tags.
 
     AL before: [document_string, ...]
-    AL after: [document_string, ...]
+    AL after: [cleaned_document_string, ...]
 
     Checks that the document string doesn't contain placeholder objects.
     If it does, raises an error indicating unconsumed oli/uli items.
+    Also strips all U+100000 tags from the document before returning.
     """
+    from soma.extensions.markdown_emitter import strip_all_tags
+
     if len(vm.al) < 1:
         raise RuntimeError("AL underflow: validate_document requires document string")
 
@@ -998,8 +1004,11 @@ def validate_document_builtin(vm):
             f"Did you forget to call >md.ol or >md.ul?"
         )
 
-    # Push it back
-    vm.al.append(doc)
+    # Strip all tags from document before output
+    cleaned_doc = strip_all_tags(str(doc))
+
+    # Push cleaned document back
+    vm.al.append(cleaned_doc)
 
 
 def throw_error_builtin(vm):
