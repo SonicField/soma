@@ -2049,6 +2049,30 @@ class TestMarkdownEdgeCases(unittest.TestCase):
             (markdown) >use
 
             >md.start
+            (API) (Application Programming Interface) >md.dli
+            (CLI) (Command Line Interface) >md.dli
+            >md.dul
+            ({temp_path}) >md.render
+            """
+            run_soma_program(code)
+
+            content = Path(temp_path).read_text()
+            self.assertIn("- **API**: Application Programming Interface\n", content)
+            self.assertIn("- **CLI**: Command Line Interface\n", content)
+        finally:
+            os.unlink(temp_path)
+
+    def test_dul_simple_pairs_without_dli(self):
+        """Test that md.dul works with simple pairs (no >md.dli needed for plain values)."""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False) as f:
+            temp_path = f.name
+
+        try:
+            code = f"""
+            (python) >use
+            (markdown) >use
+
+            >md.start
             Void (API) (Application Programming Interface) (CLI) (Command Line Interface) >md.dul
             ({temp_path}) >md.render
             """
@@ -2071,7 +2095,10 @@ class TestMarkdownEdgeCases(unittest.TestCase):
             (markdown) >use
 
             >md.start
-            Void (First) (The beginning) (Second) (The middle) (Third) (The end) >md.dol
+            (First) (The beginning) >md.dli
+            (Second) (The middle) >md.dli
+            (Third) (The end) >md.dli
+            >md.dol
             ({temp_path}) >md.render
             """
             run_soma_program(code)
@@ -2082,6 +2109,104 @@ class TestMarkdownEdgeCases(unittest.TestCase):
             self.assertIn("3. **Third**: The end\n", content)
         finally:
             os.unlink(temp_path)
+
+    def test_dol_simple_pairs_without_dli(self):
+        """Test that md.dol works with simple pairs (no >md.dli needed for plain values)."""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False) as f:
+            temp_path = f.name
+
+        try:
+            code = f"""
+            (python) >use
+            (markdown) >use
+
+            >md.start
+            Void (Step 1) (Clone the repo) (Step 2) (Install dependencies) >md.dol
+            ({temp_path}) >md.render
+            """
+            run_soma_program(code)
+
+            content = Path(temp_path).read_text()
+            self.assertIn("1. **Step 1**: Clone the repo\n", content)
+            self.assertIn("2. **Step 2**: Install dependencies\n", content)
+        finally:
+            os.unlink(temp_path)
+
+    def test_dli_with_formatted_value(self):
+        """Test that md.dli works with formatted values (the key use case)."""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False) as f:
+            temp_path = f.name
+
+        try:
+            code = f"""
+            (python) >use
+            (markdown) >use
+
+            >md.start
+            (Name) (Alice ) (Smith) >md.b >md.dli
+            (Command) (git ) (pull) >md.c >md.dli
+            >md.dul
+            ({temp_path}) >md.render
+            """
+            run_soma_program(code)
+
+            content = Path(temp_path).read_text()
+            self.assertIn("- **Name**: Alice **Smith**\n", content)
+            self.assertIn("- **Command**: git `pull`\n", content)
+        finally:
+            os.unlink(temp_path)
+
+    def test_dli_requires_at_least_two_items(self):
+        """Test that md.dli fails with helpful error if only label provided."""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False) as f:
+            temp_path = f.name
+
+        try:
+            code = f"""
+            (python) >use
+            (markdown) >use
+
+            >md.start
+            (LabelOnly) >md.dli
+            >md.dul
+            ({temp_path}) >md.render
+            """
+            with self.assertRaises(RuntimeError) as cm:
+                run_soma_program(code)
+
+            self.assertIn("md.dli requires at least label and value", str(cm.exception))
+            self.assertIn("got 1", str(cm.exception))
+        finally:
+            try:
+                os.unlink(temp_path)
+            except:
+                pass
+
+    def test_unconsumed_dli_fails_on_render(self):
+        """Test that unconsumed dli items fail with helpful error."""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False) as f:
+            temp_path = f.name
+
+        try:
+            code = f"""
+            (python) >use
+            (markdown) >use
+
+            >md.start
+            (Name) (Alice) >md.dli
+            ) Forgot to call >md.dul
+            ({temp_path}) >md.render
+            """
+            with self.assertRaises(RuntimeError) as cm:
+                run_soma_program(code)
+
+            self.assertIn("DliPlaceholder", str(cm.exception))
+            self.assertIn(">md.dul or >md.dol", str(cm.exception))
+        finally:
+            try:
+                os.unlink(temp_path)
+            except:
+                pass
 
     def test_dt_then_paragraph_works(self):
         """Test that md.dt output can be consumed by md.p."""

@@ -38,6 +38,7 @@
   !_.exception !_.empty_list
   _.empty_list !md.state.oli.items
   _.empty_list !md.state.uli.items
+  _.empty_list !md.state.dli.items
 
   Void                     ) Push Void sentinel to bottom of AL
 } !md.start
@@ -228,6 +229,14 @@
   >use.md.accumulate.item
 } !md.uli
 
+) Definition list item - accumulate one definition from AL
+) First item is label, rest are concatenated as value
+) Formats as "**label**: value" and appends to md.state.dli.items
+) Use when building definition lists with formatted values
+{
+  >use.md.accumulate.dli
+} !md.dli
+
 ) ============================================================================
 ) Inline Transformations (md.dt, md.dl)
 ) ============================================================================
@@ -277,16 +286,46 @@
   >use.md.drain.dl
 } !md.dl
 
-) Definition unordered list - combines md.dl with md.ul
-) Example: (a) (b) (c) (d) >md.dul → unordered list of **a**: b, **c**: d
+) Definition unordered list - renders accumulated >md.dli items as unordered list
+) Example: (Name) (Alice) >md.dli (Age) (30) >md.dli >md.dul
 {
-  >md.dl >md.ul
+  md.state.dli.items md.state.emitter
+  >use.md.drain.dul
+  !_.list_text
+
+  ) Clear accumulator after use
+  Void (soma.extensions.soma_markdown.list_new) >use.python.call
+  !_.exc !_.empty
+  _.empty !md.state.dli.items
+
+  ) Append list text to document
+  md.state.doc !_.doc
+  Void _.doc _.list_text (soma.extensions.soma_markdown.string_concat_all) >use.python.call
+  !_.exc !_.new_doc
+  _.new_doc !md.state.doc
+
+  Void
 } !md.dul
 
-) Definition ordered list - combines md.dl with md.ol
-) Example: (a) (b) (c) (d) >md.dol → ordered list of **a**: b, **c**: d
+) Definition ordered list - renders accumulated >md.dli items as ordered list
+) Example: (Step 1) (Clone) >md.dli (Step 2) (Build) >md.dli >md.dol
 {
-  >md.dl >md.ol
+  md.state.dli.items md.state.emitter
+  >use.md.drain.dol
+  !_.list_text
+
+  ) Clear accumulator after use
+  Void (soma.extensions.soma_markdown.list_new) >use.python.call
+  !_.exc !_.empty
+  _.empty !md.state.dli.items
+
+  ) Append list text to document
+  md.state.doc !_.doc
+  Void _.doc _.list_text (soma.extensions.soma_markdown.string_concat_all) >use.python.call
+  !_.exc !_.new_doc
+  _.new_doc !md.state.doc
+
+  Void
 } !md.dol
 
 ) ============================================================================
@@ -430,9 +469,10 @@
 {
   !_.filename
 
-  ) Check for unconsumed oli/uli items
+  ) Check for unconsumed oli/uli/dli items
   md.state.oli.items >use.python.list_length !_.oli_count !_.oli_exc
   md.state.uli.items >use.python.list_length !_.uli_count !_.uli_exc
+  md.state.dli.items >use.python.list_length !_.dli_count !_.dli_exc
 
   _.    ) Push context for nested blocks
   _.oli_count 0 >>
@@ -456,38 +496,52 @@
             >{    ) Execute with context
               !_.   ) Pop context
 
-              ) All good - proceed with render
-              md.state.doc !_.content
-
-              ) Write to file using Python FFI
-              Void _.filename _.content (soma.extensions.soma_markdown.write_file) >use.python.call
-              !_.exception !_.result
-
-              ) Check if write succeeded
-              _.
-              _.exception >isVoid
-              {
-                ) Success - clean up state
-                >{
-                  !_.
-                  () !md.state.doc
-
-                  Void (soma.extensions.soma_markdown.list_new) >use.python.call
-                  !_.exc !_.empty_list
-                  _.empty_list !md.state.stack
-
-                  0 !md.state.depth
+              _.    ) Push context for dli check
+              _.dli_count 0 >>
+                {
+                  >drop   ) Drop context
+                  (>md.render/print encountered unconsumed DliPlaceholder. All placeholders from >md.dli must be consumed by >md.dul or >md.dol before rendering. Did you forget to call >md.dul or >md.dol?)
+                  >use.python.throw
                 }
-              }
-              {
-                ) Error
-                >{
-                  !_.
-                  (Error writing markdown file: ) >print
-                  _.exception >print
-                  _.exception >drop
+                {
+                  >{    ) Execute with context
+                    !_.   ) Pop context
+
+                    ) All good - proceed with render
+                    md.state.doc !_.content
+
+                    ) Write to file using Python FFI
+                    Void _.filename _.content (soma.extensions.soma_markdown.write_file) >use.python.call
+                    !_.exception !_.result
+
+                    ) Check if write succeeded
+                    _.
+                    _.exception >isVoid
+                    {
+                      ) Success - clean up state
+                      >{
+                        !_.
+                        () !md.state.doc
+
+                        Void (soma.extensions.soma_markdown.list_new) >use.python.call
+                        !_.exc !_.empty_list
+                        _.empty_list !md.state.stack
+
+                        0 !md.state.depth
+                      }
+                    }
+                    {
+                      ) Error
+                      >{
+                        !_.
+                        (Error writing markdown file: ) >print
+                        _.exception >print
+                        _.exception >drop
+                      }
+                    }
+                    >choose >^
+                  }
                 }
-              }
               >choose >^
             }
           }
@@ -499,9 +553,10 @@
 
 ) Print document to stdout - outputs generated markdown and cleans up state
 {
-  ) Check for unconsumed oli/uli items
+  ) Check for unconsumed oli/uli/dli items
   md.state.oli.items >use.python.list_length !_.oli_count !_.oli_exc
   md.state.uli.items >use.python.list_length !_.uli_count !_.uli_exc
+  md.state.dli.items >use.python.list_length !_.dli_count !_.dli_exc
 
   _.    ) Push context for nested blocks
   _.oli_count 0 >>
@@ -525,21 +580,35 @@
             >{    ) Execute with context
               !_.   ) Pop context
 
-              ) All good - validate and print
-              md.state.doc
-              >use.md.validate.document
-              >print
+              _.    ) Push context for dli check
+              _.dli_count 0 >>
+                {
+                  >drop   ) Drop context
+                  (>md.render/print encountered unconsumed DliPlaceholder. All placeholders from >md.dli must be consumed by >md.dul or >md.dol before rendering. Did you forget to call >md.dul or >md.dol?)
+                  >use.python.throw
+                }
+                {
+                  >{    ) Execute with context
+                    !_.   ) Pop context
 
-              ) Clean up state
-              () !md.state.doc
+                    ) All good - validate and print
+                    md.state.doc
+                    >use.md.validate.document
+                    >print
 
-              Void (soma.extensions.soma_markdown.list_new) >use.python.call
-              !_.exc !_.empty_list
-              _.empty_list !md.state.stack
+                    ) Clean up state
+                    () !md.state.doc
 
-              0 !md.state.depth
+                    Void (soma.extensions.soma_markdown.list_new) >use.python.call
+                    !_.exc !_.empty_list
+                    _.empty_list !md.state.stack
 
-              Void
+                    0 !md.state.depth
+
+                    Void
+                  }
+                }
+              >choose >^
             }
           }
         >choose >^

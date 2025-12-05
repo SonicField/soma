@@ -26,9 +26,18 @@ class UliPlaceholder:
         return f"UliPlaceholder({self.index})"
 
 
+class DliPlaceholder:
+    """Opaque placeholder for definition list items accumulated via >md.dli"""
+    def __init__(self, index):
+        self.index = index
+
+    def __repr__(self):
+        return f"DliPlaceholder({self.index})"
+
+
 def is_placeholder(obj):
     """Check if object is any kind of list item placeholder."""
-    return isinstance(obj, (OliPlaceholder, UliPlaceholder))
+    return isinstance(obj, (OliPlaceholder, UliPlaceholder, DliPlaceholder))
 
 
 def replace_placeholder(item, accumulator):
@@ -36,7 +45,7 @@ def replace_placeholder(item, accumulator):
     Replace placeholder with accumulated value if it's a placeholder.
     Otherwise return the item as-is (converted to string).
     """
-    if isinstance(item, (OliPlaceholder, UliPlaceholder)):
+    if isinstance(item, (OliPlaceholder, UliPlaceholder, DliPlaceholder)):
         if 0 <= item.index < len(accumulator):
             return accumulator[item.index]
         else:
@@ -933,6 +942,87 @@ def accumulate_list_item_builtin(vm):
     vm.al.append(placeholder)
 
 
+def accumulate_definition_list_item_builtin(vm):
+    """
+    >use.md.accumulate.dli builtin - Drain AL, format as definition item, append to accumulator.
+
+    AL before: [void, label, value_part1, value_part2, ..., ...]
+    AL after: [DliPlaceholder, void, ...]
+
+    First item popped is the label, remaining items are concatenated as the value.
+    Formats as "**label**: value" and appends to md.state.dli.items accumulator.
+    Pushes DliPlaceholder to mark position in final list.
+    """
+    from soma.vm import Void, VoidSingleton
+
+    # Drain items until Void or placeholder
+    items = []
+    hit_placeholder = False
+    while True:
+        if len(vm.al) < 1:
+            raise RuntimeError("AL underflow: md.dli requires Void terminator")
+
+        item = vm.al.pop()
+
+        if isinstance(item, VoidSingleton):
+            break
+
+        # Stop if we hit a placeholder from a previous call
+        if is_placeholder(item):
+            # Put it back and stop draining
+            vm.al.append(item)
+            hit_placeholder = True
+            break
+
+        items.append(item)
+
+    # Items are in reverse order (LIFO), so reverse them
+    items.reverse()
+
+    # Need at least 2 items: label and value
+    if len(items) < 2:
+        raise RuntimeError(
+            f">md.dli requires at least label and value (got {len(items)} item(s)). "
+            f"Usage: (Label) (value part 1) (value part 2) >md.b >md.dli"
+        )
+
+    # First item is label, rest are value parts
+    label = str(items[0])
+    value_parts = items[1:]
+
+    # Get emitter and use its methods
+    emitter = vm.store.read_value(['md', 'state', 'emitter'])
+
+    # Concatenate value parts using emitter (handles tags properly)
+    value = emitter.concat([str(v) for v in value_parts])
+
+    # Format as definition list item: **label**: value
+    formatted = emitter.list_item_formatted(label, value)
+
+    # Read current accumulator
+    try:
+        accumulator = vm.store.read_value(['md', 'state', 'dli', 'items'])
+    except:
+        accumulator = []
+
+    if not isinstance(accumulator, list):
+        accumulator = []
+
+    # Append new item
+    new_accumulator = accumulator + [formatted]
+
+    # Write back to store
+    vm.store.write_value(['md', 'state', 'dli', 'items'], new_accumulator)
+
+    # Push Void back if we hit it
+    if not hit_placeholder:
+        vm.al.append(Void)
+
+    # Push placeholder to mark position in final list
+    placeholder = DliPlaceholder(len(accumulator))
+    vm.al.append(placeholder)
+
+
 def list_length_builtin(vm):
     """
     >use.python.list_length builtin - Get length of Python list.
@@ -1070,6 +1160,170 @@ def set_emitter_builtin(vm):
     vm.store.write_value(['md', 'state', 'emitter'], emitter)
 
 
+def drain_and_format_dul_builtin(vm):
+    """
+    >use.md.drain.dul builtin - Drain AL, format as definition unordered list.
+
+    Supports two patterns:
+    1. With >md.dli: [void, DliPlaceholder(0), DliPlaceholder(1), ..., accumulator, emitter]
+    2. Without >md.dli (pairs): [void, label1, value1, label2, value2, ..., accumulator, emitter]
+
+    For pattern 2, pairs are formatted as "**label**: value" automatically.
+    """
+    from soma.vm import Void, VoidSingleton
+
+    # Pop emitter
+    if len(vm.al) < 1:
+        raise RuntimeError("AL underflow: md.dul requires emitter")
+    emitter = vm.al.pop()
+
+    # Pop accumulator
+    if len(vm.al) < 1:
+        raise RuntimeError("AL underflow: md.dul requires accumulator")
+    accumulator = vm.al.pop()
+
+    # Ensure accumulator is a list
+    if not isinstance(accumulator, list):
+        accumulator = []
+
+    # Pop items until Void
+    items = []
+    while True:
+        if len(vm.al) < 1:
+            raise RuntimeError("AL underflow: md.dul requires Void terminator")
+
+        item = vm.al.pop()
+
+        if isinstance(item, VoidSingleton):
+            break
+
+        items.append(item)
+
+    # Items are in reverse order (LIFO), so reverse them
+    items.reverse()
+
+    # Check if we have DliPlaceholders (new pattern) or raw items (old pair pattern)
+    has_dli_placeholders = any(isinstance(item, DliPlaceholder) for item in items)
+
+    if has_dli_placeholders:
+        # New pattern: replace DliPlaceholders with accumulated items
+        resolved_items = []
+        for item in items:
+            if isinstance(item, DliPlaceholder):
+                if 0 <= item.index < len(accumulator):
+                    resolved_items.append(accumulator[item.index])
+                else:
+                    raise RuntimeError(f"DliPlaceholder index {item.index} out of range (accumulator has {len(accumulator)} items)")
+            elif isinstance(item, (OliPlaceholder, UliPlaceholder)):
+                raise RuntimeError(
+                    f">md.dul encountered {type(item).__name__}. "
+                    f"Use >md.ul for >md.uli items or >md.ol for >md.oli items."
+                )
+            else:
+                resolved_items.append(str(item))
+    else:
+        # Old pattern: treat as pairs and format them
+        if len(items) % 2 != 0:
+            raise ValueError(
+                f">md.dul requires even number of items for label-value pairs, got {len(items)}. "
+                f"Hint: Each label needs a value. Did you forget an item or have an extra one?"
+            )
+        resolved_items = []
+        for i in range(0, len(items), 2):
+            label = str(items[i])
+            value = str(items[i + 1])
+            resolved_items.append(emitter.list_item_formatted(label, value))
+
+    # Format as unordered list
+    result = emitter.unordered_list(resolved_items, 0)
+
+    # Push Void back, then result
+    vm.al.append(Void)
+    vm.al.append(result)
+
+
+def drain_and_format_dol_builtin(vm):
+    """
+    >use.md.drain.dol builtin - Drain AL, format as definition ordered list.
+
+    Supports two patterns:
+    1. With >md.dli: [void, DliPlaceholder(0), DliPlaceholder(1), ..., accumulator, emitter]
+    2. Without >md.dli (pairs): [void, label1, value1, label2, value2, ..., accumulator, emitter]
+
+    For pattern 2, pairs are formatted as "**label**: value" automatically.
+    """
+    from soma.vm import Void, VoidSingleton
+
+    # Pop emitter
+    if len(vm.al) < 1:
+        raise RuntimeError("AL underflow: md.dol requires emitter")
+    emitter = vm.al.pop()
+
+    # Pop accumulator
+    if len(vm.al) < 1:
+        raise RuntimeError("AL underflow: md.dol requires accumulator")
+    accumulator = vm.al.pop()
+
+    # Ensure accumulator is a list
+    if not isinstance(accumulator, list):
+        accumulator = []
+
+    # Pop items until Void
+    items = []
+    while True:
+        if len(vm.al) < 1:
+            raise RuntimeError("AL underflow: md.dol requires Void terminator")
+
+        item = vm.al.pop()
+
+        if isinstance(item, VoidSingleton):
+            break
+
+        items.append(item)
+
+    # Items are in reverse order (LIFO), so reverse them
+    items.reverse()
+
+    # Check if we have DliPlaceholders (new pattern) or raw items (old pair pattern)
+    has_dli_placeholders = any(isinstance(item, DliPlaceholder) for item in items)
+
+    if has_dli_placeholders:
+        # New pattern: replace DliPlaceholders with accumulated items
+        resolved_items = []
+        for item in items:
+            if isinstance(item, DliPlaceholder):
+                if 0 <= item.index < len(accumulator):
+                    resolved_items.append(accumulator[item.index])
+                else:
+                    raise RuntimeError(f"DliPlaceholder index {item.index} out of range (accumulator has {len(accumulator)} items)")
+            elif isinstance(item, (OliPlaceholder, UliPlaceholder)):
+                raise RuntimeError(
+                    f">md.dol encountered {type(item).__name__}. "
+                    f"Use >md.ul for >md.uli items or >md.ol for >md.oli items."
+                )
+            else:
+                resolved_items.append(str(item))
+    else:
+        # Old pattern: treat as pairs and format them
+        if len(items) % 2 != 0:
+            raise ValueError(
+                f">md.dol requires even number of items for label-value pairs, got {len(items)}. "
+                f"Hint: Each label needs a value. Did you forget an item or have an extra one?"
+            )
+        resolved_items = []
+        for i in range(0, len(items), 2):
+            label = str(items[i])
+            value = str(items[i + 1])
+            resolved_items.append(emitter.list_item_formatted(label, value))
+
+    # Format as ordered list
+    result = emitter.ordered_list(resolved_items, 0)
+
+    # Push Void back, then result
+    vm.al.append(Void)
+    vm.al.append(result)
+
+
 def register(vm):
     """Register markdown builtins."""
     # Register drain_and_join as a builtin under use.* namespace
@@ -1083,8 +1337,11 @@ def register(vm):
     vm.register_extension_builtin('use.md.table.drain.cells', drain_and_collect_cells_builtin)
     vm.register_extension_builtin('use.md.drain.dt', drain_and_format_data_title_builtin)
     vm.register_extension_builtin('use.md.drain.dl', drain_and_format_definition_list_builtin)
+    vm.register_extension_builtin('use.md.drain.dul', drain_and_format_dul_builtin)
+    vm.register_extension_builtin('use.md.drain.dol', drain_and_format_dol_builtin)
     # Register list item accumulator builtins
     vm.register_extension_builtin('use.md.accumulate.item', accumulate_list_item_builtin)
+    vm.register_extension_builtin('use.md.accumulate.dli', accumulate_definition_list_item_builtin)
     vm.register_extension_builtin('use.python.list_length', list_length_builtin)
     vm.register_extension_builtin('use.python.list_to_al', list_to_al_builtin)
     vm.register_extension_builtin('use.md.validate.document', validate_document_builtin)
