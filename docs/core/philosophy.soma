@@ -1,547 +1,559 @@
-(python) >use
-(markdown) >use
-
+(python) >use (markdown) >use
 >md.start
 
-(SOMA Philosophy)
->md.h1
+(SOMA Philosophy) >md.h1
 
-(State-Oriented Machine Algebra)
->md.h2
+(State-Oriented Machine Algebra) >md.h2
 
+>md.hr
 
+(1. What SOMA Is) >md.h2
 
-(1. What SOMA Is)
->md.h2
+(SOMA (State-Oriented Machine Algebra\29\ is a computational model that treats programs as explicit state-transforming machines. It is not a calculus. It does not reduce expressions. Instead, it models computation as it actually unfolds: through observable mutation of explicit state over time.) >md.p
 
+(Programs run. They do not reduce.) >md.b >md.p
 
-(SOMA \28\State-Oriented Machine Algebra\29\ is a computational model that treats programs as explicit state-transforming machines. It is not a calculus. It does not reduce expressions. Instead, it models computation as it actually unfolds: through observable mutation of explicit state over time.)
+(State-Oriented vs Calculus-Oriented) >md.h3
 
-(Programs run. They do not reduce.)
+(Most programming languages begin with a mathematical calculus and then add machinery to simulate the mutable reality of computers. Functional languages like Haskell express state through IO monads, effect types, and elaborate type systems designed to preserve referential transparency while grudgingly accommodating the fact that computers have memory and IO.) >md.p
 
-(State-Oriented vs Calculus-Oriented)
->md.h3
+(SOMA takes the opposite approach:) >md.p
 
+(It begins with the machine) (the actual, physical reality of computation)
+(It exposes state directly) (mutation is not hidden under abstraction)
+(It treats computation as state evolution) (not symbolic reduction)
+>md.dul
 
-(Most programming languages begin with a mathematical calculus and then add machinery to simulate the mutable reality of computers. Functional languages like Haskell express state through IO monads, effect types, and elaborate type systems designed to preserve referential transparency while grudgingly accommodating the fact that computers have memory and IO.)
+(Where a calculus hides mutation under layers of abstraction, SOMA expresses mutation as the primary semantic domain. State is not an "impurity" to be managed. State is fundamental.) >md.p
 
-(SOMA takes the opposite approach:)
+(The Machine State) >md.h3
 
-(It begins with the machine - the actual, physical reality of computation)
-(It exposes state directly - mutation is not hidden under abstraction)
-(It treats computation as state evolution - not symbolic reduction)
+(A SOMA program operates on explicit, visible machine state:) >md.p
 
-(Where a calculus hides mutation under layers of abstraction, SOMA expresses mutation as the primary semantic domain. State is not an "impurity" to be managed. State is fundamental.)
+(The Accumulator List (AL\29\) (a linear stack-like value conduit for passing data between operations)
+(The Store) (a global, persistent hierarchical graph of identity-bearing cells)
+(The Register) (a block-local, isolated hierarchical graph of cells created fresh for each block execution)
+>md.dol
 
-(The Machine State)
->md.h3
+(That's it. No hidden call stack. No exception handlers. No continuation frames. Everything that happens is visible, explicit, and introspectable.) >md.p
 
+(State Scope and Lifetime) >md.h3
 
-(A SOMA program operates on explicit, visible machine state:)
+(Each of these three components serves a distinct purpose in SOMA's state model:) >md.p
 
-(1. The Accumulator List \28\AL\29\ - a linear stack-like value conduit for passing data between operations)
-(2. The Store - a global, persistent hierarchical graph of identity-bearing cells)
-(3. The Register - a block-local, isolated hierarchical graph of cells created fresh for each block execution)
+(The AL (flow-based\29\:) >md.b ( Values flow through the AL as computation proceeds. The AL is the universal conduit—all operations read from it and write to it. When a block executes, it inherits the current AL state and may modify it for subsequent operations.) >md.t >md.p
 
-(That's it. No hidden call stack. No exception handlers. No continuation frames. Everything that happens is visible, explicit, and introspectable.)
+(The Store (global, persistent\29\:) >md.b ( The Store is shared state that persists across all block executions. When you write ) (!config.port) >md.c (, that value lives in the Store and remains accessible from anywhere, at any time. The Store is how different parts of your program share data.) >md.t >md.p
 
-(State Scope and Lifetime)
->md.h3
+(The Register (block-local, isolated\29\:) >md.b ( The Register is fundamentally different. Each time a block executes, it receives a completely fresh, empty Register. Inner blocks cannot see outer blocks' Registers. There is no lexical scoping, no nesting, no inheritance—only complete isolation.) >md.t >md.p
 
+(Register Isolation Example) >md.h3
 
-(Each of these three components serves a distinct purpose in SOMA's state model:)
+(Consider this code:) >md.p
 
-(The AL \28\flow-based\29\: Values flow through the AL as computation proceeds. The AL is the universal conduit—all operations read from it and write to it. When a block executes, it inherits the current AL state and may modify it for subsequent operations.)
+(>{1 !_.n >{2 !_.n} _.n >print}) (soma) >md.code
 
-(The Store \28\global, persistent\29\: The Store is shared state that persists across all block executions. When you write !config.port, that value lives in the Store and remains accessible from anywhere, at any time. The Store is how different parts of your program share data.)
+(What happens:) >md.b >md.p
 
-(The Register \28\block-local, isolated\29\: The Register is fundamentally different. Each time a block executes, it receives a completely fresh, empty Register. Inner blocks cannot see outer blocks' Registers. There is no lexical scoping, no nesting, no inheritance—only complete isolation.)
+(Outer block executes with fresh Register) >md.oli
+(1 !_.n) >md.c ( stores 1 in Register) >md.oli
+(>{2 !_.n}) >md.c ( executes inner block with fresh Register (empty!\29\) >md.oli
+(2 !_.n) >md.c ( stores 2 in Register at path ) (_.n) >md.c >md.oli
+(Inner block completes, Register is destroyed) >md.oli
+(_.n >print) >md.c ( reads from Register, which still has ) (_.n = 1) >md.c >md.oli
+(Prints 1) >md.b >md.oli
+>md.ol
 
-(Register Isolation Example)
->md.h3
+(The inner block's Register is completely separate. Its ) (_.n) >md.c ( does not affect the outer block's ) (_.n) >md.c (.) >md.t >md.p
 
+(If the inner block tried to ) (read) >md.i ( the outer's Register, it would fail:) >md.t >md.p
 
-(Consider this code:)
+(>{1 !_.n >{_.n >print}}  ; FATAL ERROR) (soma) >md.code
 
-(>{1 !_.n >{2 !_.n} _.n >print})
+(The inner block's Register has no ) (_.n) >md.c ( path, so ) (_.n) >md.c ( resolves to Void. Trying to execute Void is a fatal error.) >md.t >md.p
 
-(What happens:)
-(1. Outer block executes with fresh Register₁)
-(2. 1 !_.n stores 1 in Register₁ at path _.n)
-(3. >{2 !_.n} executes inner block with fresh Register₂ \28\empty!\29\)
-(4. 2 !_.n stores 2 in Register₂ at path _.n)
-(5. Inner block completes, Register₂ is destroyed)
-(6. _.n >print reads from Register₁, which still has _.n = 1)
-(7. Prints 1)
+(To share data between blocks, you must use:) >md.b >md.p
 
-(The inner block's Register is completely separate. Its _.n does not affect the outer block's _.n.)
+(The Store) >md.b ( (global state\29\: ) (!data.value) >md.c ( in outer, ) (data.value) >md.c ( in inner) >md.uli
+(The AL) >md.b ( (explicit passing\29\: push values before calling inner block) >md.uli
+(Return values) >md.b ( via AL: inner block leaves values on AL for outer to consume) >md.uli
+>md.ul
 
-(If the inner block tried to *read* the outer's Register, it would fail:)
+(This isolation model keeps state boundaries explicit and prevents hidden dependencies.) >md.p
 
-(>{1 !_.n >{_.n >print}}  ; FATAL ERROR)
+>md.hr
 
-(The inner block's Register has no _.n path, so _.n resolves to Void. Trying to execute Void is a fatal error.)
+(2. Core Principles) >md.h2
 
-(To share data between blocks, you must use:)
-(The Store \28\global state\29\: `!data.value` in outer, `data.value` in inner)
-(The AL \28\explicit passing\29\: push values before calling inner block)
-(Return values via AL: inner block leaves values on AL for outer to consume)
+(State is Fundamental) >md.h3
 
-(This isolation model keeps state boundaries explicit and prevents hidden dependencies.)
+(SOMA rejects the idea that mutable state is impurity. The notion that "pure" computation is superior to "impure" computation is a prejudice born from mathematical foundations that never had to run on silicon.) >md.p
 
+(Real programs mutate memory. SOMA models this directly.) >md.p
 
-(2. Core Principles)
->md.h2
+(42 !counter.value
+counter.value >print    ; prints 42) (soma) >md.code
 
+(The state exists. You can see it. You can change it. You can reason about it. This is not a problem to be solved—it is the nature of computation.) >md.p
 
-(State is Fundamental)
->md.h3
+(Execution is Dynamic, Not Symbolic) >md.h3
 
+(Functional languages reduce expressions according to symbolic rewrite rules. SOMA executes tokens that transform state. There is no expression tree, no substitution model, no reduction semantics.) >md.p
 
-(SOMA rejects the idea that mutable state is impurity. The notion that "pure" computation is superior to "impure" computation is a prejudice born from mathematical foundations that never had to run on silicon.)
+(Consider the difference:) >md.p
 
-(Real programs mutate memory. SOMA models this directly.)
+(Haskell) >md.b ( thinks: "The expression ) (1 + 2) >md.c ( reduces to the value ) (3) >md.c ( by applying the addition rule.") >md.t >md.p
 
-(42 !counter.value)
-(counter.value >print    ; prints 42)
+(SOMA) >md.b ( thinks: "Push 1 onto the AL. Push 2 onto the AL. Execute ) (>+) >md.c (, which pops both values and pushes their sum.") >md.t >md.p
 
-(The state exists. You can see it. You can change it. You can reason about it. This is not a problem to be solved—it is the nature of computation.)
+(SOMA models step-by-step execution. Every operation is a concrete state transition:) >md.p
 
-(Execution is Dynamic, Not Symbolic)
->md.h3
+((AL, Store\29\ → (AL', Store'\29\) Nil >md.code
 
+(This is not the lambda calculus. This is a machine algebra.) >md.p
 
-(Functional languages reduce expressions according to symbolic rewrite rules. SOMA executes tokens that transform state. There is no expression tree, no substitution model, no reduction semantics.)
+(Control is Explicit) >md.h3
 
-(Consider the difference:)
+(SOMA has no control stack. No return path. No exception unwinding.) >md.p
 
-(Haskell thinks: "The expression 1 + 2 reduces to the value 3 by applying the addition rule.")
+(Instead, control arises from two primitive operations:) >md.p
 
-(SOMA thinks: "Push 1 onto the AL. Push 2 onto the AL. Execute >+, which pops both values and pushes their sum.")
+(>choose) >md.c (select one of two values based on a boolean (does NOT execute\29\) >md.dli
+(>chain) >md.c (repeatedly execute blocks until a non-block value appears) >md.dli
+>md.dul
 
-(SOMA models step-by-step execution. Every operation is a concrete state transition:)
+(All control structures—loops, conditionals, recursion, finite state machines—emerge from these primitives acting on explicit state.) >md.p
 
-(\28\AL, Store\29\ → \28\AL', Store'\29\)
+(True { (Yes\29\ >print } { (No\29\ >print } >choose >^) (soma) >md.code
 
-(This is not the lambda calculus. This is a machine algebra.)
+(No hidden jumps. No implicit context. The boolean is on the AL. The blocks are on the AL. ) (>choose) >md.c ( selects one and discards the other. Then ) (>^) >md.c ( executes the selected block. That's it.) >md.t >md.p
 
-(Control is Explicit)
->md.h3
+(Structure is Visible) >md.h3
 
+(Memory in SOMA is not a flat array of bytes. It is a graph of named, aliasable cells. You can inspect it. You can mutate it. You can create cycles. You can share structure.) >md.p
 
-(SOMA has no control stack. No return path. No exception unwinding.)
+(99 !a.b
+a.b. !x.y
+x.y >print      ; prints 99) (soma) >md.code
 
-(Instead, control arises from two primitive operations:)
+(The cell at ) (a.b) >md.c ( is aliased from ) (x.y) >md.c (. This is not pointer arithmetic—it is structural identity preserved across multiple paths.) >md.t >md.p
 
-(`>choose` - select one of two values based on a boolean \28\does NOT execute\29\)
-(`>chain` - repeatedly execute blocks until a non-block value appears)
+(Blocks Are Not Functions) >md.h3
 
-(All control structures—loops, conditionals, recursion, finite state machines—emerge from these primitives acting on explicit state.)
+(SOMA has blocks. They look like lambdas, but they are not.) >md.p
 
-(True { \28\Yes\29\ >print } { \28\No\29\ >print } >choose >^)
+(A function:) >md.p
 
-(No hidden jumps. No implicit context. The boolean is on the AL. The blocks are on the AL. >choose selects one and discards the other. Then >^ executes the selected block. That's it.)
-
-(Structure is Visible)
->md.h3
-
-
-(Memory in SOMA is not a flat array of bytes. It is a graph of named, aliasable cells. You can inspect it. You can mutate it. You can create cycles. You can share structure.)
-
-(99 !a.b)
-(a.b. !x.y)
-(x.y >print      ; prints 99)
-
-(The cell at a.b is aliased from x.y. This is not pointer arithmetic—it is structural identity preserved across multiple paths.)
-
-(Blocks Are Not Functions)
->md.h3
-
-
-(SOMA has blocks. They look like lambdas, but they are not.)
-
-(A function:)
 (Has arity)
 (Returns a value)
 (Creates a stack frame)
 (Has lexical scope)
+>md.ul
 
-(A SOMA block:)
-(Has no arity \28\consumes whatever it needs from the AL\29\)
-(Does not return \28\leaves new values on the AL\29\)
+(A SOMA block:) >md.p
+
+(Has no arity (consumes whatever it needs from the AL\29\)
+(Does not return (leaves new values on the AL\29\)
 (Does not create a stack frame)
 (Gets a fresh, isolated Register on each execution)
+>md.ul
 
-(Blocks are state transformers. They act upon the machine state and leave it changed.)
+(Blocks are ) (state transformers) >md.b (. They act upon the machine state and leave it changed.) >md.t >md.p
 
-({ >dup >* } !square)
-(5 >square >print    ; prints 25)
+({ >dup >* } !square
+5 >square >print    ; prints 25) (soma) >md.code
 
-(square is not a function. It is a sequence of tokens that transforms state.)
+(square) >md.c ( is not a function. It is a sequence of tokens that transforms state.) >md.t >md.p
 
-(Each time a block executes, it gets a brand new Register. The Register exists only during that block's execution and is destroyed when the block completes. This means blocks cannot rely on outer block Register values—they must receive data via the AL or Store.)
+(Each time a block executes, it gets a brand new Register.) >md.b ( The Register exists only during that block's execution and is destroyed when the block completes. This means blocks cannot rely on outer block Register values—they must receive data via the AL or Store.) >md.t >md.p
 
-(Execution is Explicit)
->md.h3
+(Execution is Explicit) >md.h3
 
+(In SOMA, blocks are values until you explicitly execute them. This is fundamental to how the language works.) >md.p
 
-(In SOMA, blocks are values until you explicitly execute them. This is fundamental to how the language works.)
+(The ) (>) >md.c ( prefix modifier makes execution explicit:) >md.t >md.p
 
-(The > prefix modifier makes execution explicit:)
+(print           ; Pushes the print block onto the AL (it's a value\29\
+>print          ; Executes the print block (it's an operation\29\) (soma) >md.code
 
-(print           ; Pushes the print block onto the AL \28\it's a value\29\)
-(>print          ; Executes the print block \28\it's an operation\29\)
+(When you write ) (>path) >md.c (, you are saying: "read the value at this path and execute it." This is an atomic operation--not two separate steps, but a single unified action.) >md.t >md.p
 
-(When you write >path, you are saying: "read the value at this path and execute it." This is an atomic operation—not two separate steps, but a single unified action.)
+(This applies to any path:) >md.p
 
-(This applies to any path:)
+(>print          ; Execute block at Store path "print"
+>my_func        ; Execute block at Store path "my_func"
+>_.action       ; Execute block at Register path "_.action") (soma) >md.code
 
-(>print          ; Execute block at Store path "print")
-(>my_func        ; Execute block at Store path "my_func")
-(>_.action       ; Execute block at Register path "_.action")
+(Built-ins are just blocks.) >md.b ( When you write ) (>print) >md.c (, ) (>dup) >md.c (, or ) (>+) >md.c (, you are executing blocks stored at Store paths. There is no special "built-in" syntax--they are simply pre-populated Store entries.) >md.t >md.p
 
-(Built-ins are just blocks. When you write >print, >dup, or >+, you are executing blocks stored at Store paths. There is no special "built-in" syntax—they are simply pre-populated Store entries.)
+(This design enables powerful patterns. You can store blocks and execute them later:) >md.p
 
-(This design enables powerful patterns. You can store blocks and execute them later:)
+({ (Hello\29\ >print } !greet
+>greet          ; Executes the stored block) (soma) >md.code
 
-({ \28\Hello\29\ >print } !greet)
-(>greet          ; Executes the stored block)
+(You can also execute block literals directly with ) (>{ }) >md.c (:) >md.t >md.p
 
-(You can also execute block literals directly with >{ }:)
+(>{ 1 2 >+ >print }    ; Execute block immediately) (soma) >md.code
 
-(>{ 1 2 >+ >print }    ; Execute block immediately)
+(This is cleaner than the older pattern ) ({ 1 2 >+ >print } >chain) >md.c ( for single execution.) >md.t >md.p
 
-(This is cleaner than the older pattern { 1 2 >+ >print } >chain for single execution.)
+(The standard library defines ) (>^) >md.c ( which executes the top value from the AL:) >md.t >md.p
 
-(The standard library defines >^ which executes the top value from the AL:)
+({ !_ >_ } !^              ; Store this block as "^"
+(Data\29\ print >^           ; Pushes "Data", pushes print block, executes it) (soma) >md.code
 
-({ !_ >_ } !^              ; Store this block as "^")
-(\28\Data\29\ print >^           ; Pushes "Data", pushes print block, executes it)
+(This enables macro-like behavior from simple primitives. The ) (>^) >md.c ( operator is similar to Forth's ) (EXECUTE) >md.c ( or Lisp's ) (FUNCALL) >md.c (.) >md.t >md.p
 
-(This enables macro-like behavior from simple primitives. The >^ operator is similar to Forth's EXECUTE or Lisp's FUNCALL.)
+(Three ways to execute:) >md.b >md.p
 
-(Three ways to execute:)
-(1. >path - Execute a block stored at a path)
-(2. >{ code } - Execute a block literal directly)
-(3. >^ - Execute a block from the AL \28\useful when blocks are computed\29\)
+(>path) >md.c (Execute a block stored at a path) >md.dli
+(>{ code }) >md.c (Execute a block literal directly) >md.dli
+(>^) >md.c (Execute a block from the AL (useful when blocks are computed\29\) >md.dli
+>md.dol
 
-(The separation between values and execution is what makes SOMA's control structures algebraic rather than syntactic. Blocks flow through the AL as data until explicitly executed.)
+(The separation between values and execution is what makes SOMA's control structures algebraic rather than syntactic. Blocks flow through the AL as data until explicitly executed.) >md.p
 
+>md.hr
 
-(3. Design Philosophy)
->md.h2
+(3. Design Philosophy) >md.h2
 
+(Why Explicit Mutation?) >md.h3
 
-(Why Explicit Mutation?)
->md.h3
+(Because that's what computers do. Every program you run mutates registers, cache lines, RAM, disk. Pretending otherwise requires building elaborate abstractions--monads, lenses, zippers, free structures--to encode something that hardware does natively.) >md.p
 
+(SOMA says: let's model what actually happens.) >md.p
 
-(Because that's what computers do. Every program you run mutates registers, cache lines, RAM, disk. Pretending otherwise requires building elaborate abstractions—monads, lenses, zippers, free structures—to encode something that hardware does natively.)
+(Mutation in SOMA is:) >md.p
 
-(SOMA says: let's model what actually happens.)
+(Visible) (you can always see the Store) >md.dli
+(Explicit) (every write uses ) (!) >md.c >md.dli
+(Controlled) (structure and identity are first-class) >md.dli
+>md.dul
 
-(Mutation in SOMA is:)
-(Visible - you can always see the Store)
-(Explicit - every write uses `!`)
-(Controlled - structure and identity are first-class)
+(You do not fight the machine. You work with it.) >md.p
 
-(You do not fight the machine. You work with it.)
+(Why No Call Stack?) >md.h3
 
-(Why No Call Stack?)
->md.h3
+(Call stacks are a fiction. They make sense in the context of function calls and return values, but SOMA has neither.) >md.p
 
+(A block executes. When it finishes, execution continues with the next token. There is no "return to caller" because there was no "call" in the first place--only state transformation.) >md.p
 
-(Call stacks are a fiction. They make sense in the context of function calls and return values, but SOMA has neither.)
+(This eliminates:) >md.p
 
-(A block executes. When it finishes, execution continues with the next token. There is no "return to caller" because there was no "call" in the first place—only state transformation.)
-
-(This eliminates:)
 (Stack overflow from deep recursion)
 (Hidden control flow through exception propagation)
 (Confusion about scope and shadowing)
+>md.ul
 
-(Instead, you build control graphs explicitly using >chain:)
+(Instead, you build control graphs explicitly using ) (>chain) >md.c (:) >md.t >md.p
 
-({ _.self \28\tick\29\ >print _.self } >chain)
+({ _.self (tick\29\ >print _.self } >chain) (soma) >md.code
 
-(This block prints "tick" and then returns itself to >chain, which executes it again. Forever. No stack growth. No tail call optimization needed—it's built into the execution model.)
+(This block prints "tick" and then returns itself to ) (>chain) >md.c (, which executes it again. Forever. No stack growth. No tail call optimization needed--it's built into the execution model.) >md.t >md.p
 
-(>chain is the key to tail-call optimization. It pops from the AL and:)
+(>chain) >md.c >md.b ( is the key to tail-call optimization.) >md.t ( It pops from the AL and:) >md.t >md.p
+
 (If the value is a Block, executes it and repeats)
 (If the value is anything else, stops and leaves it on the AL)
+>md.ul
 
-(This makes tail-recursive patterns natural and efficient:)
+(This makes tail-recursive patterns natural and efficient:) >md.p
 
-(\29\ Countdown from 10)
-(10 !counter)
-({)
-(  counter >toString >print)
-(  counter 1 >- !counter)
+(\29\ Countdown from 10
+10 !counter
+{
+  counter >toString >print
+  counter 1 >- !counter
 
-(  counter 0 >>)
-(    _.self          ; Continue: return this block)
-(    Nil             ; Stop: return Nil)
-(  >choose)
-(} !countdown)
+  counter 0 >>
+    _.self          ; Continue: return this block
+    Nil             ; Stop: return Nil
+  >choose
+} !countdown
 
-(countdown >chain    ; No stack growth!)
+countdown >chain    ; No stack growth!) (soma) >md.code
 
-(Functional elegance with imperative mutation: SOMA combines the best of both worlds. The control flow is functional \28\blocks returning blocks\29\, but the state mutation is explicit and visible. You can see exactly what changes and when, while still writing clean tail-recursive loops.)
+(Functional elegance with imperative mutation:) >md.b ( SOMA combines the best of both worlds. The control flow is functional (blocks returning blocks\29\, but the state mutation is explicit and visible. You can see exactly what changes and when, while still writing clean tail-recursive loops.) >md.t >md.p
 
-(Why the AL?)
->md.h3
+(Why the AL?) >md.h3
 
+(The Accumulator List serves as the universal conduit for values. It is:) >md.p
 
-(The Accumulator List serves as the universal conduit for values. It is:)
-(Simple \28\LIFO, no random access\29\)
-(Explicit \28\you always know what's on it\29\)
-(Sufficient \28\all computation flows through it\29\)
+(Simple) >md.b (LIFO, no random access) >md.dli
+(Explicit) >md.b (you always know what's on it) >md.dli
+(Sufficient) >md.b (all computation flows through it) >md.dli
+>md.dul
 
-(It replaces:)
+(It replaces:) >md.p
+
 (Function arguments)
 (Return values)
 (Expression evaluation order)
 (Temporary variables)
+>md.ul
 
-(You could build SOMA with just the Store, but the AL provides a minimal amount of dynamic structure without sacrificing clarity.)
+(You could build SOMA with just the Store, but the AL provides a minimal amount of dynamic structure without sacrificing clarity.) >md.p
 
-(Functional Elegance with Imperative Mutation)
->md.h3
+(Functional Elegance with Imperative Mutation) >md.h3
 
+(SOMA achieves a unique synthesis: ) (functional control flow with imperative state) >md.b (.) >md.t >md.p
 
-(SOMA achieves a unique synthesis: functional control flow with imperative state.)
+(Traditional approaches force a choice:) >md.p
 
-(Traditional approaches force a choice:)
-(Functional languages \28\Haskell, ML\29\ hide mutation under monads and abstractions)
-(Imperative languages \28\C, Python\29\ hide control flow under syntax keywords)
+(Functional languages) >md.b ( (Haskell, ML\29\ hide mutation under monads and abstractions) >md.t >md.uli
+(Imperative languages) >md.b ( (C, Python\29\ hide control flow under syntax keywords) >md.t >md.uli
+>md.ul
 
-(SOMA rejects this false dichotomy. Instead:)
+(SOMA rejects this false dichotomy. Instead:) >md.p
 
-(Control flow is functional: Blocks return values. >choose selects between alternatives. >chain implements tail-call optimization. Loops are just blocks returning themselves.)
+(Control flow is functional:) >md.b ( Blocks return values. ) (>choose) >md.c ( selects between alternatives. ) (>chain) >md.c ( implements tail-call optimization. Loops are just blocks returning themselves.) >md.t >md.p
 
-(State mutation is imperative: The Store is explicitly mutated with !. You can see what changes, when it changes, and where it lives.)
+(State mutation is imperative:) >md.b ( The Store is explicitly mutated with ) (!) >md.c (. You can see what changes, when it changes, and where it lives.) >md.t >md.p
 
-(This combination provides:)
-(Clarity of mutation - no hidden state transformations)
-(Elegance of tail calls - no stack growth, pure data flow)
-(Simplicity of primitives - both aspects emerge from minimal operations)
+(This combination provides:) >md.p
 
-(Example - tail-recursive factorial with accumulator:)
+(Clarity of mutation) >md.b (no hidden state transformations) >md.dli
+(Elegance of tail calls) >md.b (no stack growth, pure data flow) >md.dli
+(Simplicity of primitives) >md.b (both aspects emerge from minimal operations) >md.dli
+>md.dul
 
-(5 !fact.n)
-(1 !fact.acc)
+(Example - tail-recursive factorial with accumulator:) >md.p
 
-({)
-(  fact.n 0 >=<)
-(    fact.acc                    ; Base: return accumulator \28\stops chain\29\)
-(    {                           ; Recursive: mutate and continue)
-(      fact.acc fact.n >* !fact.acc)
-(      fact.n 1 >- !fact.n)
-(      _.self                    ; Return self \28\continues chain\29\)
-(    })
-(  >choose)
-(} !fact-step)
+(5 !fact.n
+1 !fact.acc
 
-(fact-step >chain                ; AL: [120])
+{
+  fact.n 0 >=<
+    fact.acc                    ; Base: return accumulator (stops chain\29\
+    {                           ; Recursive: mutate and continue
+      fact.acc fact.n >* !fact.acc
+      fact.n 1 >- !fact.n
+      _.self                    ; Return self (continues chain\29\
+    }
+  >choose
+} !fact-step
 
-(What's happening:)
-(Functional: Block returns either `fact.acc` \28\number, stops\29\ or `_.self` \28\block, continues\29\)
-(Imperative: State clearly mutates via `!fact.acc` and `!fact.n`)
-(Efficient: No stack frames, just tail calls through `>chain`)
+fact-step >chain                ; AL: [120]) (soma) >md.code
 
-(You can trace every mutation. You can see the control flow. There are no hidden mechanics. This is SOMA's philosophical core: computation made visible through the marriage of functional structure and imperative clarity.)
+(What's happening:) >md.b >md.p
 
-(Comparing the Three State Spaces)
->md.h3
+(Functional:) >md.b ( Block returns either ) (fact.acc) >md.c ( (number, stops\29\ or ) (_.self) >md.c ( (block, continues\29\) >md.t >md.uli
+(Imperative:) >md.b ( State clearly mutates via ) (!fact.acc) >md.c ( and ) (!fact.n) >md.c >md.t >md.uli
+(Efficient:) >md.b ( No stack frames, just tail calls through ) (>chain) >md.c >md.t >md.uli
+>md.ul
 
+(You can trace every mutation. You can see the control flow. There are no hidden mechanics. This is SOMA's philosophical core: computation made visible through the marriage of functional structure and imperative clarity.) >md.p
 
+(Comparing the Three State Spaces) >md.h3
 
-(When to use each:)
+(Aspect) (Store) (Register) (AL)
+>md.table.header
+(Scope) (Global) (Block-local) (Flow-based)
+>md.table.row
+(Lifetime) (Persistent) (Single block execution) (Transient)
+>md.table.row
+(Sharing) (All blocks can access) (Isolated per block) (Inherited by nested blocks)
+>md.table.row
+(Purpose) (Shared, persistent state) (Local computation scratch space) (Data flow between operations)
+>md.table.row
+(Example) (config.port) >md.c (_.temp) >md.c (Stack operations)
+>md.table.row
+(Access pattern) (By path) (By path \29\within block only\29\) (Push/pop)
+>md.table.row
+>md.table
 
-(Store: Configuration, shared data, persistence across block executions)
-(Register: Temporary local variables, loop counters within a block, `_.self` reference)
-(AL: Passing arguments to blocks, returning values from blocks, intermediate computation results)
+(When to use each:) >md.b >md.p
 
+(Store) (Configuration, shared data, persistence across block executions) >md.dli
+(Register) (Temporary local variables, loop counters within a block, ) (_.self) >md.c ( reference) >md.dli
+(AL) (Passing arguments to blocks, returning values from blocks, intermediate computation results) >md.dli
+>md.dul
 
-(4. A Motivating Example)
->md.h2
+>md.hr
 
+(4. A Motivating Example) >md.h2
 
-(Let's implement a simple counter that prints numbers until it reaches a limit.)
+(Let's implement a simple counter that prints numbers until it reaches a limit.) >md.p
 
-(SOMA Version)
->md.h3
+(SOMA Version) >md.h3
 
+(0 !counter.n
+5 !counter.limit
 
-(0 !counter.n)
-(5 !counter.limit)
+{
+  counter.n >toString >print
+  counter.n 1 >+ !counter.n
 
-({)
-(  counter.n >toString >print)
-(  counter.n 1 >+ !counter.n)
+  counter.n counter.limit >>
+  { Nil }           ; Stop: return Nil to terminate chain
+  { _.self }        ; Continue: return self to continue chain
+  >choose
+} !counter-loop
 
-(  counter.n counter.limit >>)
-(  { Nil }           ; Stop: return Nil to terminate chain)
-(  { _.self }        ; Continue: return self to continue chain)
-(  >choose)
-(} !counter-loop)
+counter-loop >chain) (soma) >md.code
 
-(counter-loop >chain)
+(What happens:) >md.b >md.p
 
-(What happens:)
-(1. Initialize counter and limit in the Store)
-(2. Define a block that:)
-(   - Prints current value)
-(   - Increments counter)
-(   - Checks if counter exceeds limit)
-(   - Uses >choose to select which value to return)
-(   - If yes, returns Nil \28\terminates chain\29\)
-(   - If no, returns self \28\continues chain\29\)
-(3. Execute the block with >chain)
+(Initialize counter and limit in the Store)
+(Define a block that:) >md.oli
+>md.nest
+  (Prints current value)
+  (Increments counter)
+  (Checks if counter exceeds limit)
+  (Uses ) (>choose) >md.c ( to select which value to return) >md.t >md.uli
+  (If yes, returns Nil \29\terminates chain\29\)
+  (If no, returns self \29\continues chain\29\)
+  >md.ul
+(Execute the block with ) (>chain) >md.c >md.t >md.oli
+>md.ol
 
-(No recursion. No stack frames. No return values. Just state evolution through tail-call optimization.)
+(No recursion. No stack frames. No return values. Just state evolution through tail-call optimization.) >md.p
 
-(This is functional elegance: The loop control is purely functional \28\blocks returning blocks\29\, but the state mutation is explicit and imperative \28\Store updates with !\29\. You get the clarity of mutation with the efficiency of tail calls.)
+(This is functional elegance:) >md.b ( The loop control is purely functional \29\blocks returning blocks\29\, but the state mutation is explicit and imperative \29\Store updates with ) (!) >md.c (\29\. You get the clarity of mutation with the efficiency of tail calls.) >md.t >md.p
 
-(Haskell Version)
->md.h3
+(Haskell Version) >md.h3
 
+(counter :: Int -> Int -> IO \29\\29\
+counter n limit
+  | n > limit = return \29\\29\
+  | otherwise = do
+      print n
+      counter \29\n + 1\29\ limit
 
-(counter :: Int -> Int -> IO \28\\29\)
-(counter n limit)
-(  | n > limit = return \28\\29\)
-(  | otherwise = do)
-(      print n)
-(      counter \28\n + 1\29\ limit)
+main :: IO \29\\29\
+main = counter 0 5) (haskell) >md.code
 
-(main :: IO \28\\29\)
-(main = counter 0 5)
+(Differences:) >md.b >md.p
 
-(Differences:)
+(Aspect) (Haskell) (SOMA)
+>md.table.header
+(State) (Passed as function parameters) (Stored explicitly in the Store)
+>md.table.row
+(Control) (Recursive function calls) (Explicit block chaining)
+>md.table.row
+(Stack) (Grows with recursion depth) (No stack)
+>md.table.row
+(Purity) (IO monad separates pure/impure) (Everything is state transformation)
+>md.table.row
+(Execution model) (Expression reduction) (Token-by-token state mutation)
+>md.table.row
+>md.table
 
+(Haskell works hard to preserve the illusion of purity. SOMA simply describes what the machine does.) >md.p
 
-(Haskell works hard to preserve the illusion of purity. SOMA simply describes what the machine does.)
+(Python Version) >md.h3
 
-(Python Version)
->md.h3
+(counter = {"n": 0, "limit": 5}
 
+while counter["n"] <= counter["limit"]:
+    print\29\counter["n"]\29\
+    counter["n"] += 1) (python) >md.code
 
-(counter = {"n": 0, "limit": 5})
+(Differences:) >md.b >md.p
 
-(while counter["n"] <= counter["limit"]:)
-(    print\28\counter["n"]\29\)
-(    counter["n"] += 1)
+(Aspect) (Python) (SOMA)
+>md.table.header
+(Syntax) (Implicit control structures \29\) (while) >md.c (\29\) >md.t (Explicit block selection)
+>md.table.row
+(Stack) (Hidden call stack for functions) (No call stack)
+>md.table.row
+(State visibility) (Variables and objects) (Explicit Store paths)
+>md.table.row
+(Control flow) (Keywords \29\) (if) >md.c (, ) (while) >md.c (, ) (for) >md.c (\29\) >md.t (Algebraic operations \29\) (>choose) >md.c (, ) (>chain) >md.c (\29\) >md.t
+>md.table.row
+>md.table
 
-(Differences:)
+(Python hides the control machinery behind syntax. SOMA makes it explicit through state.) >md.p
 
+>md.hr
 
-(Python hides the control machinery behind syntax. SOMA makes it explicit through state.)
+(5. What SOMA Is Not) >md.h2
 
+(Not a Better Lambda Calculus) >md.h3
 
-(5. What SOMA Is Not)
->md.h2
+(Lambda calculus is stateless, referentially transparent, and based on substitution. SOMA is stateful, procedurally mutable, and based on state transitions. They are orthogonal models.) >md.p
 
+(Not a Scripting Language) >md.h3
 
-(Not a Better Lambda Calculus)
->md.h3
+(SOMA has no special syntax for common patterns. It is minimal by design. You build what you need from primitives.) >md.p
 
+(Not Optimized for Convenience) >md.h3
 
-(Lambda calculus is stateless, referentially transparent, and based on substitution. SOMA is stateful, procedurally mutable, and based on state transitions. They are orthogonal models.)
+(SOMA prioritizes clarity and explicitness over syntactic sugar. Every operation is visible. Every transformation is explicit.) >md.p
 
-(Not a Scripting Language)
->md.h3
+(Not a Type System Laboratory) >md.h3
 
+(SOMA is dynamically typed. Values have types, but the Store and AL do not enforce them statically. Type errors are runtime errors.) >md.p
 
-(SOMA has no special syntax for common patterns. It is minimal by design. You build what you need from primitives.)
+>md.hr
 
-(Not Optimized for Convenience)
->md.h3
+(6. SOMA as a Teaching Tool) >md.h2
 
+(SOMA reveals how programs actually execute. It is pedagogically valuable because:) >md.p
 
-(SOMA prioritizes clarity and explicitness over syntactic sugar. Every operation is visible. Every transformation is explicit.)
+(No hidden machinery) (everything that happens is visible)
+(State is explicit) (students see mutation, aliasing, sharing)
+(Control is algebraic) (not buried in syntax)
+(Execution is observable) (you can trace every step)
+>md.dol
 
-(Not a Type System Laboratory)
->md.h3
+(Students learning SOMA understand:) >md.p
 
+(What a stack is (the AL\29\)
+(What memory is (the Store\29\)
+(What execution is (state transformation\29\)
+(What control flow is (block selection and chaining\29\)
+>md.ul
 
-(SOMA is dynamically typed. Values have types, but the Store and AL do not enforce them statically. Type errors are runtime errors.)
+(There are no magic keywords. No implicit behaviors. No "just trust the compiler.") >md.p
 
+>md.hr
 
-(6. SOMA as a Teaching Tool)
->md.h2
+(7. SOMA in Context) >md.h2
 
+(Where Forth is minimalist syntax over a stack...) >md.h3
 
-(SOMA reveals how programs actually execute. It is pedagogically valuable because:)
+(SOMA is structured state with algebraic control.) >md.p
 
-(1. No hidden machinery - everything that happens is visible)
-(2. State is explicit - students see mutation, aliasing, sharing)
-(3. Control is algebraic - not buried in syntax)
-(4. Execution is observable - you can trace every step)
+(Where Haskell is purity enforced through types...) >md.h3
 
-(Students learning SOMA understand:)
-(What a stack is \28\the AL\29\)
-(What memory is \28\the Store\29\)
-(What execution is \28\state transformation\29\)
-(What control flow is \28\block selection and chaining\29\)
+(SOMA is mutation expressed as the foundation.) >md.p
 
-(There are no magic keywords. No implicit behaviors. No "just trust the compiler.")
+(Where Lisp is code as data...) >md.h3
 
+(SOMA is state as the program.) >md.p
 
-(7. SOMA in Context)
->md.h2
+(Where Turing Machines are one symbol at a time...) >md.h3
 
+(SOMA is structured graphs at arbitrary depth.) >md.p
 
-(Where Forth is minimalist syntax over a stack...)
->md.h3
+>md.hr
 
+(Conclusion) >md.h2
 
-(SOMA is structured state with algebraic control.)
+(SOMA does not try to be a better Haskell or a safer C or a faster Python. It tries to be an honest description of what computers do: transform state, step by step, without hidden mechanisms.) >md.p
 
-(Where Haskell is purity enforced through types...)
->md.h3
+(But it also reveals something deeper: ) (functional elegance and imperative clarity are not opposites.) >md.b ( They are complementary perspectives on computation. SOMA shows how they can coexist:) >md.t >md.p
 
+(Control flow) >md.b ( is functional - blocks as values, tail-call optimization, algebraic composition) >md.dli
+(State mutation) >md.b ( is imperative - visible writes, explicit paths, observable changes) >md.dli
+(Execution) >md.b ( is explicit - no hidden machinery, no implicit behaviors) >md.dli
+>md.dul
 
-(SOMA is mutation expressed as the foundation.)
+(If you want to understand how programs run—not how they reduce, not how they type-check, but how they ) (run) >md.b (—SOMA shows you the machine. And it shows you that the machine can be both elegant and explicit.) >md.t >md.p
 
-(Where Lisp is code as data...)
->md.h3
+(No call stack. No exceptions. No false dichotomy between purity and mutation. Just state, blocks, and explicit flow.) >md.p
 
+(This is computation as it is, not as we wish it were.) >md.b >md.p
 
-(SOMA is state as the program.)
+>md.hr
 
-(Where Turing Machines are one symbol at a time...)
->md.h3
+(Further Reading) >md.h3
 
+(Section 2: Core Concepts) >md.b ( - Details on AL, Store, Registers, and Cells) >md.uli
+(Section 8: Blocks and Execution) >md.b ( - How blocks work without being functions) >md.uli
+(Section 10: Logical Control Flow) >md.b ( - ) (>choose) >md.c ( and ) (>chain) >md.c ( in depth) >md.uli
+(Section 18: SOMA in Context) >md.b ( - Comparisons with other computational models) >md.uli
+>md.ul
 
-(SOMA is structured graphs at arbitrary depth.)
-
-
-(Conclusion)
->md.h2
-
-
-(SOMA does not try to be a better Haskell or a safer C or a faster Python. It tries to be an honest description of what computers do: transform state, step by step, without hidden mechanisms.)
-
-(But it also reveals something deeper: functional elegance and imperative clarity are not opposites. They are complementary perspectives on computation. SOMA shows how they can coexist:)
-
-(Control flow is functional - blocks as values, tail-call optimization, algebraic composition)
-(State mutation is imperative - visible writes, explicit paths, observable changes)
-(Execution is explicit - no hidden machinery, no implicit behaviors)
-
-(If you want to understand how programs run—not how they reduce, not how they type-check, but how they run—SOMA shows you the machine. And it shows you that the machine can be both elegant and explicit.)
-
-(No call stack. No exceptions. No false dichotomy between purity and mutation. Just state, blocks, and explicit flow.)
-
-(This is computation as it is, not as we wish it were.)
-
-
-(Further Reading)
->md.h3
-
-
-(Section 2: Core Concepts - Details on AL, Store, Registers, and Cells)
-(Section 8: Blocks and Execution - How blocks work without being functions)
-(Section 10: Logical Control Flow - `>choose` and `>chain` in depth)
-(Section 18: SOMA in Context - Comparisons with other computational models)
-
-(philosophy.md) >md.render
+>md.print
