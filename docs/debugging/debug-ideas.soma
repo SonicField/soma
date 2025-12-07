@@ -1,0 +1,180 @@
+(python) >use (markdown) >use
+>md.start
+
+(Debug Feature Ideas for SOMA) >md.h1
+
+(Status: Proposal) >md.p
+(Created: 2025-12-01) >md.p
+(Motivation: SOMA's execution-scope model vs lexical scope is invisible in code but critical to understanding behavior. Debug tools should make execution scope visible.) >md.p
+
+(The Core Challenge) >md.h2
+
+(In traditional languages like C++, you can see { and } creating lexical scopes. In SOMA, scope changes happen at runtime through >^ and >choose, creating **fresh Registers** that are isolated from parent contexts. This is invisible in the source code, making bugs extremely hard to diagnose.) >md.p
+
+(Example of the problem:) >md.p
+
+(Code block showing fresh Register isolation issue) (soma) >md.code
+
+(The inner block gets a **fresh Register** when executed with >^, so _.value doesn't exist. This is correct SOMA semantics, but surprising to developers used to lexical scope.) >md.p
+
+(Priority 1: debug.register.dump - See Current Register State) >md.h2
+
+(Motivation) >md.h3
+(Most SOMA bugs are "why can't I access this variable?" The Register is invisible, so developers don't know what's in scope.) >md.p
+
+(Proposed Behavior) >md.h3
+
+(debug.register.dump >^) (soma) >md.code
+
+(Output:) >md.p
+
+(DEBUG Register with bindings: _.old_list, _.new_list, _.new_new_list) (soma) >md.code
+
+(Implementation Notes) >md.h3
+(- Should be a builtin like debug.al.dump) >md.p
+(- Prints each binding in the current Register) >md.p
+(- Shows both path and value type/preview) >md.p
+(- Does NOT consume any AL items) >md.p
+(- Should work in any execution context) >md.p
+
+(Use Case) >md.h3
+(Debugging list.reverse, we could have added:) >md.p
+
+(Code block with debug.register.dump showing captured values) (soma) >md.code
+
+(This would have immediately revealed the variable swap bug.) >md.p
+
+(Priority 2: debug.scope.trace - Show Execution Scope Boundaries) >md.h2
+
+(Motivation) >md.h3
+(Developers need to SEE when execution scope changes - when Registers get isolated. This is the fundamental mental model shift from lexical to execution scope.) >md.p
+
+(Proposed Behavior) >md.h3
+(Toggle tracing on/off with scope entry/exit messages) >md.p
+
+(debug.scope.trace >^) (soma) >md.code
+
+(Output shows SCOPE messages indicating Register isolation) (soma) >md.code
+
+(Advanced: Show context passing) >md.h3
+
+(Code demonstrating Register context passing via AL) (soma) >md.code
+
+(Output showing context propagation through blocks) (soma) >md.code
+
+(Implementation Notes) >md.h3
+(- Global flag in VM: debug_scope_trace) >md.p
+(- Hook into Block execution around line 990) >md.p
+(- Hook into builtin_choose to trace branch selection) >md.p
+(- Show Register size changes) >md.p
+
+(Priority 3: debug.chain.trace - Visualize Chain Execution) >md.h2
+
+(Motivation) >md.h3
+(>chain loops are confusing because they repeatedly pop and execute blocks. Developers can't see the loop iterations or understand when/why the loop terminates.) >md.p
+
+(Proposed Behavior) >md.h3
+
+(debug.chain.trace with list.reverse example) (soma) >md.code
+
+(Output shows iterations and termination condition) (soma) >md.code
+
+(Implementation Notes) >md.h3
+(- Global flag in VM: debug_chain_trace) >md.p
+(- Hook into builtin_chain around line 1240) >md.p
+(- Show AL state before each iteration) >md.p
+(- Show what block is being executed) >md.p
+(- Show why chain terminated: Nil vs empty AL) >md.p
+
+(Advanced: Show AL diffs) >md.h3
+
+(CHAIN iteration diff output) (soma) >md.code
+
+(Priority 4: Enhanced Error Messages with Execution Stack Trace) >md.h2
+
+(Motivation) >md.h3
+(Current errors just show the path that failed. Developers need to see **where they are in the execution**, including which blocks are executing and what the AL/Register state is.) >md.p
+
+(Current Error) >md.h3
+
+(Simple error message format) (soma) >md.code
+
+(Proposed Enhanced Error) >md.h3
+
+(Enhanced error with full execution stack trace and context) (soma) >md.code
+
+(Implementation Notes) >md.h3
+(- Enhance VM to track execution stack) >md.p
+(- Store: block name, source location, AL snapshot, Register snapshot) >md.p
+(- When error occurs, unwind stack and format nicely) >md.p
+(- Add helpful suggestions based on error type) >md.p
+(  - Register undefined → suggest context-passing pattern) >md.p
+(  - AL underflow → show AL state at error) >md.p
+(  - CellRef access → show what the ref points to) >md.p
+
+(Stack Frame Structure) >md.h3
+
+(ExecutionFrame dataclass with fields for debugging) (python) >md.code
+
+(Implementation Strategy) >md.h2
+
+(Phase 1: Basic Infrastructure) >md.h3
+(1. Add debug.register.dump builtin similar to debug.al.dump) >md.p
+(2. Add global debug flags to VM) >md.p
+(3. Test with existing list.reverse code) >md.p
+
+(Phase 2: Scope Tracing) >md.h3
+(1. Implement debug.scope.trace) >md.p
+(2. Hook into Block execution) >md.p
+(3. Hook into choose, chain, >^) >md.p
+
+(Phase 3: Chain Tracing) >md.h3
+(1. Implement debug.chain.trace) >md.p
+(2. Show iterations and termination conditions) >md.p
+
+(Phase 4: Enhanced Errors) >md.h3
+(1. Add execution stack tracking to VM) >md.p
+(2. Enhance error formatting) >md.p
+(3. Add context-specific suggestions) >md.p
+
+(Design Principles) >md.h2
+
+(1. **Non-invasive**: Debug features should not affect normal execution) >md.p
+(2. **Toggleable**: All tracing can be turned on/off) >md.p
+(3. **Readable**: Output should be clear and concise) >md.p
+(4. **Educational**: Errors should teach SOMA's execution model) >md.p
+(5. **Minimal overhead**: When disabled, should have zero performance impact) >md.p
+
+(Future Ideas - Lower Priority) >md.h2
+
+(debug.cellref.inspect - Show CellRef Contents) >md.h3
+
+(_.node debug.cellref.inspect >^) (soma) >md.code
+
+(Output showing CellRef internals) (soma) >md.code
+
+(debug.al.snapshot / debug.al.diff - AL Comparison) >md.h3
+
+(AL snapshot and diff commands for state comparison) (soma) >md.code
+
+(debug.step - Interactive Step-Through) >md.h3
+
+(debug.step for pausing execution between operations) (soma) >md.code
+
+(Related Issues) >md.h2
+
+(- SOMA execution scope vs lexical scope - fundamental design) >md.p
+(- Error messages need more context) >md.p
+(- Learning curve for developers from traditional languages) >md.p
+
+(Success Metrics) >md.h2
+
+(Debug features are successful if:) >md.p
+(1. "Why can't I access this variable?" questions decrease) >md.p
+(2. Developers understand execution scope model faster) >md.p
+(3. Debugging time decreases especially for context-passing bugs) >md.p
+(4. Error messages are educational, not just diagnostic) >md.p
+
+(Next Step: Implement debug.register.dump as proof-of-concept, then gather feedback.) >md.p
+
+>md.print

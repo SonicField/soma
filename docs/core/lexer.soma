@@ -1,0 +1,123 @@
+(python) >use (markdown) >use
+>md.start
+
+(2. Lexical Analysis and Parsing) >md.h1
+
+(SOMA source code is converted in two phases: Lexical Analysis converts raw text into tokens, then Parsing converts tokens into an AST.) >md.p
+
+(2.1 Lexer Overview) >md.h2
+
+(The SOMA lexer \28\in soma/lexer.py\29\ converts source text into a stream of tokens. Each token has a kind, value, and position information. Tokenization is deterministic and left-to-right.) >md.p
+
+(2.2 Token Categories) >md.h2
+
+(INT) (Decimal integer) >md.dli
+(PATH) (General identifier or name) >md.dli
+(EXEC) (Execute prefix modifier >) >md.dli
+(STORE) (Store prefix modifier !) >md.dli
+(STRING) (String literal with parentheses) >md.dli
+(LBRACE) (Block start {) >md.dli
+(RBRACE) (Block end }) >md.dli
+(EOF) (End-of-file marker) >md.dli
+>md.dul
+
+(EXEC and STORE are prefix modifiers, not standalone tokens. >print produces two tokens: EXEC and PATH.) >md.p
+
+(2.3 Whitespace and Comments) >md.h2
+
+(Whitespace \28\space, tab, newline, carriage return\29\ separates tokens but is ignored. Comments begin with ) at token start and continue to line end. Inside strings, ) closes the string, not a comment.) >md.p
+
+(2.4 String Literals) >md.h2
+
+(Strings use parenthesis delimiters: \(text\29\. Backslash starts Unicode escapes: \5C\HEX\5C\ where HEX is one or more hex digits. Example: \(\5C\41\5C\\29\ decodes to "A" \28\U\2B00041\29\.) >md.p
+
+(2.5 Blocks) >md.h2
+
+(Blocks are delimited by braces: { ... }. >{ ... } executes a block directly. !{ ... } is invalid - cannot store to a block.) >md.p
+
+(2.6 Prefix Modifiers) >md.h2
+
+(Execute > marks reading and executing a value. >print reads the Block at path "print" and executes it. >path produces EXEC token plus the path token.) >md.p
+
+(Store ! marks storing a value at a path. !counter pops the argument stack and stores at path "counter". !path produces STORE token plus the path token.) >md.p
+
+(2.7 Integers) >md.h2
+
+(Integers follow [+|-]DIGITS. Sign must precede digits. +23 is INT(23), but +hello is PATH \28\"+hello\"\29\.) >md.p
+
+(2.8 Paths) >md.h2
+
+(A PATH is any non-whitespace sequence not matching another category. May contain >, !, ., or other characters. Ends at whitespace, {, }, (, or ).) >md.p
+
+(Register paths use _ as the root: _ reads register root, _.x reads register field x, _.x.y.z reads nested fields. Paths like _x \28\without dot\29\ are lexically valid but semantically invalid.) >md.p
+
+(2.9 Lexical Errors) >md.h2
+
+(Unterminated strings) >md.uli
+(Invalid escapes \28\non-hex digits\29\) >md.uli
+(Invalid modifier targets \28\like >42 or >\28\foo\29\\29\) >md.uli
+(Illegal numeric forms \28\like 23a\29\) >md.uli
+>md.ul
+
+(2.10 Lexer Summary) >md.h2
+
+(The SOMA lexer is simple and orthogonal. Each token category is mutually exclusive. The lexer does not interpret semantics - that is the parser\29\s responsibility.) >md.p
+
+(Key design points:) >md.p
+
+(Stateless token recognition based on starting character and local context) >md.uli
+(String decoding happens in lexer) >md.uli
+(Register syntax is not enforced by lexer, only by parser) >md.uli
+(Modifier detection is context-sensitive) >md.uli
+(Error reporting includes location information) >md.uli
+>md.ul
+
+(3. Parser and AST Construction) >md.h1
+
+(The SOMA parser consumes the token stream and builds an AST. It is a recursive descent parser that validates syntax, builds typed AST nodes, splits paths, validates register syntax, and eagerly parses blocks.) >md.p
+
+(3.1 Parser Overview) >md.h2
+
+(Entry point: parse\28\source\29\ calls lex\28\source\29\, creates a Parser, and builds the AST. Parser uses recursive descent with lookahead and token consumption methods.) >md.p
+
+(3.2 AST Node Types) >md.h2
+
+(Program) (Top-level container for statements) >md.dli
+(IntNode) (Integer literal) >md.dli
+(StringNode) (String literal with decoded escapes) >md.dli
+(BlockNode) (Block { ... } with eagerly parsed body) >md.dli
+(ValuePath) (Path reading a Cell value, no trailing dot) >md.dli
+(ReferencePath) (Path with trailing dot, reads a CellRef) >md.dli
+(ExecNode) (Execute modifier targeting path or block) >md.dli
+(StoreNode) (Store modifier targeting path) >md.dli
+>md.dul
+
+(3.3 Path Parsing) >md.h2
+
+(Parser detects trailing dots to distinguish ValuePath from ReferencePath. Paths are split by dots into components. Register paths are validated: _ is valid, _.x is valid, but _x \28\without dot\29\ raises ParseError.) >md.p
+
+(3.4 Block Parsing) >md.h2
+
+(Blocks are parsed eagerly - all statements inside are recursively parsed at lex time. This enables early error detection and a complete AST.) >md.p
+
+(3.5 Modifier Parsing) >md.h2
+
+(Execute > targets ValuePath or BlockNode, not ReferencePath. Store ! targets ValuePath or ReferencePath. Semantic meaning is determined by the trailing dot in the path.) >md.p
+
+(3.6 Error Handling) >md.h2
+
+(Parser provides detailed error messages with line/column information. Errors include unclosed blocks, unexpected braces, invalid register syntax, and empty path components.) >md.p
+
+(3.7 Lexer/Parser Boundary) >md.h2
+
+(Lexer handles character-level tokenization, string decoding, comment stripping, and whitespace. Parser handles AST construction, path splitting, validation, and semantic rules.) >md.p
+
+(Lexer does NOT: split paths, validate register syntax, distinguish ValuePath from ReferencePath, or parse blocks.) >md.p
+
+(Parser does NOT: recognize token boundaries or decode string escapes.) >md.p
+
+(3.8 Summary) >md.h2
+
+(The SOMA lexer and parser work together with clear separation of concerns. Lexer produces flat token stream, parser builds hierarchical AST with validation. Design emphasizes simplicity, determinism, and early error detection.) >md.p
+
+(lexer.md) >md.render

@@ -1,0 +1,195 @@
+(python) >use (markdown) >use
+>md.start
+
+(04 – Blocks and Execution) >md.h1
+
+(Blocks are the fundamental executable units in SOMA. Unlike functions, blocks are first-class values that transform machine state directly. They have no arity, declare no parameters, and do not return values. A block is not called—it is executed, transforming the pair \29\AL, Store\29\ into \29\AL'\29\, Store'\29\\29\.) >md.p
+
+(Overview) >md.h2
+
+(A block is written as a sequence of tokens enclosed in braces:) >md.p
+
+(soma) ({ token token token }) >md.code
+
+(Blocks may be nested without limit and are not executed when read—they are pushed onto the AL as values, just like integers or strings.) >md.p
+
+(Blocks Are Values) >md.h2
+
+(Blocks behave like any other SOMA value. They may be:) >md.p
+
+(Pushed onto the AL)
+(Stored in a Cell)
+(Passed between blocks)
+(Used in control flow like >choose)
+(Executed via built-ins or path execution)
+>md.ul
+
+(No Arity, No Return) >md.h2
+
+(SOMA blocks do not declare parameters. They simply consume whatever values they need from the AL and leave new values behind.) >md.p
+
+(Execution Model: Linear, Token-by-Token) >md.h2
+
+(When a block executes, SOMA processes its tokens left to right, one at a time. Each token transforms the machine state:) >md.p
+
+(soma) ({ 2 3 >+ 5 >* }) >md.code
+
+(Initial AL = \[\], Register = {} \29\empty graph\29\. After token 2: AL = [2]. After token 3: AL = [3, 2]. After >+: AL = [5]. After token 5: AL = [5, 5]. After >*: AL = [25].) >md.p
+
+(Execution proceeds strictly linearly. There is no symbolic reduction, no lazy evaluation, no hidden control flow.) >md.p
+
+(No Call Stack) >md.h2
+
+(SOMA does not implement a call stack. Executing a block does not create a new stack frame. Instead, block execution is a direct state transformation:) >md.p
+
+(soma) (Before: \29\AL₁, Store₁, Register₁\29\ After: \29\AL₂, Store₂, Register₂\29\) >md.code
+
+(When a block finishes, execution simply continues with the next token in the enclosing context.) >md.p
+
+(Everything is a Block) >md.h2
+
+(The >block Built-in) >md.h3
+
+(SOMA provides a built-in operation >block that pushes the currently executing block onto the AL. This enables blocks to reference themselves without any special magic or automatic bindings.) >md.p
+
+(Stack Effect: \[\] → [Block]) >md.p
+
+(All SOMA execution occurs within a block context. Top-level code is itself a block. There is no \29\outside\29\ the outermost block—that's the runtime environment.) >md.p
+
+(Block Execution Patterns) >md.h2
+
+(6.1 Executing Blocks from Paths: >path) >md.h3
+
+(The execution prefix > is an atomic read-and-execute operation for blocks stored at paths.) >md.p
+
+(The > prefix performs: 1\29\ Resolve path to a value 2\29\ If the value is a Block, execute it 3\29\ If the value is not a Block, this is a fatal error.) >md.p
+
+(soma) (> prefix makes execution explicit and first-class) >md.code
+
+(Built-ins Are Just Store Paths) >md.h3
+
+(All SOMA built-ins are Blocks stored at Store paths. When you write >print, you're not calling a \29\built-in function\29\—you're executing the Block at Store path \29\print\29\.) >md.p
+
+(Key distinction: square pushes the Block value onto AL, >square executes the Block.) >md.p
+
+(6.2 Executing Block Literals: >{}) >md.h3
+
+(The >{ } pattern executes a block literal immediately without storing it first. This is the cleanest way to execute ad-hoc code.) >md.p
+
+(soma) (>{ \29\Hello\29\ >print }) >md.code
+
+(6.3 Loops and Tail-Calls: >chain) >md.h3
+
+(The >chain operation enables loops and tail-call optimization. It repeatedly pops the AL top and executes it if it's a Block. If the top is not a Block, >chain stops and leaves it on the AL.) >md.p
+
+(soma) (fib-step >chain) >md.code
+
+(Tail-call optimization: This pattern uses constant space—no stack growth. The block returns itself for the next iteration.) >md.p
+
+(6.4 Execute from AL: >^) >md.h3
+
+(The >^ pattern executes a block that's already on the AL. This is typically user-defined:) >md.p
+
+(soma) ({ !_ >_ } !^) >md.code
+
+(Execution Patterns Summary) >md.h2
+
+(Pattern) (Syntax) (Use Case) (Example)
+>md.table.header
+(Execute from path) (>path) (Call stored blocks) (>square)
+>md.table.row
+(Execute literal) (>{ code }) (Ad-hoc execution) (>{ 5 3 >+ })
+>md.table.row
+(Chain execution) (>chain) (Loops, tail-calls) (fib-step >chain)
+>md.table.row
+(Execute from AL) (>^) (Higher-order functions) (myblock >^)
+>md.table
+
+(Register Lifetime and Isolation) >md.h2
+
+(Each block execution creates a fresh, empty Register that is destroyed when the block completes. Registers are completely isolated between blocks:) >md.p
+
+(Inner blocks cannot see outer block's Register cells)
+(Parent blocks cannot see child block's Register cells)
+(There is no lexical scoping of Registers)
+>md.ul
+
+(If you want to share data between blocks, you must:) >md.p
+
+(Use the Store \29\global, persistent state\29\)
+(Pass values via the AL \29\stack-based communication\29\)
+(Use CellRefs to share structure)
+>md.ul
+
+(Key Pattern: Nested Blocks Have Separate Registers) >md.h3
+
+(soma) ({ 1 !_.x { 2 !_.x _.x >print } >chain _.x >print }) >md.code
+
+(Inner block creates its own Register. Both blocks use _.x but in completely different Registers. Inner block's Register is destroyed when it completes. Output: 2 then 1.) >md.p
+
+(RIGHT: Pass Data via AL) >md.h3
+
+(soma) ({ 42 !_.value _.value >{ >print } }) >md.code
+
+(Outer block stores 42. Then pushes 42 onto AL. Inner block executes with AL containing [42], pops and prints.) >md.p
+
+(RIGHT: Share Data via Store) >md.h3
+
+(soma) ({ 42 !shared_value >{ shared_value >print } }) >md.code
+
+(Store is global and persistent. All blocks can access it.) >md.p
+
+(Register vs Store vs AL: When to Use Each) >md.h3
+
+(Aspect) (Store) (Register) (AL)
+>md.table.header
+(Scope) (Global) (Block-local) (Flow-based)
+>md.table.row
+(Lifetime) (Persistent) (Block execution only) (Transient)
+>md.table.row
+(Sharing) (All blocks can access) (Isolated per block) (Explicit passing)
+>md.table.row
+(Purpose) (Shared state) (Local computation) (Data flow)
+>md.table
+
+(Blocks Are Not Functions) >md.h2
+
+(Functions hide state. Blocks expose state. They operate directly on the AL and Store, making every transformation visible.) >md.p
+
+(Functions \29\Traditional\29\) (Blocks \29\SOMA\29\)
+>md.table.header
+(Declare parameters) (No declared parameters)
+>md.table.row
+(Return a value) (Leave values on AL)
+>md.table.row
+(Create stack frames) (Transform state in-place)
+>md.table.row
+(Support recursion via call stack) (Support cycles via >block built-in)
+>md.table.row
+(Hidden execution machinery) (Explicit state transformation)
+>md.table
+
+(Summary) >md.h2
+
+(Blocks in SOMA are:) >md.p
+
+(First-class values that can be stored, passed, and executed)
+(Arity-free – they don't declare how many values they consume or produce)
+(Return-free – they leave values on the AL)
+(Executed linearly – token by token, left to right)
+(Stack-free – no call frames, no return path)
+(State transformers)
+(Self-referential – every block can reference itself via >block)
+>md.ul
+
+(Tail-Call Optimized Factorial \29\Recommended Pattern\29\) >md.h3
+
+(soma) (5 !fact.n 1 !fact.acc { fact.n 0 >=< fact.acc { fact.n 1 >- !fact.n fact.acc fact.n 1 >+ >* !fact.acc fact-step } >choose } !fact-step fact-step >chain) >md.code
+
+(State \29\fact.n, fact.acc\29\ is in the Store. Each iteration updates Store values. Returns either fact.acc \29\stops\29\ or fact-step block \29\continues\29\. No stack growth—constant space tail-call optimization.) >md.p
+
+(Conclusion) >md.h2
+
+(Blocks are SOMA's answer to functions, procedures, and lambdas—but they reject the abstraction model entirely. They are values that transform state, nothing more and nothing less. Understanding blocks means understanding that SOMA doesn't hide mutation under the hood. It makes mutation the foundation of computation.) >md.p
+
+Nil >md.print

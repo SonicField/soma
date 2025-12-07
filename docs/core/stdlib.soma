@@ -1,0 +1,125 @@
+(python) >use (markdown) >use
+>md.start
+
+(10. Standard Library) >md.h1
+
+(The SOMA standard library demonstrates compositional power from simple primitives.) >md.p
+
+(Overview) >md.h2
+
+(Boolean Logic) (Comparison Operators) (Stack Manipulation) (Arithmetic Helpers) (Control Flow Helpers) (Linked List Operations) (AL Draining) >md.ul
+
+(1. Boolean Logic) >md.h2
+
+(>not — Boolean Negation) >md.h3
+(Signature: \28\Bool\29\ -> Bool) >md.c >md.p
+({False True >choose} !not) >md.c >md.p
+
+(>and — Logical AND) >md.h3
+(Signature: \28\Bool, Bool\29\ -> Bool) >md.c >md.p
+({False >choose} !and) >md.c >md.p
+
+(>or — Logical OR) >md.h3
+(Signature: \28\Bool, Bool\29\ -> Bool) >md.c >md.p
+({True >swap >choose} !or) >md.c >md.p
+
+(2. Comparison Operators) >md.h2
+
+(>> — Greater-Than) >md.h3
+(Signature: \28\Value, Value\29\ -> Bool) >md.c >md.p
+({>swap ><} !>) >md.c >md.p
+
+(>!=! — Not Equal) >md.h3
+(Signature: \28\Value, Value\29\ -> Bool) >md.c >md.p
+({>over >over >swap >< >rot >rot >< >or} !=!) >md.c >md.p
+
+(>== — Equality) >md.h3
+(Signature: \28\Value, Value\29\ -> Bool) >md.c >md.p
+({>=! >not} !==) >md.c >md.p
+
+(>=< — Less-Than-Or-Equal) >md.h3
+(Signature: \28\Value, Value\29\ -> Bool) >md.c >md.p
+({>swap >< >not} !=<) >md.c >md.p
+
+(>=> — Greater-Than-Or-Equal) >md.h3
+(Signature: \28\Value, Value\29\ -> Bool) >md.c >md.p
+({>< >not} !=>) >md.c >md.p
+
+(3. Stack Manipulation) >md.h2
+
+(>dup — Duplicate Top) >md.h3
+(Signature: \28\Value\29\ -> \28\Value, Value\29\) >md.c >md.p
+({!_.value _.value _.value} !dup) >md.c >md.p
+
+(>drop — Remove Top) >md.h3
+(Signature: \28\Value\29\ -> \28\\29\) >md.c >md.p
+({!_} !drop) >md.c >md.p
+
+(>swap — Swap Top Two) >md.h3
+(Signature: \28\a, b\29\ -> \28\b, a\29\) >md.c >md.p
+({!_.a !_.b _.a _.b} !swap) >md.c >md.p
+
+(>over — Copy Second to Top) >md.h3
+(Signature: \28\a, b\29\ -> \28\a, b, a\29\) >md.c >md.p
+({!_.a !_.b _.b _.a _.b} !over) >md.c >md.p
+
+(>rot — Rotate Top Three) >md.h3
+(Signature: \28\a, b, c\29\ -> \28\b, a, c\29\) >md.c >md.p
+({!_.a !_.b !_.c _.b _.a _.c} !rot) >md.c >md.p
+
+(4. Arithmetic Helpers) >md.h2
+
+(>inc — Increment by 1) >md.h3
+(Signature: \28\Int\29\ -> Int) >md.c >md.p
+({1 >+} !inc) >md.c >md.p
+
+(>dec — Decrement by 1) >md.h3
+(Signature: \28\Int\29\ -> Int) >md.c >md.p
+({1 >-} !dec) >md.c >md.p
+
+(>abs — Absolute Value) >md.h3
+(Signature: \28\Int\29\ -> Int) >md.c >md.p
+({>dup 0 >< {0 >swap >-} {} >choose >^} !abs) >md.c >md.p
+
+(>min — Minimum of Two) >md.h3
+(Signature: \28\Int, Int\29\ -> Int) >md.c >md.p
+({>over >over >< {>drop} {>swap >drop} >choose >^} !min) >md.c >md.p
+
+(>max — Maximum of Two) >md.h3
+(Signature: \28\Int, Int\29\ -> Int) >md.c >md.p
+({>over >over >> {>drop} {>swap >drop} >choose >^} !max) >md.c >md.p
+
+(5. Control Flow) >md.h2
+
+(>if — Conditional Execution) >md.h3
+(Signature: \28\condition, block\29\ -> \28\...\29\) >md.c >md.p
+({{} >choose >^} !if) >md.c >md.p
+
+(>ifelse — Conditional with Both Branches) >md.h3
+(Signature: \28\condition, true_block, false_block\29\ -> \28\...\29\) >md.c >md.p
+({>choose >^} !ifelse) >md.c >md.p
+
+(>^ — Execute from AL) >md.h3
+(Signature: \28\block\29\ -> \28\result\29\) >md.c >md.p
+({!_ >_} !^) >md.c >md.p
+
+(6. Linked Lists) >md.h2
+
+(>list.new — Create Empty List) >md.h3
+(Returns Nil representing empty list.) >md.p
+
+(>list.cons — Prepend Value to List) >md.h3
+(Signature: \28\Value, List\29\ -> CellRef) >md.c >md.p
+
+(Design Philosophy) >md.h2
+
+(All operations are user-defined blocks, not primitives.) >md.p
+
+(Boolean logic builds from ) (>choose) >md.c (.) >md.t >md.p
+(Comparisons build from ) (><) >md.c ( and boolean ops.) >md.t >md.p
+(Stack operations use Register paths for local state.) >md.p
+(Control flow uses ) (>chain) >md.c ( for iteration.) >md.t >md.p
+
+(The FFI kernel is tiny; everything else is composable.) >md.p
+
+(stdlib.md) >md.render

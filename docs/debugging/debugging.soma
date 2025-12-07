@@ -1,0 +1,213 @@
+(python) >use (markdown) >use
+
+>md.start
+
+>md.h1 (Debug Philosophy: Leveraging SOMA's Mutable Namespace)
+
+>md.p (Status: Reference Implementation Guide - Version SOMA v1.0 - Created 2025-12-01)
+
+>md.h2 (Overview)
+
+>md.p (This document establishes the design philosophy for all debugging tools in SOMA. Unlike traditional languages that require special VM hooks, debugging features, or runtime instrumentation, SOMA's debugging approach leverages its fundamental property: the namespace is mutable.)
+
+>md.p (The key insight: chain, choose, and other control flow primitives are not VM magic. They are just Store bindings that you can swap out.)
+
+>md.h2 (1. Core Philosophy)
+
+>md.h3 (State is Accessible, Not Hidden)
+
+>md.p (SOMA's machine model exposes three explicit state components:)
+>md.p (The Accumulator List AL - the value conduit)
+>md.p (The Store - global persistent state)
+>md.p (The Register - block-local isolated state)
+
+>md.p (Because these are explicit and introspectable, debugging tools don't need to peek behind abstraction layers. They just need to observe and report state transitions.)
+
+>md.h3 (Debug Tools Should Not Modify the VM)
+
+>md.p (The reference implementation's VM \28\soma/vm.py\29\ defines SOMA's semantics. Debug tools should never require changes to the execution model, the semantics of >choose or >chain, the Register isolation model, or the AL manipulation primitives.)
+
+>md.p (Instead, debug tools work within SOMA's existing semantics by exploiting the mutable namespace.)
+
+>md.h3 (The Pattern: Swap Store Bindings)
+
+>md.p (All debug tools follow this pattern:)
+
+(chain !backup.chain)
+(debug.chain !chain)
+(execute your code being debugged)
+(backup.chain !chain)
+(soma) >md.code
+
+>md.p (This works because chain is just a path in the Store. When you write >chain, SOMA looks up chain in the Store, finds a Block, and executes that Block. By swapping the binding, you intercept the execution without modifying the VM.)
+
+>md.h2 (2. Why This Works: Understanding SOMA's Execution Model)
+
+>md.h3 (Control Flow is Not Special)
+
+>md.p (In languages like Python or C++, if and while are keywords baked into the parser. You cannot redefine them.)
+
+>md.p (In SOMA, >choose and >chain are builtins stored in the namespace. These are just Cells in the Store. The > operator looks up paths and executes blocks. There's nothing preventing you from replacing these bindings.)
+
+>md.p (Now every >choose in your program logs its execution.)
+
+>md.h3 (Scoped Replacement via Backup/Restore)
+
+>md.p (The backup/restore pattern ensures debug instrumentation is scoped locally to specific code sections. This is zero-overhead when not in use and scoped to specific code sections.)
+
+>md.h2 (3. Key Point: debug.* is NOT Part of the SOMA Spec)
+
+>md.p (The SOMA language specification defines the machine model, the execution semantics, and the builtin primitives. It does not define debug.al.dump, debug.chain, debug.choose, or any other debugging utilities.)
+
+>md.p (These are reference implementation tools provided in the standard library or as VM-provided helpers for convenience. They are not required for SOMA compliance.)
+
+>md.p (Implication: Different SOMA implementations can provide different debug tools. The pattern remains universal, but the specific tools are implementation-defined.)
+
+>md.h2 (4. Current Debug Tools)
+
+>md.h3 (4.1 debug.al.dump - Non-Destructive AL State Dump)
+
+>md.p (Purpose: Inspect the current AL state without consuming any items.)
+
+>md.p (Implementation: Builtin in vm.py)
+
+>md.p (Usage: Call debug.al.dump >^ before and after operations to observe AL state changes.)
+
+>md.p (Why it's a builtin: Requires direct access to vm.al to read without popping.)
+
+>md.p (Design principle: Zero side effects. The AL is unchanged after calling this.)
+
+>md.h3 (4.2 debug.chain - Instrumented Chain Loop)
+
+>md.p (Purpose: Log each iteration of a >chain loop, showing AL state before each block execution.)
+
+>md.p (Implementation: Defined in stdlib.soma or as a VM helper)
+
+>md.p (Why this helps: Makes the invisible iteration process visible. Shows when each block executes, what the AL looks like before execution, and why the chain terminated.)
+
+>md.h3 (4.3 debug.choose - Branch Selection Logger)
+
+>md.p (Purpose: Log which branch >choose selects, making control flow visible.)
+
+>md.p (Implementation: Defined in stdlib.soma)
+
+>md.p (Expected behavior: Logs the condition value and which branch was selected before executing it.)
+
+>md.h2 (5. Design Principles for All Debug Tools)
+
+>md.h3 (5.1 Zero Overhead When Not in Use)
+
+>md.p (If you don't install the debug version, there's zero performance impact. The original builtin executes directly. This is different from languages with debug mode flags that affect all execution. SOMA's approach is opt-in and granular.)
+
+>md.h3 (5.2 Scoped to Specific Code Sections)
+
+>md.p (The backup/restore pattern ensures instrumentation is local to specific sections. You don't instrument the entire program—just the section you're debugging.)
+
+>md.h3 (5.3 Educational: Shows SOMA's Execution Model)
+
+>md.p (Good debug output doesn't just say "error here." It teaches the user how SOMA executes. Debug tools should reveal when Registers are created and isolated, what's on the AL before and after operations, how >chain iterates, and why >choose selected a particular branch.)
+
+>md.h3 (5.4 No VM Modifications Needed)
+
+>md.p (The reference implementation should not need changes to support debug tools. If a debug feature requires modifying the VM, it's the wrong approach. Find a way to implement it via Store binding replacement or AL/Register introspection. Exception: Built-in non-destructive introspection that cannot be implemented in pure SOMA.)
+
+>md.h2 (6. Practical Example: Debugging a Problematic Loop)
+
+>md.p (Let's debug the classic list.reverse implementation. The bug might be a typo in a variable name like _.new_new_list instead of _.new_list.)
+
+>md.p (Install the instrumented chain version. Run the failing code with debug output. The error message shows the iteration count, Register state, AL state, and which paths are available. This makes the bug immediately visible: Typo in variable name.)
+
+>md.h3 (Why This Debug Pattern Works)
+
+>md.p (Shows iteration count - We're only on iteration 1, so the bug happens immediately)
+>md.p (Shows Register state - We can see what variables exist)
+>md.p (Shows AL state - We can verify the right values are being passed)
+>md.p (Non-invasive - After restoring chain, the program runs normally)
+
+>md.h2 (7. Future Debug Tools)
+
+>md.p (These follow the same philosophy:)
+
+>md.h3 (7.1 debug.register.dump - Inspect Current Register)
+
+>md.p (Implementation: VM builtin - requires direct access to current Register.)
+
+>md.h3 (7.2 debug.^ - Instrumented Block Execution)
+
+>md.p (Implementation: SOMA-level wrapper around the original ^ binding.)
+
+>md.h3 (7.3 debug.step - Interactive Step-Through)
+
+>md.p (Implementation: Requires VM support for pausing execution, but still uses binding replacement pattern.)
+
+>md.h2 (8. Contrast with Traditional Debuggers)
+
+>md.h3 (Traditional Approach - GDB, pdb, etc.)
+
+>md.p (External tool that attaches to running process. VM modifications required for breakpoint hooks and stack introspection. Language-agnostic but requires deep runtime integration. Always available but potentially high overhead.)
+
+>md.h3 (SOMA Approach)
+
+>md.p (Language-level tools defined in SOMA itself. No VM modifications required, uses mutable namespace. Language-specific and leverages SOMA's explicit state model. Opt-in with zero overhead when not in use.)
+
+>md.h3 (Why SOMA's Approach Works)
+
+>md.p (SOMA's execution model is already explicit: The AL is visible, the Store is accessible, the Register can be introspected, control flow primitives are Store bindings. Traditional debuggers fight against hidden state. SOMA has no hidden state to fight against.)
+
+>md.h2 (9. Guidelines for Implementing New Debug Tools)
+
+>md.h3 (Step 1: Identify What You Need to Observe)
+
+>md.p (AL state transitions? Register bindings? Control flow decisions? Store modifications?)
+
+>md.h3 (Step 2: Find the Interception Point)
+
+>md.p (Replacing a builtin like choose, chain, or ^. Wrapping a stdlib function like list.reverse or times. Adding introspection like debug.al.dump or debug.register.dump.)
+
+>md.h3 (Step 3: Implement via Binding Replacement)
+
+>md.p (Create a wrapper block that logs or instruments operations, delegates to the original binding, and logs results if needed.)
+
+>md.h3 (Step 4: Document the Backup/Restore Pattern)
+
+>md.p (Users should always save the original binding, install the instrumented version, run their code, and restore the original binding.)
+
+>md.h3 (Step 5: Keep It Educational)
+
+>md.p (Debug output should teach SOMA's execution model, not just dump data. Good messages show context: iteration count, state before operations, why the program made decisions, and suggestions for what went wrong.)
+
+>md.h2 (10. Limitations and Trade-offs)
+
+>md.h3 (What This Approach Cannot Do)
+
+>md.p (Time-travel debugging - SOMA's state is mutable and forward-only)
+>md.p (Breakpoints at arbitrary tokens - Requires VM modification)
+>md.p (Post-mortem inspection - Once a fatal error occurs, state is lost)
+>md.p (These would require VM changes or external tooling.)
+
+>md.h3 (What This Approach Excels At)
+
+>md.p (Scoped instrumentation - Debug specific functions without affecting the rest)
+>md.p (Teaching execution model - Makes SOMA's semantics visible)
+>md.p (Zero overhead - No performance cost when not in use)
+>md.p (Pure SOMA implementation - Most tools can be written in SOMA itself)
+
+>md.h2 (11. Summary)
+
+>md.p (SOMA's debug philosophy is simple: Leverage the mutable namespace. Use backup/restore pattern. Keep tools educational. Avoid VM modifications.)
+
+>md.p (The result is a debugging approach that requires no special VM support, has zero overhead when not in use, teaches users how SOMA executes, and maintains the language's transparency and explicitness.)
+
+>md.p (Remember: debug.* is not part of the SOMA specification. It's a reference implementation tool demonstrating what's possible when the namespace is mutable and state is explicit.)
+
+>md.h2 (Appendix: Complete Debug Pattern Template)
+
+(chain !backup.chain)
+(debug.chain !chain)
+(your code here being debugged)
+(backup.chain !chain)
+(soma) >md.code
+
+>md.p (Copy this template whenever you need to debug a SOMA program. Save original bindings, install debug versions, run your code, and restore original bindings.)
+
+>md.print

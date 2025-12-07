@@ -1,0 +1,150 @@
+(python) >use (markdown) >use
+
+(Load Extension) >md.h1
+(Pure SOMA File Loading System) >md.p
+
+(Implementation\29\: Python Reference Implementation) >md.p
+(Status\29\: Complete \28\ v1.0\29\) >md.p
+(Dependencies\29\: Python FFI Extension \28\ >use.python.*\29\) >md.p
+
+(Overview) >md.h2
+
+(The load extension provides a file loading system for SOMA programs, enabling modular code organization across multiple files. It implements path searching \28\ current directory → $SOMA_LIB\29\ entirely in pure SOMA using the Python FFI primitives.) >md.p
+
+(Key Innovation\29\: This extension adds zero Python builtins. All logic is implemented in SOMA code \28\ soma/extensions/load.soma\29\ using only the existing >use.python.call and >use.python.load primitives.) >md.p
+
+(Problem & Solution) >md.h2
+
+(Problem) >md.h3
+(SOMA programs need to\29\:) >md.p
+(- Split code across multiple files for organization) >md.p
+(- Share common libraries between programs) >md.p
+(- Search multiple directories for dependencies) >md.p
+(- Provide clear error messages when files aren\27\t found) >md.p
+
+(Solution) >md.h3
+(The load extension provides >load which\29\:) >md.p
+(1. Searches current directory first) >md.p
+(2. Falls back to $SOMA_LIB environment variable) >md.p
+(3. Loads and executes SOMA code in current context) >md.p
+(4. Reports clear errors if file not found) >md.p
+
+(Usage) >md.h2
+
+(Basic Usage) >md.h3
+(\5c\ \29\ Load the extension) >md.p
+(\5c\ \28\ python\5c\ \29\ >use) >md.p
+(\5c\ \28\ load\5c\ \29\ >use) >md.p
+() >md.p
+(\5c\ \29\ Load a file from current directory) >md.p
+(\5c\ \28\ my_library.soma\5c\ \29\ >load) >md.p
+() >md.p
+(\5c\ \29\ Now you can use whatever that file defined) >md.p
+(my_library.function) >md.p
+
+(With $SOMA_LIB) >md.h3
+(\5c\ \29\ # Set SOMA_LIB to your library directory) >md.p
+(export SOMA_LIB=/home/user/soma_libraries) >md.p
+() >md.p
+(\5c\ \29\ (python) >use) >md.p
+(\5c\ \29\ (load) >use) >md.p
+() >md.p
+(\5c\ \29\ Searches pwd first, then $SOMA_LIB) >md.p
+(\5c\ \28\ utils.soma\5c\ \29\ >load) >md.p
+(\5c\ \28\ math_helpers.soma\5c\ \29\ >load) >md.p
+
+(Directory Search Order) >md.h3
+(1. Current working directory \28\ checked first\29\) >md.p
+(2. $SOMA_LIB \28\ checked if not found in pwd\29\) >md.p
+(3. Error if not found in either location) >md.p
+
+(This ensures local files override library versions.) >md.p
+
+(Complete Examples) >md.h2
+
+(Example 1\29\: Simple Library) >md.h3
+(my_math.soma\29\:) >md.p
+(\5c\ \29\ Define some math helpers) >md.p
+(\5c\ \28\ >dup >* \5c\ \29\ !square) >md.p
+(\5c\ \28\ !_.n  1 \5c\ \28\ _.n >* \5c\ \29\ >repeat \5c\ \29\ !factorial) >md.p
+() >md.p
+(main.soma\29\:) >md.p
+(\5c\ \28\ python\5c\ \29\ >use) >md.p
+(\5c\ \28\ load\5c\ \29\ >use) >md.p
+() >md.p
+(\5c\ \28\ my_math.soma\5c\ \29\ >load) >md.p
+() >md.p
+(5 >square     \5c\ \29\ Returns 25\5c\ \29\) >md.p
+(5 >factorial  \5c\ \29\ Returns 120\5c\ \29\) >md.p
+
+(Implementation Details) >md.h2
+
+(Python Extension Module) >md.h3
+(soma/extensions/load.py\29\:) >md.p
+(\5c\ \28\ \5c\ \28\ \5c\ \28\ Pure SOMA Load Extension\5c\ \29\ \5c\ \29\ \5c\ \29\) >md.p
+() >md.p
+(def register\28\ vm\29\:) >md.p
+(    \5c\ \28\ \5c\ \28\ \5c\ \28\ Register extension \28\ no Python builtins needed\29\\5c\ \29\ \5c\ \29\ \5c\ \29\) >md.p
+(    pass  \5c\ \29\ Pure SOMA implementation) >md.p
+() >md.p
+(def get_soma_setup\28\ \29\:) >md.p
+(    \5c\ \28\ \5c\ \28\ \5c\ \28\ Return SOMA code implementing >load.\5c\ \29\ \5c\ \29\ \5c\ \29\) >md.p
+(    import os) >md.p
+(    soma_file = os.path.join\28\ os.path.dirname\28\__file__\29\, \27\ load.soma\27\ \29\) >md.p
+(    with open\28\soma_file, \27\ r\27\ \29\ as f\29\:) >md.p
+(        return f.read\28\ \29\) >md.p
+
+(Key Points\29\:) >md.p
+(- register\28\ \29\ is empty - no Python builtins added) >md.p
+(- get_soma_setup\28\ \29\ loads SOMA code from load.soma) >md.p
+(- Uses __file__ to find the .soma file in same directory) >md.p
+(- Extension is entirely self-contained) >md.p
+
+(Error Messages) >md.h2
+
+(The extension provides clear error messages\29\:) >md.p
+
+(| Situation | Error Message |) >md.p
+(|-----------|---------------|) >md.p
+(| File not in pwd, $SOMA_LIB not set | Error\29\: File not found in current directory and SOMA_LIB not set |) >md.p
+(| File not in pwd or $SOMA_LIB | Error\29\: File not found in pwd or $SOMA_LIB |) >md.p
+(| Cannot get current directory | Error\29\: Could not get current working directory |) >md.p
+
+(Best Practices) >md.h2
+
+(\5c\ \28\ ✅ Do\5c\ \29\) >md.h3
+(\5c\ \29\ Load at start of file) >md.p
+(\5c\ \28\ python\5c\ \29\ >use) >md.p
+(\5c\ \28\ load\5c\ \29\ >use) >md.p
+() >md.p
+(\5c\ \29\ Load dependencies before using them) >md.p
+(\5c\ \28\ utils.soma\5c\ \29\ >load) >md.p
+(utils.function) >md.p
+
+(\5c\ \28\ ❌ Don\27\t\5c\ \29\) >md.h3
+(\5c\ \29\ Don\27\t forget to load dependencies) >md.p
+(math.pi  \5c\ \29\ Error\29\: undefined if constants.soma not loaded\5c\ \29\) >md.p
+
+(Design Rationale) >md.h2
+
+(Why Pure SOMA\29\?) >md.h3
+
+(The load extension could have been implemented as a Python builtin, but implementing it in pure SOMA demonstrates\29\:) >md.p
+
+(1. SOMA\27\s Expressiveness - Complex file system operations using only basic primitives) >md.p
+(2. Composability - Building extensions on top of extensions) >md.p
+(3. Transparency - All logic is visible in load.soma) >md.p
+(4. Maintainability - SOMA code is easier to modify than Python code for SOMA developers) >md.p
+
+(Conclusion) >md.h2
+
+(The load extension demonstrates that SOMA\27\s minimal primitives enable building sophisticated features entirely in SOMA code. By composing Python FFI calls with SOMA\27\s context-passing patterns, we achieve\29\:) >md.p
+
+(- Zero new Python builtins) >md.p
+(- Full path searching) >md.p
+(- Clear error messages) >md.p
+(- Clean, maintainable code) >md.p
+
+(This exemplifies SOMA\27\s philosophy\29\: Minimal primitives, maximal expressiveness.) >md.p
+
+>md.print

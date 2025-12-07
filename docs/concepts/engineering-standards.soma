@@ -1,0 +1,751 @@
+) ============================================================================
+) ENGINEERING STANDARDS: A Verification-First Approach
+) ============================================================================
+)
+) Purpose: Define high-fidelity engineering standards for software development
+)          that are portable across languages and leverage AI capabilities.
+)
+) Philosophy: Safety through verbs, not nouns. Falsifiability as foundation.
+)             Test before code. Document before moving on.
+)
+) Author: Developed through collaborative ideation
+) Created: 2024-12-06
+) ============================================================================
+
+) ----------------------------------------------------------------------------
+) INITIALIZATION
+) ----------------------------------------------------------------------------
+) Load required modules and start the markdown document.
+) This is analogous to imports in any program - declare dependencies first.
+
+(python) >use (markdown) >use
+>md.start
+
+) ============================================================================
+) SECTION 1: PHILOSOPHY AND PRINCIPLES
+) ============================================================================
+) This section establishes the conceptual foundation. All other sections
+) build upon these core tenets. Read this first.
+
+(Engineering Standards: A Verification-First Approach) >md.h1
+
+(Philosophy and Principles) >md.h2
+
+) ----------------------------------------------------------------------------
+) The Central Insight
+) ----------------------------------------------------------------------------
+) This paragraph captures the key philosophical departure from conventional
+) wisdom. Types classify nouns; correctness requires verbs.
+
+(This document defines engineering standards built on a fundamental insight: )
+(safety comes from verbs, not nouns) >md.b >concat
+(. Correctness emerges from actions - checking, validating, asserting, testing, )>concat
+(monitoring - not from static structures like type systems or design patterns. )>concat
+(The act of verification matters more than the classification system.)>concat
+>md.p
+
+) ----------------------------------------------------------------------------
+) Core Tenets
+) ----------------------------------------------------------------------------
+) These five principles drive all subsequent standards. They are not
+) arbitrary rules but derived from first principles about provability.
+
+(Core Tenets) >md.h3
+
+) Tenet 1: Falsifiability
+) Based on Popperian epistemology - we cannot prove correctness, only disprove it.
+(Falsifiability as Foundation)
+(You cannot prove code correct, but you CAN prove it wrong. )
+(A single counterexample demolishes a claim. )>concat
+(Tests should try to break code, not confirm it works. )>concat
+("All tests pass" provides weak confidence; )>concat
+("I tried hard to break it and failed" provides strong confidence.)>concat
+
+) Tenet 2: Verbs Over Nouns
+) The key insight that separates this approach from type-centric thinking.
+(Verbs Over Nouns)
+(Correctness comes from actions, not classifications. )
+("This value was validated" matters more than "this has type ValidatedInput". )>concat
+(The verb happened or it didn't. The assertion passed or it failed. )>concat
+(That's provable.)>concat
+
+) Tenet 3: Types as Hints
+) Not anti-type, but properly positioning types in the verification hierarchy.
+(Types Are Hints, Not Guarantees)
+(Type systems are incomplete - they cannot express "this list is sorted" )
+(or "this connection is authenticated". )>concat
+(Types constrain design toward what the checker can verify, not what the problem demands. )>concat
+(Use types as documentation, but rely on assertions and invariants for correctness.)>concat
+
+) Tenet 4: Test Real Systems
+) Mocks are lies we tell ourselves. Integration failures hide in the gaps.
+(Test the Real System)
+(Mocks hide integration failures. )
+(Real systems have real network latency, real concurrency, real resource contention, real failure modes. )>concat
+(Integration-first testing, with targeted unit tests only for complex isolated logic.)>concat
+
+) Tenet 5: The Cycle
+) This is the engine that drives quality. The methodology itself.
+(The Cycle of Verified Construction)
+(Design, Plan, Deconstruct into testable steps. )
+(For each step: write tests FIRST, then write code to make tests pass, )>concat
+(then document learnings before moving to next step. )>concat
+(This is not optional ceremony - it is the engine of quality.)>concat
+
+>md.dul
+
+) ----------------------------------------------------------------------------
+) The Summary Statement
+) ----------------------------------------------------------------------------
+) A memorable encapsulation of the entire philosophy.
+
+>md.hr
+
+(Prove you understand the problem by defining how you would falsify )
+(the solution, then build the solution, then record what you learned.)>concat
+>md.i >md.p
+
+>md.hr
+
+) ============================================================================
+) SECTION 2: THE ASSERTION PROTOCOL
+) ============================================================================
+) Assertions are executable specifications. They document contracts and
+) verify them at runtime. This section defines the three-level hierarchy.
+
+(The Assertion Protocol) >md.h2
+
+(Assertions are not optional debugging aids to be disabled in production. )
+(They are executable specifications - documentation that verifies itself. )>concat
+(A triggered assertion is proof of a bug, not merely a hint.)>concat
+>md.p
+
+) ----------------------------------------------------------------------------
+) The Three-Level Hierarchy
+) ----------------------------------------------------------------------------
+) Preconditions, postconditions, and invariants form a complete contract.
+
+(The Three-Level Hierarchy) >md.h3
+
+) Level 1: Preconditions
+(Level 1: Preconditions (Entry Guards\29\) >md.b >md.uli
+>md.nest
+(Verify assumptions about inputs before processing) >md.uli
+(Fail fast with clear messages when violated) >md.uli
+(Document what the function requires to operate correctly) >md.uli
+>md.ul
+
+) Level 2: Postconditions
+(Level 2: Postconditions (Exit Guarantees\29\) >md.b >md.uli
+>md.nest
+(Verify promises about outputs before returning) >md.uli
+(Capture relationships between inputs and outputs) >md.uli
+(Detect corruption that occurred during processing) >md.uli
+>md.ul
+
+) Level 3: Invariants
+(Level 3: Invariants (Always-True Properties\29\) >md.b >md.uli
+>md.nest
+(Properties that must hold at all times) >md.uli
+(Checked at key state transitions) >md.uli
+(Represent fundamental system correctness constraints) >md.uli
+>md.ul
+
+>md.ul
+
+) ----------------------------------------------------------------------------
+) Assertion Example (Python)
+) ----------------------------------------------------------------------------
+) Concrete example showing all three levels in practice.
+
+(Example: All Three Levels) >md.h3
+
+(def transfer_funds(from_account, to_account, amount\29\:
+    # PRECONDITIONS - what must be true on entry
+    assert from_account != to_account, "Cannot transfer to same account"
+    assert amount > 0, f"Amount must be positive, got {amount}"
+    assert from_account.balance >= amount, \5C\
+        f"Insufficient funds: {from_account.balance} < {amount}"
+
+    # Capture state for postcondition
+    old_total = from_account.balance + to_account.balance
+
+    # Perform the operation
+    from_account.balance -= amount
+    to_account.balance += amount
+
+    # POSTCONDITION - what must be true on exit
+    assert from_account.balance + to_account.balance == old_total, \5C\
+        "Invariant violated: money created or destroyed"
+
+    # INVARIANT - always true for accounts
+    assert from_account.balance >= 0, "Account balance went negative"
+    assert to_account.balance >= 0, "Account balance went negative") (python) >md.code
+
+) ----------------------------------------------------------------------------
+) Assertion Messages as Documentation
+) ----------------------------------------------------------------------------
+) The message is as important as the check itself.
+
+(Assertion Messages) >md.h3
+
+(Every assertion message should answer three questions:) >md.p
+
+(What) (was expected?)
+(What) (actually occurred?)
+(Why) (does this matter?)
+>md.dul
+
+(# BAD: States the obvious
+assert x > 0, "x must be greater than 0"
+
+# GOOD: Provides context and values
+assert x > 0, f"Request count must be positive for rate limiting, got {x}"
+
+# BEST: Actionable guidance
+assert x > 0, \5C\
+    f"Request count must be positive for rate limiting, got {x}. "
+    f"Check if the counter was reset incorrectly or input validation failed.") (python) >md.code
+
+) ============================================================================
+) SECTION 3: TESTING FOR FALSIFICATION
+) ============================================================================
+) Testing should try to break code, not confirm it works. Property-based
+) testing and adversarial input generation over example-based testing.
+
+(Testing for Falsification) >md.h2
+
+(Traditional testing asks "does it work for these examples?" )
+(Falsification testing asks "can I find any input that breaks it?" )>concat
+(The difference is profound: one confirms, the other challenges.)>concat
+>md.p
+
+) ----------------------------------------------------------------------------
+) Property-Based vs Example-Based
+) ----------------------------------------------------------------------------
+) Properties express universal truths; examples are merely witnesses.
+
+(Property-Based Testing) >md.h3
+
+(Instead of testing specific examples, define properties that must
+always hold, then generate many inputs to search for counterexamples:) >md.p
+
+(# Example-based: proves almost nothing
+def test_sort_example(\29\:
+    assert sort([3, 1, 2]\29\ == [1, 2, 3]
+
+# Property-based: actively seeks counterexamples
+def test_sort_properties(\29\:
+    for _ in range(1000\29\:
+        data = generate_random_list(\29\
+        result = sort(data\29\
+
+        # Property 1: Output is sorted
+        assert all(result[i] <= result[i+1]
+                   for i in range(len(result\29\-1\29\\29\
+
+        # Property 2: Output is permutation of input
+        assert sorted(result\29\ == sorted(data\29\
+
+        # Property 3: Idempotent
+        assert sort(result\29\ == result) (python) >md.code
+
+) ----------------------------------------------------------------------------
+) Adversarial Input Generation
+) ----------------------------------------------------------------------------
+) Deliberately target edge cases, boundaries, and malformed inputs.
+
+(Adversarial Input Generation) >md.h3
+
+(For any function, systematically generate inputs designed to break it:) >md.p
+
+) These use >md.c on the term, so need >md.dli for the formatting
+(Empty inputs) >md.c (empty strings, empty lists, zero, None) >md.dli
+(Boundary values) >md.c (MAX_INT, MIN_INT, epsilon around boundaries) >md.dli
+(Type confusion) >md.c (strings where numbers expected, nested structures) >md.dli
+(Resource exhaustion) >md.c (very large inputs, deeply nested structures) >md.dli
+(Malformed data) >md.c (invalid UTF-8, truncated data, corruption) >md.dli
+(Timing attacks) >md.c (race conditions, reordering, delays) >md.dli
+>md.dul
+
+) ----------------------------------------------------------------------------
+) Integration-First Testing
+) ----------------------------------------------------------------------------
+) Test the real system. Mocks hide integration failures.
+
+(Integration-First Methodology) >md.h3
+
+(AVOID) >md.b >md.uli
+>md.nest
+(Unit test with mocks → Unit test with mocks → Integration test (maybe\29\) >md.uli
+>md.ul
+
+(PREFER) >md.b >md.uli
+>md.nest
+(Integration test (real system\29\ → Targeted unit tests for complex logic) >md.uli
+>md.ul
+
+>md.ul
+
+(The real system reveals what mocks hide:) >md.p
+
+(Network latency and timeouts) >md.uli
+(Concurrency and race conditions) >md.uli
+(Resource contention and deadlocks) >md.uli
+(Configuration mismatches) >md.uli
+(Real failure modes and error messages) >md.uli
+>md.ul
+
+) ----------------------------------------------------------------------------
+) The Decomposition Criterion
+) ----------------------------------------------------------------------------
+) Testability determines how to break down work, not arbitrary modularity.
+
+(Decomposition Criterion: Testability) >md.h3
+
+(If you cannot write a test for a step, you haven't decomposed )
+(it far enough, or you don't understand it yet.)>concat
+>md.b >md.p
+
+(BAD decomposition) >md.b ( - "Implement authentication" (How do you test this?\29\) >md.t >md.uli
+(GOOD decomposition) >md.b (:) >md.t >md.uli
+>md.nest
+(Validate password meets complexity rules) >md.uli
+(Hash password with salt) >md.uli
+(Compare hash against stored hash) >md.uli
+(Generate session token on success) >md.uli
+(Return appropriate error on failure) >md.uli
+>md.ul
+>md.ul
+
+(Each step is independently testable. Each test defines what success means.) >md.p
+
+) ============================================================================
+) SECTION 4: THE DEVELOPMENT CYCLE IN PRACTICE
+) ============================================================================
+) The cycle is: Design → Plan → Deconstruct → [Test → Code → Document] → Next
+) This section provides practical guidance for each phase.
+
+(The Development Cycle in Practice) >md.h2
+
+(The Cycle of Verified Construction) >md.h3
+
+(DESIGN) >md.b >md.oli
+>md.nest
+(Understand the problem before proposing solutions) >md.uli
+(Identify constraints, dependencies, and risks) >md.uli
+(Define what success looks like) >md.uli
+>md.ul
+
+(PLAN) >md.b >md.oli
+>md.nest
+(Structure the approach before writing code) >md.uli
+(Identify the sequence of changes) >md.uli
+(Anticipate integration points and failure modes) >md.uli
+>md.ul
+
+(DECONSTRUCT into testable steps) >md.b >md.oli
+>md.nest
+(Break work into independently verifiable units) >md.uli
+(Each step must have a clear test criterion) >md.uli
+(If you can't test it, decompose further) >md.uli
+>md.ul
+
+(For each step: TEST FIRST) >md.b >md.oli
+>md.nest
+(Write the test before the implementation) >md.uli
+(The test defines what would falsify success) >md.uli
+(Include adversarial cases, not just happy paths) >md.uli
+>md.ul
+
+(For each step: WRITE CODE) >md.b >md.oli
+>md.nest
+(Implement to make tests pass) >md.uli
+(Include assertions for preconditions and postconditions) >md.uli
+(Write clear, maintainable code) >md.uli
+>md.ul
+
+(For each step: DOCUMENT LEARNINGS) >md.b >md.oli
+>md.nest
+(What did you learn? (Often different from expected\29\) >md.uli
+(What assumptions were validated or invalidated?) >md.uli
+(What edge cases emerged?) >md.uli
+(Do this BEFORE moving to next step) >md.uli
+>md.ul
+
+(NEXT STEP) >md.b >md.oli
+>md.nest
+(Repeat until complete) >md.uli
+(Each step builds on verified foundation) >md.uli
+>md.ul
+
+>md.ol
+
+) ----------------------------------------------------------------------------
+) Phase Entry and Exit Criteria
+) ----------------------------------------------------------------------------
+) Clear boundaries prevent phase bleeding and sloppy transitions.
+
+(Phase Entry and Exit Criteria) >md.h3
+
+(Phase) (Entry Criterion) (Exit Criterion)
+>md.table.header
+(Design) (Problem statement exists) (Success criteria defined)
+>md.table.row
+(Plan) (Success criteria clear) (Testable steps identified)
+>md.table.row
+(Decompose) (Steps identified) (Each step has test criterion)
+>md.table.row
+(Test) (Test criterion defined) (Test code written and fails)
+>md.table.row
+(Code) (Test fails correctly) (Test passes, assertions hold)
+>md.table.row
+(Document) (Test passes) (Learnings recorded)
+>md.table.row
+>md.table
+
+) ============================================================================
+) SECTION 5: RUNTIME VERIFICATION
+) ============================================================================
+) Verification doesn't stop at deployment. Production systems need
+) continuous verification through health checks and monitoring.
+
+(Runtime Verification) >md.h2
+
+(Verification extends beyond tests into production. )
+(The same assertions that catch bugs in development )>concat
+(can detect corruption in production - if you let them.)>concat
+>md.p
+
+) ----------------------------------------------------------------------------
+) Health Checks and Watchdogs
+) ----------------------------------------------------------------------------
+) Active verification that the system remains correct while running.
+
+(Health Checks and Watchdogs) >md.h3
+
+) Definition list auto-bolds terms - no need for >md.b
+(Self-checks) (Periodic verification of internal invariants)
+(Dependency checks) (Verify external services remain available)
+(Data integrity checks) (Validate critical data hasn't corrupted)
+(Watchdog timers) (Detect hung processes or infinite loops)
+>md.dul
+
+) ----------------------------------------------------------------------------
+) Graceful Degradation
+) ----------------------------------------------------------------------------
+) When invariants fail, fail safely rather than corrupting further.
+
+(Graceful Degradation) >md.h3
+
+(When a runtime assertion fails in production:) >md.p
+
+) Ordered definition list - steps with descriptions
+(Log) (Capture full context for debugging)
+(Alert) (Notify operators immediately)
+(Contain) (Prevent corruption from spreading)
+(Degrade) (Fall back to safe mode if possible)
+(Recover) (Attempt automatic recovery or await intervention)
+>md.dol
+
+(Never silently continue after an invariant violation. )
+(The data is no longer trustworthy.)>concat
+>md.b >md.p
+
+) ============================================================================
+) SECTION 6: AI-ACCELERATED DEVELOPMENT
+) ============================================================================
+) AI transforms the economics of verification. What was impractical
+) with human-only effort becomes routine with AI assistance.
+
+(AI-Accelerated Development) >md.h2
+
+(AI processing power transforms verification from impractical ceremony )
+(into routine practice. Use AI to handle the verification burden that )>concat
+(makes rigorous approaches infeasible for most software.)>concat
+>md.p
+
+) ----------------------------------------------------------------------------
+) AI Capabilities by Phase
+) ----------------------------------------------------------------------------
+) Each cycle phase benefits from specific AI capabilities.
+
+(AI Capabilities by Phase) >md.h3
+
+(Phase) (AI Contribution)
+>md.table.header
+(Design) (Explore patterns, identify constraints, analyze existing code)
+>md.table.row
+(Plan) (Verify completeness, identify missing steps, find dependencies)
+>md.table.row
+(Decompose) (Suggest testable units, identify implicit assumptions)
+>md.table.row
+(Test) (Generate adversarial cases, property-based tests, edge cases)
+>md.table.row
+(Code) (Implement with assertions, verify against tests)
+>md.table.row
+(Document) (Summarize learnings, trace to requirements)
+>md.table.row
+>md.table
+
+) ----------------------------------------------------------------------------
+) Context Management
+) ----------------------------------------------------------------------------
+) Efficient use of AI context is itself an engineering discipline.
+
+(Context Management Principles) >md.h3
+
+(Delegate exploration to agents) (Don't read large files directly)
+(Parallel analysis) (Launch multiple agents for independent tasks)
+(Structured summaries) (Agent analysis beats raw file dumps)
+(Preserve context for implementation) (Don't waste tokens on exploration)
+>md.dul
+
+) ----------------------------------------------------------------------------
+) AI for Test Generation
+) ----------------------------------------------------------------------------
+) AI excels at generating adversarial test cases humans would miss.
+
+(AI-Assisted Test Generation) >md.h3
+
+(AI can systematically generate tests that humans often miss:) >md.p
+
+(Boundary conditions) (Values at edges of valid ranges)
+(Null and empty cases) (What happens with nothing?)
+(Type coercion edge cases) (String "0" vs integer 0)
+(Unicode edge cases) (Emoji, RTL text, zero-width characters)
+(Concurrency scenarios) (Race conditions, deadlocks)
+(Resource exhaustion) (What breaks under load?)
+>md.dul
+
+) ============================================================================
+) SECTION 7: LANGUAGE-SPECIFIC PATTERNS
+) ============================================================================
+) The principles are portable; the implementations vary by language.
+) This section provides concrete patterns for common languages.
+
+(Language-Specific Patterns) >md.h2
+
+(The philosophy is portable across all languages.
+These patterns show concrete implementations.) >md.p
+
+) ----------------------------------------------------------------------------
+) Python
+) ----------------------------------------------------------------------------
+
+(Python) >md.h3
+
+(# Assertions - use liberally
+assert precondition, f"Meaningful message with {context}"
+
+# Property-based testing with Hypothesis
+from hypothesis import given, strategies as st
+
+@given(st.lists(st.integers(\29\\29\\29\
+def test_sort_properties(data\29\:
+    result = sort(data\29\
+    # Properties checked automatically for many inputs
+    assert is_sorted(result\29\
+    assert is_permutation(result, data\29\
+
+# Type hints as documentation (not enforcement\29\
+def process(data: list[int]\29\ -> list[int]:
+    """Types hint intent; assertions verify it."""
+    assert isinstance(data, list\29\, f"Expected list, got {type(data\29\}"
+    return sorted(data\29\) (python) >md.code
+
+) ----------------------------------------------------------------------------
+) Shell/Bash
+) ----------------------------------------------------------------------------
+
+(Shell/Bash) >md.h3
+
+(#!/bin/bash
+# Strict mode - fail fast on errors
+set -euo pipefail
+
+# Assertions via guard functions
+assert_file_exists(\29\ {
+    local file="$1"
+    [[ -f "$file" ]] || {
+        echo "ASSERTION FAILED: File not found: $file" >&2
+        exit 1
+    }
+}
+
+assert_not_empty(\29\ {
+    local var_name="$1"
+    local var_value="$2"
+    [[ -n "$var_value" ]] || {
+        echo "ASSERTION FAILED: $var_name is empty" >&2
+        exit 1
+    }
+}
+
+# Use assertions
+assert_not_empty "CONFIG_PATH" "$CONFIG_PATH"
+assert_file_exists "$CONFIG_PATH") (bash) >md.code
+
+) ----------------------------------------------------------------------------
+) C/Systems Programming
+) ----------------------------------------------------------------------------
+
+(C/Systems Programming) >md.h3
+
+(/* Assertions with context */
+#define ASSERT_MSG(cond, msg, ...\29\ do { \5C\
+    if (!(cond\29\\29\ { \5C\
+        fprintf(stderr, "ASSERT FAILED %s:%d: " msg "\5C\n", \5C\
+                __FILE__, __LINE__, ##__VA_ARGS__\29\; \5C\
+        abort(\29\; \5C\
+    } \5C\
+} while(0\29\
+
+/* Defensive programming */
+void* safe_malloc(size_t size\29\ {
+    ASSERT_MSG(size > 0, "Allocation size must be positive: %zu", size\29\;
+    ASSERT_MSG(size < MAX_ALLOC, "Allocation too large: %zu", size\29\;
+
+    void* ptr = malloc(size\29\;
+    ASSERT_MSG(ptr != NULL, "malloc failed for size %zu", size\29\;
+
+    return ptr;
+}
+
+/* Postcondition verification */
+int* create_sorted_array(int* input, size_t len\29\ {
+    int* result = /* ... sorting logic ... */;
+
+    /* Postcondition: result is sorted */
+    for (size_t i = 1; i < len; i++\29\ {
+        ASSERT_MSG(result[i-1] <= result[i],
+                   "Sort postcondition violated at index %zu", i\29\;
+    }
+
+    return result;
+}) (c) >md.code
+
+) ============================================================================
+) SECTION 8: ANTI-PATTERNS AND FAILURE MODES
+) ============================================================================
+) Recognizing what to avoid is as important as knowing what to do.
+
+(Anti-Patterns and Failure Modes) >md.h2
+
+(Anti-Pattern 1: The Quick Fix Trap) >md.h3
+
+(WRONG:) >md.b >md.p
+
+(# Skip this for now, fix later
+if problematic_condition:
+    return None  # TODO: handle properly) (python) >md.code
+
+(RIGHT:) >md.b >md.p
+
+(# Understand root cause, fix properly
+assert not problematic_condition, \5C\
+    f"Unexpected state: {context}. Investigate why this occurs.") (python) >md.code
+
+(Anti-Pattern 2: Mock-Heavy Testing) >md.h3
+
+(WRONG:) >md.b >md.p
+
+(# Everything mocked - tests pass, integration fails
+@mock.patch('database'\29\
+@mock.patch('network'\29\
+@mock.patch('filesystem'\29\
+def test_everything_mocked(\29\:
+    # This test proves nothing about real behavior
+    pass) (python) >md.code
+
+(RIGHT:) >md.b >md.p
+
+(# Test real integration, mock only external dependencies
+def test_with_real_database(test_db\29\:
+    # Uses real database, real queries
+    result = service.process(test_db\29\
+    assert result.saved_to_db(\29\) (python) >md.code
+
+(Anti-Pattern 3: Type-System False Confidence) >md.h3
+
+(WRONG:) >md.b >md.p
+
+(# "It type-checks, therefore it's correct"
+def process(data: ValidatedInput\29\ -> SafeOutput:
+    # Types say it's valid, but is it really?
+    return transform(data\29\) (python) >md.code
+
+(RIGHT:) >md.b >md.p
+
+(# Types hint, assertions verify
+def process(data: ValidatedInput\29\ -> SafeOutput:
+    assert data.is_actually_validated(\29\, \5C\
+        "ValidatedInput was not actually validated"
+    result = transform(data\29\
+    assert result.meets_safety_criteria(\29\, \5C\
+        "Transform produced unsafe output"
+    return result) (python) >md.code
+
+(Anti-Pattern 4: Silent Failure) >md.h3
+
+(WRONG:) >md.b >md.p
+
+(try:
+    risky_operation(\29\
+except Exception:
+    pass  # Silently swallow all errors) (python) >md.code
+
+(RIGHT:) >md.b >md.p
+
+(try:
+    risky_operation(\29\
+except SpecificException as e:
+    logger.error("Operation failed: %s. Context: %s", e, context\29\
+    raise OperationError(f"Failed with {e}"\29\ from e) (python) >md.code
+
+(Anti-Pattern 5: Skipping the Cycle) >md.h3
+
+(WRONG) ("I'll write tests after the code works")
+(WRONG) ("Documentation can wait until the end")
+(WRONG) ("It's a small change, no need to plan")
+(RIGHT) (Follow the cycle every time, adjust scope to match)
+>md.dul
+
+) ============================================================================
+) SECTION 9: SUMMARY AND QUICK REFERENCE
+) ============================================================================
+
+(Summary and Quick Reference) >md.h2
+
+(The Cycle (Memorize This\29\) >md.h3
+
+(Design → Plan → Deconstruct → [Test → Code → Document] → Next) >md.b >md.p
+
+(The Philosophy (Internalize This\29\) >md.h3
+
+(Safety through verbs, not nouns.) >md.uli
+(Falsifiability as the foundation.) >md.uli
+(Types as hints, assertions as guarantees.) >md.uli
+(Test the real system.) >md.uli
+(Document before moving on.) >md.uli
+>md.ul
+
+(The Questions (Ask Every Time\29\) >md.h3
+
+(Before implementing) (What would falsify this?)
+(Before committing) (Did I try to break it?)
+(Before moving on) (What did I learn?)
+>md.dul
+
+>md.hr
+
+(Prove you understand the problem by defining how you would falsify )
+(the solution, then build the solution, then record what you learned.)>concat
+>md.i >md.b >md.p
+
+) ============================================================================
+) DOCUMENT FINALIZATION
+) ============================================================================
+) Render the completed document to disk.
+
+>md.print

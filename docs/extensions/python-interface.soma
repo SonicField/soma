@@ -1,0 +1,112 @@
+(python) >use (markdown) >use
+>md.start
+
+(Python FFI Interface) >md.h1
+
+(Extension for Python Reference Implementation) >md.p
+
+(Overview) >md.h2
+
+(The Python reference implementation provides an extension enabling SOMA programs to call Python code. Following SOMA's philosophy of minimal primitives, this extension adds zero global builtins instead, it provides namespaced operations under use.python.* that are loaded via the core >use mechanism.) >md.p
+
+(Architecture) >md.h3
+
+(Core language: Only adds >use to global namespace (the universal extension loader))
+(Python extension: Provides use.python.* builtins (FFI, file loading, etc.))
+(SOMA wrappers: Extension includes SOMA code that creates friendly macros in the Store)
+(stdlib.soma: Auto\2D\loaded by VM, 100% pure SOMA (no extension dependencies))
+>md.ul
+
+(Loading the Python Extension) >md.h2
+
+(After running (python) >use, you have access to:) >md.p
+
+(Builtins: >use.python.call, >use.python.load, etc. (primitive operations))
+(Store macros: use.python.isException, use.python.safe, etc. (created by setup code))
+>md.ul
+
+(Core Builtins) >md.h2
+
+(>use.python.call \2D\ FFI Primitive) >md.h3
+
+(AL Contract:) >md.p
+
+(Consumes: Callable name (string), then arguments until Void terminator)
+(Produces: Return value from Python callable and exception object)
+>md.ul
+
+(Behavior:) >md.p
+
+(Pop callable name from AL (must be a string))
+(Pop values from AL until encountering Void)
+(Reverse the collected arguments)
+(Call the Python callable with those arguments)
+(Push return value (or Void if exception))
+(Push exception object (or Void if successful))
+>md.ol
+
+(Basic Examples) >md.h3
+
+(Call Python int(string value):) >md.p
+
+((python) >use Void (42) (int) >use.python.call !_.exc !_.ret) soma >md.code
+
+(Call Python pow function:) >md.p
+
+((Void (2) (10) (pow) >use.python.call !_.exc !_.ret Result: _.ret equals 1024) soma >md.code
+
+(>use.python.load \2D\ Load SOMA Files) >md.h3
+
+(AL Contract: Consumes file path (string), produces nothing (executes loaded code)) >md.p
+
+(Load SOMA libraries:) >md.p
+
+(((python) >use (extensions/python_ffi_advanced.soma) >use.python.load (myapp/main.soma) >use.python.load) soma >md.code
+
+(>use.python.import \2D\ Import Python Modules) >md.h3
+
+(AL Contract: Consumes module name, produces success boolean) >md.p
+
+(Error Handling Patterns) >md.h2
+
+(Pattern 1: Immediate Check) >md.h3
+
+(The basic pattern is to call >use.python.call, store the exception and return value, then check if exception is Void (success) or an exception object (failure).) >md.p
+
+(Pattern 2: Store Both for Later) >md.h3
+
+(Save the exception and return value to named variables for use later in your code.) >md.p
+
+(Pattern 3: Exception Propagation) >md.h3
+
+(Check if exception occurred and either propagate it up or return the successful result.) >md.p
+
+(Best Practices) >md.h2
+
+(Always Load Extension First) >md.h3
+
+(Always execute (python) >use before attempting to use any FFI operations.) >md.p
+
+(Check Exceptions) >md.h3
+
+(After every Python call, store both the exception and return value, then check which case occurred.) >md.p
+
+(Build Layered Abstractions) >md.h3
+
+(Start with low\2D\level FFI provided by the extension. Build safe wrappers for exception handling, then domain\2D\specific layers for convenience.) >md.p
+
+(Use Provided Macros) >md.h3
+
+(Use the provided Store macros like use.python.isException and use.python.safe rather than reimplementing the same logic.) >md.p
+
+(Complete Usage Example) >md.h2
+
+(Loading Python, importing modules, and chaining calls:) >md.p
+
+((python) >use (math) >use.python.import Void (45) (math.radians) then Void result (math.sin) >use.python.call) soma >md.code
+
+(See Original Documentation) >md.h2
+
+(Refer to the original markdown documentation at /home/alexturner/local/soma/docs/extensions/python-interface.md for complete Python extension reference, including helper library patterns, implementation architecture details, and comparison to other language FFI systems.) >md.p
+
+(python-interface.soma) >md.render

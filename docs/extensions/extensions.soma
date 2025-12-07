@@ -1,0 +1,663 @@
+(python) >use (markdown) >use
+
+(12. Extensions and the `>use` System) >md.h1
+
+(Implementation-Specific Features via Dynamic Loading) >md.p
+
+(Extensions are implementation-specific features that augment SOMA's minimal core with platform capabilities while maintaining the language's philosophical principles. The reference Python implementation provides the `>use` builtin for dynamic extension loading and a Python FFI extension for platform integration.) >md.p
+
+(12.1 The `>use` Builtin) >md.h2
+
+(The `>use` builtin enables dynamic loading of extensions at runtime.) >md.p
+
+(AL Before:  [(extension-name), ...]) >md.p
+(AL After:   [...]) >md.p
+(Effect:     Loads named extension, registers its builtins under use.* namespace) >md.p
+
+(python (python) >use    \29 Loads Python FFI extension
+                 \29 Registers: use.python.call, use.python.load, use.python.import) >md.code
+
+(Design Principles:) >md.p
+
+(1. **Minimal global namespace pollution** - Only `>use` in global namespace) >md.p
+(2. **Namespaced builtins** - Extensions register under `use.*` prefix) >md.p
+(3. **Idempotent loading** - Loading same extension multiple times is safe) >md.p
+(4. **No dependencies** - Extensions can't depend on each other \28yet\29) >md.p
+
+(soma ) Load extension
+\28python\29 >use
+
+) Extension builtins now available
+Void 2 10 \28pow\29 >use.python.call    ) [1024, Void]) >md.code
+
+(12.2 Extension Architecture) >md.h2
+
+(Extension Registration) >md.h3
+
+(Extensions register themselves via the VM's extension system:) >md.p
+
+(python def register\28vm\29:
+    """Register Python FFI builtins."""
+    vm.register_extension_builtin\28'python.call', call_builtin\29
+    vm.register_extension_builtin\28'python.load', load_builtin\29
+    vm.register_extension_builtin\28'python.import', import_builtin\29) >md.code
+
+(Namespace Rules) >md.h3
+
+(- **Global namespace:** Only `>use` allowed) >md.p
+(- **Extension namespace:** `use.<ext>.*` pattern) >md.p
+(- **No nesting:** `use.python.call` not `use.python.ffi.call`) >md.p
+(- **Validation:** VM enforces namespace structure) >md.p
+
+(python vm.register_extension_builtin\28'my_func', func\29      # Error: no namespace
+vm.register_extension_builtin\28'global.func', func\29  # Error: reserved) >md.code
+
+(python vm.register_extension_builtin\28'python.call', func\29  # ✓
+vm.register_extension_builtin\28'http.get', func\29     # ✓) >md.code
+
+(12.3 Available Extensions) >md.h2
+
+(Python FFI Extension) >md.h3
+
+(**Status:** Complete \28v1.1\29) >md.p
+(**Load:** `\28python\29 >use`) >md.p
+(**Documentation:** [extensions/Python-Interface.md]\28extensions/Python-Interface.md\29) >md.p
+
+(**Builtins:**) >md.p
+(- `>use.python.call` - Call Python functions) >md.p
+(- `>use.python.load` - Load SOMA files) >md.p
+(- `>use.python.import` - Import Python modules) >md.p
+
+(soma \28python\29 >use
+
+) Basic FFI call
+Void \2842\29 \28int\29 >use.python.call           ) [42, Void]
+
+) Mathematical computation
+Void 2 10 \28pow\29 >use.python.call           ) [1024, Void]
+
+) Import and use module
+\28math\29 >use.python.import                   ) [True] if success
+Void 3.14159 \28math.sin\29 >use.python.call   ) [0.0000026..., Void]) >md.code
+
+(See [Python-Interface.md]\28extensions/Python-Interface.md\29 for complete specification.) >md.p
+
+(12.4 Standard Library Auto-Loading) >md.h2
+
+(The VM automatically loads `soma/stdlib.soma` on initialization. This is **not** an extension - it's pure SOMA code with no platform dependencies.) >md.p
+
+(python # Python API
+from soma.vm import VM, run_soma_program
+
+vm = VM\28\29                    # Stdlib auto-loads \28default\29
+vm = VM\28load_stdlib=False\29   # Disable for testing/embedding) >md.code
+
+(**Why Auto-Load:**) >md.p
+(- Stdlib is 100% pure SOMA \28no FFI dependencies\29) >md.p
+(- Provides essential derived operations \28`>dup`, `>drop`, `>swap`, etc.\29) >md.p
+(- Users expect these to be available) >md.p
+(- Can be disabled for minimal embeddings) >md.p
+
+(**What's in Stdlib:**) >md.p
+(- Boolean logic \28`>not`, `>and`, `>or`\29) >md.p
+(- Comparison operators \28`>>`, `>=`, `><=`, `>==`, `>!=`\29) >md.p
+(- Stack manipulation \28`>dup`, `>drop`, `>swap`, `>over`, `>rot`\29) >md.p
+(- Control flow helpers \28`>if`, `>unless`, `>when`\29) >md.p
+(- Higher-order operations \28`>times`, `>map`, `>filter`\29) >md.p
+
+(See [11-stdlib.md]\2811-stdlib.md\29 for complete stdlib reference.) >md.p
+
+(12.5 Creating New Extensions) >md.h2
+
+(Step 1: Define the Extension Module) >md.h3
+
+(Create `soma/extensions/myext.py`:) >md.p
+
+(python def my_builtin\28vm\29:
+    """Example builtin implementation."""
+    from soma.vm import Void
+
+    arg = vm.al.pop\28\29
+    result = f"Processed: {arg}"
+
+    vm.al.append\28result\29
+    vm.al.append\28Void\29  # No exception
+
+def register\28vm\29:
+    """Register extension builtins."""
+    vm.register_extension_builtin\28'myext.process', my_builtin\29) >md.code
+
+(Step 2: Use in SOMA) >md.h3
+
+(soma \28myext\29 >use
+\28hello\29 >use.myext.process    ) ["Processed: hello", Void]) >md.code
+
+(Step 3: Build SOMA Ecosystem) >md.h3
+
+(Create helper wrappers in pure SOMA:) >md.p
+
+(soma ) Load extension
+\28myext\29 >use
+
+) Build convenience wrappers
+{ >use.myext.process >isVoid >not >drop } !myext.safe
+{ \28myext-\29 >swap >concat >use.myext.process } !myext.prefixed
+
+) Use high-level abstractions
+\28world\29 >myext.safe            ) Just the result, discards exception
+\28test\29 >myext.prefixed         ) Adds prefix via composition) >md.code
+
+(12.6 Extension Best Practices) >md.h2
+
+(DO: Minimal Primitives) >md.h3
+
+(python # One FFI gateway
+vm.register_extension_builtin\28'python.call', call_builtin\29) >md.code
+
+(python # Don't add dozens of specific builtins
+vm.register_extension_builtin\28'python.pow', pow_builtin\29
+vm.register_extension_builtin\28'python.sqrt', sqrt_builtin\29
+vm.register_extension_builtin\28'python.sin', sin_builtin\29
+# ... 50 more builtins) >md.code
+
+(DO: Dual Return Pattern) >md.h3
+
+(python def ffi_builtin\28vm\29:
+    try:
+        result = risky_operation\28\29
+        vm.al.append\28result if result is not None else Void\29
+        vm.al.append\28Void\29  # No exception
+    except Exception as e:
+        vm.al.append\28Void\29
+        vm.al.append\28e\29     # Exception) >md.code
+
+(python def ffi_builtin\28vm\29:
+    result = risky_operation\28\29  # Exception crashes VM!
+    vm.al.append\28result\29) >md.code
+
+(DO: Void-Terminated Arguments) >md.h3
+
+(soma Void arg1 arg2 arg3 \28func\29 >use.ext.call
+) Clear termination, variable arity) >md.code
+
+(soma \2843\29 arg1 arg2 arg3 \28func\29 >use.ext.call
+) Requires counting arguments - fragile) >md.code
+
+(DO: Build Ecosystem in SOMA) >md.h3
+
+(soma \28http\29 >use
+
+) Build safe wrappers in SOMA
+{
+  !_.url
+  Void _.url \28http.get\29 >use.http.call
+  !_.exc !_.resp
+  _.exc >isVoid >not
+    { \28HTTP Error\29 >print Void }
+    { _.resp }
+  >choose
+} !http.safe.get) >md.code
+
+(python # Don't add builtins for every wrapper
+vm.register_extension_builtin\28'http.safe_get', safe_get_builtin\29
+vm.register_extension_builtin\28'http.retry', retry_builtin\29
+vm.register_extension_builtin\28'http.timeout', timeout_builtin\29) >md.code
+
+(12.7 Extension vs Standard Library) >md.h2
+
+(**When to make an Extension:**) >md.p
+(- Requires platform-specific code \28FFI, I/O, system calls\29) >md.p
+(- Cannot be implemented in pure SOMA) >md.p
+(- Needs implementation language access \28Python, C, JavaScript\29) >md.p
+
+(**When to add to Standard Library:**) >md.p
+(- Can be built from existing builtins) >md.p
+(- Pure SOMA implementation) >md.p
+(- Platform-independent) >md.p
+(- Universally useful across implementations) >md.p
+
+(**Examples:**) >md.p
+
+(| Feature | Category | Rationale |
+|---------|----------|-----------|
+| `>python.call` | Extension | Requires Python runtime |
+| `>http.get` | Extension | Requires networking primitives |
+| `>dup` | Stdlib | Built from `{ !_.x _.x _.x }` pattern |
+| `>if` | Stdlib | Built from `>choose` + blocks |
+| `>times` | Stdlib | Built from `>chain` + blocks |) >md.p
+
+(12.8 Extension Security) >md.h2
+
+(Extensions bypass SOMA's memory safety guarantees. Best practices:) >md.p
+
+(Input Validation) >md.h3
+
+(python def call_builtin\28vm\29:
+    if len\28vm.al\29 < 2:
+        raise RuntimeError\28"AL underflow: python.call requires [Void, args..., name]"\29
+
+    callable_name = vm.al.pop\28\29
+    if not isinstance\28callable_name, str\29:
+        raise RuntimeError\28f"python.call requires string name, got {type\28callable_name\29}"\29) >md.code
+
+(Exception Safety) >md.h3
+
+(python def safe_builtin\28vm\29:
+    try:
+        # Risky operation
+        result = do_something\28\29
+        vm.al.append\28result if result is not None else Void\29
+        vm.al.append\28Void\29
+    except Exception as e:
+        # Never let exceptions escape to VM
+        vm.al.append\28Void\29
+        vm.al.append\28e\29) >md.code
+
+(Resource Management) >md.h3
+
+(python def file_builtin\28vm\29:
+    try:
+        with open\28path, 'r'\29 as f:  # Use context managers
+            data = f.read\28\29
+        vm.al.append\28data\29
+        vm.al.append\28Void\29
+    except Exception as e:
+        vm.al.append\28Void\29
+        vm.al.append\28e\29) >md.code
+
+(12.9 Extension Lifecycle) >md.h2
+
+(Loading Sequence) >md.h3
+
+(1. User code: `\28extension-name\29 >use`) >md.p
+(2. VM pops extension name from AL) >md.p
+(3. VM checks if already loaded \28idempotent\29) >md.p
+(4. VM imports `soma.extensions.{name}`) >md.p
+(5. VM calls `register\28vm\29` function) >md.p
+(6. Extension registers builtins via `vm.register_extension_builtin\28\29`) >md.p
+(7. Builtins available at `use.{name}.*` paths) >md.p
+
+(Example Loading Flow) >md.h3
+
+(soma \28python\29 >use
+) VM loads soma/extensions/python.py
+) Calls python.register\28vm\29
+) Registers: use.python.call, use.python.load, use.python.import
+
+Void 10 \28abs\29 >use.python.call    ) Now available!) >md.code
+
+(Idempotent Loading) >md.h3
+
+(soma \28python\29 >use
+\28python\29 >use    ) No-op, already loaded
+\28python\29 >use    ) Still a no-op
+
+Void 5 \28abs\29 >use.python.call    ) Works fine) >md.code
+
+(12.10 Complete Example: HTTP Extension) >md.h2
+
+(Here's how to design a hypothetical HTTP extension following SOMA principles:) >md.p
+
+(Extension Implementation \28Python\29) >md.h3
+
+(python # soma/extensions/http.py
+import urllib.request
+from soma.vm import Void
+
+def get_builtin\28vm\29:
+    """
+    HTTP GET request.
+
+    AL Before: [url, Void, ...]
+    AL After:  [response_body, exception, ...]
+    """
+    url = vm.al.pop\28\29
+    terminator = vm.al.pop\28\29
+
+    if not isinstance\28terminator, type\28Void\29\29:
+        raise RuntimeError\28"http.get requires Void terminator"\29
+
+    try:
+        with urllib.request.urlopen\28url\29 as response:
+            body = response.read\28\29.decode\28'utf-8'\29
+        vm.al.append\28body\29
+        vm.al.append\28Void\29
+    except Exception as e:
+        vm.al.append\28Void\29
+        vm.al.append\28e\29
+
+def register\28vm\29:
+    vm.register_extension_builtin\28'http.get', get_builtin\29) >md.code
+
+(SOMA Ecosystem) >md.h3
+
+(soma ) Load extension
+\28http\29 >use
+
+) Build safe wrapper
+{
+  !_.url
+  Void _.url >use.http.get
+  !_.exc !_.resp
+
+  _.exc >isVoid >not
+    { \28HTTP request failed\29 >print Nil }
+    { _.resp }
+  >choose
+} !http.safe.get
+
+) Build retry logic
+{
+  !_.url !_.attempts
+  {
+    _.url >http.safe.get
+    !_.result
+
+    _.result >isNil
+      {
+        _.attempts 1 >- !_.attempts
+        _.attempts 0 >>
+          { >loop }
+          { Nil }
+        >choose >^
+      }
+      { _.result }
+    >choose
+  } !loop
+  >loop
+} !http.retry.get
+
+) Use high-level abstraction
+\28https://api.example.com/data\29 3 >http.retry.get
+) Returns data or Nil after 3 attempts) >md.code
+
+(12.11 Testing Extensions) >md.h2
+
+(Unit Tests \28Python\29) >md.h3
+
+(python # tests/test_http_extension.py
+import unittest
+from soma.vm import VM, run_soma_program, Void
+
+class TestHttpExtension\28unittest.TestCase\29:
+    def test_http_extension_loads\28self\29:
+        vm = VM\28load_stdlib=False\29
+        vm.load_extension\28'http'\29
+        self.assertIn\28'http', vm.loaded_extensions\29
+
+    def test_http_get_builtin_exists\28self\29:
+        code = "\28http\29 >use use.http.get >isVoid >not"
+        al = run_soma_program\28code\29
+        self.assertEqual\28al[-1], True\29) >md.code
+
+(Integration Tests \28SOMA\29) >md.h3
+
+(soma ) tests/soma/06_http_extension.soma
+
+) TEST: Load HTTP extension
+) EXPECT_AL: []
+\28http\29 >use
+
+) TEST: HTTP GET builtin exists
+) EXPECT_AL: [True]
+\28http\29 >use
+use.http.get >isVoid >not) >md.code
+
+(Error Tests) >md.h3
+
+(soma ) tests/soma/06_http_errors.soma
+
+) TEST: HTTP GET requires Void terminator
+) EXPECT_ERROR: RuntimeError
+\28http\29 >use
+\28invalid-terminator\29 \28http://example.com\29 >use.http.get) >md.code
+
+(12.12 Stdlib vs Extensions) >md.h2
+
+(What is Stdlib?) >md.h3
+
+(**Located:** `soma/stdlib.soma`) >md.p
+(**Language:** 100% pure SOMA code) >md.p
+(**Dependencies:** Only core builtins \28no extensions\29) >md.p
+(**Loading:** Auto-loaded by VM on initialization) >md.p
+
+(soma ) Pure SOMA - no platform dependencies
+{ !_.x !_.y _.x _.y } !swap
+{ !_.x _.x _.x } !dup
+{ !_.x } !drop) >md.code
+
+(What is an Extension?) >md.h3
+
+(**Located:** `soma/extensions/*.py`) >md.p
+(**Language:** Implementation language \28Python, C, Rust, etc.\29) >md.p
+(**Dependencies:** Platform-specific libraries) >md.p
+(**Loading:** Explicit via `>use`) >md.p
+
+(python # Requires Python runtime
+def call_builtin\28vm\29:
+    import importlib
+    # ... Python-specific code) >md.code
+
+(Decision Matrix) >md.h3
+
+(| Feature | Pure SOMA? | Platform Code? | Category |
+|---------|------------|----------------|----------|
+| `>dup` | ✓ | ✗ | Stdlib |
+| `>if` | ✓ | ✗ | Stdlib |
+| `>times` | ✓ | ✗ | Stdlib |
+| `>use.python.call` | ✗ | ✓ | Extension |
+| `>use.http.get` | ✗ | ✓ | Extension |
+| `>use.file.read` | ✗ | ✓ | Extension |) >md.p
+
+(12.13 Python FFI Quick Reference) >md.h2
+
+(The reference implementation includes a complete Python FFI extension.) >md.p
+
+(Loading) >md.h3
+
+(soma \28python\29 >use    ) Load once at program start) >md.code
+
+(Calling Functions) >md.h3
+
+(soma ) Syntax: Void arg1 arg2 ... argN \28callable-name\29 >use.python.call
+) Returns: [result, exception] where one is always Void
+
+Void \2842\29 \28int\29 >use.python.call        ) [42, Void]
+Void 2 10 \28pow\29 >use.python.call        ) [1024, Void]
+Void \28HELLO\29 \28str.lower\29 >use.python.call  ) ["hello", Void]) >md.code
+
+(Error Handling) >md.h3
+
+(soma ) Exception case
+Void \28invalid\29 \28int\29 >use.python.call
+) Returns: [Void, <Exception object>]
+
+!_.exc !_.result
+_.exc >isVoid >not
+  { \28Error occurred\29 >print }
+  { _.result >print }
+>choose) >md.code
+
+(Loading SOMA Files) >md.h3
+
+(soma Void \28path/to/file.soma\29 >use.python.load
+) Executes SOMA code in current VM context) >md.code
+
+(Importing Modules) >md.h3
+
+(soma \28math\29 >use.python.import    ) [True] if success, [False] if failure) >md.code
+
+(**Complete Example:**) >md.p
+
+(soma \28python\29 >use
+
+) Import math module
+\28math\29 >use.python.import >drop
+
+) Calculate sin\28π/2\29
+Void 3.14159 2 >/ \28math.sin\29 >use.python.call
+!_.exc !_.result
+
+_.exc >isVoid
+  { _.result >print }
+  { \28Error calculating sin\29 >print }
+>choose) >md.code
+
+(12.14 Extension Design Patterns) >md.h2
+
+(Pattern 1: Gateway Primitive + SOMA Wrappers) >md.h3
+
+(python vm.register_extension_builtin\28'db.query', query_builtin\29) >md.code
+
+(soma { Void >swap \28SELECT * FROM users\29 >use.db.query } !db.users.all
+{ !_.id Void _.id \28SELECT * FROM users WHERE id=?\29 >use.db.query } !db.users.get
+{ !_.email Void _.email \28SELECT * FROM users WHERE email=?\29 >use.db.query } !db.users.find) >md.code
+
+(Pattern 2: Exception Unwrapping) >md.h3
+
+(soma ) Generic exception checker
+{ >isVoid >not } !isException
+
+) Generic result extractor \28throws away exception\29
+{ >swap >drop } !getResult
+
+) Safe wrapper pattern
+{
+  !_.operation
+  _.operation >^
+  !_.exc !_.result
+
+  _.exc >isException
+    { \28Operation failed\29 >print Nil }
+    { _.result }
+  >choose
+} !safe.execute) >md.code
+
+(Pattern 3: Type Conversions) >md.h3
+
+(soma \28python\29 >use
+
+) SOMA → Python conversions \28automatic\29
+42 ) int → Python int
+\28hello\29 ) str → Python str
+
+) Python → SOMA conversions
+Void \28\29 \28list\29 >use.python.call        ) Python list
+Void \28\29 \28dict\29 >use.python.call        ) Python dict
+Void None \28id\29 >use.python.call        ) Python None → SOMA Void) >md.code
+
+(12.15 Future Extensions) >md.h2
+
+(Potential extensions for different implementations:) >md.p
+
+(File I/O Extension) >md.h3
+
+(soma \28file\29 >use
+Void \28path.txt\29 >use.file.read     ) [contents, exception]
+Void \28data\29 \28path.txt\29 >use.file.write) >md.code
+
+(Network Extension) >md.h3
+
+(soma \28net\29 >use
+Void \28example.com\29 80 >use.net.connect
+Void \28GET /\29 >use.net.send
+>use.net.receive) >md.code
+
+(System Extension) >md.h3
+
+(soma \28sys\29 >use
+Void \28ls\29 \28-la\29 >use.sys.exec      ) Run shell commands
+>use.sys.env.get                   ) Environment variables) >md.code
+
+(Graphics Extension) >md.h3
+
+(soma \28gfx\29 >use
+Void 800 600 \28Window\29 >use.gfx.create
+Void 100 100 50 >use.gfx.circle
+>use.gfx.render) >md.code
+
+(12.16 Embedding SOMA) >md.h2
+
+(Extensions enable embedding SOMA in larger applications:) >md.p
+
+(Python Integration) >md.h3
+
+(python from soma.vm import VM
+
+# Create VM without stdlib for minimal embedding
+vm = VM\28load_stdlib=False\29
+
+# Register custom builtins
+def app_callback\28vm\29:
+    data = vm.al.pop\28\29
+    print\28f"App received: {data}"\29
+    vm.al.append\28True\29
+
+vm.register_extension_builtin\28'app.callback', app_callback\29
+
+# Execute SOMA code
+vm.execute_code\28"\28app\29 >use"\29
+vm.execute_code\28"\28Hello from SOMA\29 >use.app.callback"\29) >md.code
+
+(Bidirectional Communication) >md.h3
+
+(python # Python → SOMA
+vm.execute_code\28"42 !shared.value"\29
+
+# SOMA → Python
+result = vm.store.read_value\28['shared', 'value']\29
+print\28f"SOMA computed: {result}"\29) >md.code
+
+(12.17 Specification Compliance) >md.h2
+
+(**Core SOMA:** Portable across all implementations) >md.p
+(**Extensions:** Implementation-specific, not portable) >md.p
+
+(soma ) Works everywhere - uses only core builtins
+{ !_.x _.x _.x >* } !square
+5 >square    ) [25]) >md.code
+
+(soma ) Only works in Python implementation
+\28python\29 >use
+Void 5 \28abs\29 >use.python.call) >md.code
+
+(**Best Practice:** Keep core logic portable, use extensions at boundaries:) >md.p
+
+(soma ) Core business logic \28portable\29
+{ !_.x _.x 2 >* 3 >+ } !compute
+
+) I/O via extension \28not portable\29
+{
+  !_.filename
+  _.filename >file.read.safe
+  !_.data
+  _.data >compute
+  _.data >file.write.safe
+} !process.file) >md.code
+
+(12.18 Summary) >md.h2
+
+(**The `>use` System:**) >md.p
+(- One builtin \28`>use`\29 enables entire extension ecosystem) >md.p
+(- Extensions register under `use.*` namespace) >md.p
+(- Idempotent loading, no inter-extension dependencies) >md.p
+(- Maintains SOMA's minimal core + maximal expressiveness) >md.p
+
+(**Design Philosophy:**) >md.p
+(- Add one primitive gateway, build ecosystem in SOMA) >md.p
+(- Dual return pattern for error handling) >md.p
+(- Void-terminated arguments for variable arity) >md.p
+(- Keep core logic portable, extensions at boundaries) >md.p
+
+(**Available Now:**) >md.p
+(- Python FFI extension \28[Python-Interface.md]\28extensions/Python-Interface.md\29\29) >md.p
+(- Auto-loading stdlib \28pure SOMA, no extensions needed\29) >md.p
+
+(**Next Steps:**) >md.p
+(- See [extensions/Python-Interface.md]\28extensions/Python-Interface.md\29 for Python FFI details) >md.p
+(- Check `soma/extensions/` for implementation examples) >md.p
+(- Create your own extensions following the patterns above) >md.p
+
+(*Category: Extensions | Version: 1.1 | Date: 25 Nov 2025*) >md.p
+
+>md.print

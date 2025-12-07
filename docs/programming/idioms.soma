@@ -1,0 +1,43 @@
+(python) >use (markdown) >use
+
+>md.start
+
+>md.h1 (SOMA Programming Idioms and Best Practices)
+
+>md.p (SOMA v1.1 Language Specification - Programming Style Guide)
+>md.p (Category: Tutorial)
+>md.p (Date: 24 November 2025)
+
+>md.h2 (Introduction)
+
+>md.p (SOMA uses execution scope not lexical scope)
+
+>md.h3 (The Core Principle)
+
+>md.p (Blocks execute with fresh Registers without automatic access to parent scope)
+
+(Understanding Lexical vs Execution Scope)
+>md.h2
+
+(Wrong assumption in SOMA)
+>md.p
+
+(Does not work - assuming lexical scope)
+(42 !_.x)
+({{ _.x >toString }})
+Nil >md.code
+
+(Correct approach with context passing)
+>md.p
+
+(Works correctly - explicit context passing)
+(42 !_.x)
+(_.)
+(>{{ !_. _.x >toString }})
+Nil >md.code
+
+>md.h2 (Summary)
+
+>md.p (SOMA uses execution scope by design)
+
+(idioms.md) >md.render

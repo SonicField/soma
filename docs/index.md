@@ -70,19 +70,36 @@ The reference implementation is **production-ready** and demonstrates all langua
 
 ## Table of Contents
 
-1. [Philosophy](01-philosophy.md) - SOMA's design principles and relationship to other computational models
-2. [Lexical Analysis and Parsing](02-lexer.md) - Tokens, AST nodes, path parsing, and validation
-3. [Machine Model](03-machine-model.md) - The Accumulator List, Store, Registers, and Values
-4. [Blocks and Execution](04-blocks-execution.md) - First-class blocks and the execution model
-5. [Control Flow](05-control-flow.md) - `>choose`, `>chain`, and algebraic flow control
-6. [Built-ins](06-builtins.md) - Core operations and their AL contracts
-7. [Comparisons](07-comparisons.md) - SOMA vs Forth, Haskell, Lambda Calculus, and others
-8. [Examples](08-examples.md) - Working SOMA programs demonstrating key concepts
-9. [Programming Idioms](09-idioms.md) - Idiomatic patterns, best practices, and common anti-patterns
-10. [Errors and Semantics](10-errors-semantics.md) - Fatal errors, abstract machine, and formal grammar
-11. [Standard Library](11-stdlib.md) - Derived operations built from FFI primitives
-12. [Extensions](12-extensions.md) - Extension system, `>use` builtin, and Python FFI
-13. [Debugging](13-debugging.md) - Debug tools, philosophy, and troubleshooting techniques
+### Core Language
+- [Philosophy](core/philosophy.md) - SOMA's design principles and relationship to other computational models
+- [Lexical Analysis and Parsing](core/lexer.md) - Tokens, AST nodes, path parsing, and validation
+- [Machine Model](core/machine-model.md) - The Accumulator List, Store, Registers, and Values
+- [Blocks and Execution](core/blocks-execution.md) - First-class blocks and the execution model
+- [Control Flow](core/control-flow.md) - `>choose`, `>chain`, and algebraic flow control
+- [Built-ins](core/builtins.md) - Core operations and their AL contracts
+- [Standard Library](core/stdlib.md) - Derived operations built from FFI primitives
+
+### Programming
+- [Comparisons](programming/comparisons.md) - SOMA vs Forth, Haskell, Lambda Calculus, and others
+- [Examples](programming/examples.md) - Working SOMA programs demonstrating key concepts
+- [Programming Idioms](programming/idioms.md) - Idiomatic patterns, best practices, and common anti-patterns
+- [Errors and Semantics](programming/errors-semantics.md) - Fatal errors, abstract machine, and formal grammar
+
+### Extensions
+- [Extensions Overview](extensions/extensions.md) - Extension system and `>use` builtin
+- [Python Interface](extensions/python-interface.md) - Python FFI integration
+- [Load Extension](extensions/load.md) - File loading capabilities
+
+### Debugging
+- [Debugging](debugging/debugging.md) - Debug tools, philosophy, and troubleshooting techniques
+- [Debug Ideas](debugging/debug-ideas.md) - Proposals for future debug features
+
+### Markdown Extension
+- [Markdown Overview](markdown/index.md) - SOMA markdown generation system
+- [Markdown Skill](markdown/SKILL.md) - AI assistant reference for markdown extension
+
+### Concepts
+- [Engineering Standards](concepts/engineering-standards.md) - Verification-first development methodology
 
 ---
 

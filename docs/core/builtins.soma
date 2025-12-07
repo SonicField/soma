@@ -1,0 +1,376 @@
+(python) >use (markdown) >use
+
+>md.start
+
+(06. Built-in Words) >md.h1
+
+(Built-ins are just Blocks stored at Store paths. When you write `>print`, `>dup`, or `>+`, you're not invoking special syntax—you're executing the Block stored at that path in the Store. There is no special "built-in" mechanism in SOMA. The `>` prefix means "read the value at this path and execute it," which works identically for built-in operations and user-defined blocks.) >md.p
+
+(This means built-ins could theoretically be overridden by storing a different Block at paths like `"print"` or `"dup"` \28\though this is not recommended\29\. The execution model is uniform: `>name` executes whatever Block is stored at that path, whether it was pre-populated by the runtime or defined by user code.) >md.p
+
+(Arithmetic Operations) >md.h2
+
+(Arithmetic built-ins operate on integer values. Arithmetic on non-integer values is a fatal error.) >md.p
+
+(>+) >md.h3
+
+(Signature: `\28\Int, Int\29\ -> Int`) >md.p
+
+(Pops two integers `\28\b, a\29\` from the AL and pushes `\28\a + b\29\.`) >md.p
+
+(Example:) >md.p
+
+(soma) (5 3 >+    ; AL: \28\8\29\) >md.code
+
+(Errors: Fatal if AL has fewer than 2 values or if either value is not an integer.) >md.p
+
+(>-) >md.h3
+
+(Signature: `\28\Int, Int\29\ -> Int`) >md.p
+
+(Pops two integers `\28\b, a\29\` from the AL and pushes `\28\a - b\29\.`) >md.p
+
+(Example:) >md.p
+
+(soma) (10 3 >-   ; AL: \28\7\29\) >md.code
+
+(Errors: Fatal if AL has fewer than 2 values or if either value is not an integer.) >md.p
+
+(>*) >md.h3
+
+(Signature: `\28\Int, Int\29\ -> Int`) >md.p
+
+(Pops two integers `\28\b, a\29\` from the AL and pushes `\28\a * b\29\.`) >md.p
+
+(Example:) >md.p
+
+(soma) (4 5 >*    ; AL: \28\20\29\) >md.code
+
+(Errors: Fatal if AL has fewer than 2 values or if either value is not an integer.) >md.p
+
+(>/) >md.h3
+
+(Signature: `\28\Int, Int\29\ -> Int`) >md.p
+
+(Pops two integers `\28\b, a\29\` from the AL and pushes `\28\a / b\29\` using integer division.) >md.p
+
+(Example:) >md.p
+
+(soma) (10 3 >/   ; AL: \28\3\29\) >md.code
+
+(Errors: Fatal if AL has fewer than 2 values, if either value is not an integer, or if `b` is zero.) >md.p
+
+(Comparison Operations) >md.h2
+
+(Comparison operators pop two values and push a Boolean result. String and integer comparisons are defined. Cross-type comparison is a fatal error.) >md.p
+
+(>==) >md.h3
+
+(Signature: `\28\Value, Value\29\ -> Bool`) >md.p
+
+(Pops two values `\28\b, a\29\` from the AL and pushes `True` if `a == b`, otherwise `False`.) >md.p
+
+(Example:) >md.p
+
+(soma) (5 5 >==       ; AL: \28\True\29\
+"cat" "dog" >==   ; AL: \28\False\29\) >md.code
+
+(Errors: Fatal if AL has fewer than 2 values or if types are incompatible for comparison.) >md.p
+
+(><) >md.h3
+
+(Signature: `\28\Value, Value\29\ -> Bool`) >md.p
+
+(Pops two values `\28\b, a\29\` from the AL and pushes `True` if `a < b`, otherwise `False`.) >md.p
+
+(Example:) >md.p
+
+(soma) (3 5 ><        ; AL: \28\True\29\
+10 2 ><       ; AL: \28\False\29\) >md.code
+
+(Errors: Fatal if AL has fewer than 2 values or if types are incompatible for comparison.) >md.p
+
+(>>) >md.h3
+
+(Signature: `\28\Value, Value\29\ -> Bool`) >md.p
+
+(Pops two values `\28\b, a\29\` from the AL and pushes `True` if `a > b`, otherwise `False`.) >md.p
+
+(Example:) >md.p
+
+(soma) (10 5 >>       ; AL: \28\True\29\
+3 7 >>        ; AL: \28\False\29\) >md.code
+
+(Errors: Fatal if AL has fewer than 2 values or if types are incompatible for comparison.) >md.p
+
+(Stack Operations) >md.h2
+
+(Stack operations manipulate the AL structure without performing computation.) >md.p
+
+(>dup) >md.h3
+
+(Signature: `\28\Value\29\ -> \28\Value, Value\29\`) >md.p
+
+(Duplicates the top value on the AL.) >md.p
+
+(Example:) >md.p
+
+(soma) (7 >dup        ; AL: \28\7, 7\29\) >md.code
+
+(Errors: Fatal if AL is empty.) >md.p
+
+(>drop) >md.h3
+
+(Signature: `\28\Value\29\ -> \28\\29\`) >md.p
+
+(Removes the top value from the AL.) >md.p
+
+(Example:) >md.p
+
+(soma) (1 2 3 >drop   ; AL: \28\1, 2\29\) >md.code
+
+(Errors: Fatal if AL is empty.) >md.p
+
+(>swap) >md.h3
+
+(Signature: `\28\Value, Value\29\ -> \28\Value, Value\29\`) >md.p
+
+(Swaps the top two values on the AL.) >md.p
+
+(Example:) >md.p
+
+(soma) (1 2 >swap     ; AL: \28\2, 1\29\) >md.code
+
+(Errors: Fatal if AL has fewer than 2 values.) >md.p
+
+(>over) >md.h3
+
+(Signature: `\28\Value, Value\29\ -> \28\Value, Value, Value\29\`) >md.p
+
+(Duplicates the second value and pushes it on top.) >md.p
+
+(Example:) >md.p
+
+(soma) (1 2 >over     ; AL: \28\1, 2, 1\29\) >md.code
+
+(Errors: Fatal if AL has fewer than 2 values.) >md.p
+
+(Debug Operations) >md.h2
+
+(Debug built-ins are used for development and introspection.) >md.p
+
+(>print) >md.h3
+
+(Signature: `\28\Value\29\ -> \28\\29\`) >md.p
+
+(Pops the top value from the AL and displays it to standard output.) >md.p
+
+(Example:) >md.p
+
+(soma) ("Hello" >print   ; Output: Hello
+42 >print        ; Output: 42) >md.code
+
+(Errors: Fatal if AL is empty.) >md.p
+
+(>dump) >md.h3
+
+(Signature: `\28\\29\ -> \28\\29\`) >md.p
+
+(Displays the current AL and Store state for debugging. Does not modify AL or Store.) >md.p
+
+(Example:) >md.p
+
+(soma) (1 2 3 >dump   ; Displays machine state) >md.code
+
+(Errors: None.) >md.p
+
+(Type and Identity Operations) >md.h2
+
+(These operations provide runtime introspection of values and cells.) >md.p
+
+(>type) >md.h3
+
+(Signature: `\28\Value\29\ -> Str`) >md.p
+
+(Pops a value and pushes a string representing its type.) >md.p
+
+(Example:) >md.p
+
+(soma) (42 >type      ; AL: \28\"Int"\29\
+"hello" >type ; AL: \28\"Str"\29\
+True >type    ; AL: \28\"Bool"\29\) >md.code
+
+(Errors: Fatal if AL is empty.) >md.p
+
+(>id) >md.h3
+
+(Signature: `\28\CellRef | Thing\29\ -> Int`) >md.p
+
+(Pops a CellRef or Thing and pushes an integer identity value.) >md.p
+
+(Example:) >md.p
+
+(soma) (a.b. >id      ; AL: \28\<unique identity integer>\29\) >md.code
+
+(Errors: Fatal if AL is empty or top value is neither a CellRef nor a Thing.) >md.p
+
+(Control Flow Operations) >md.h2
+
+(Control flow in SOMA is explicit and built from minimal primitives. These operations enable conditionals and loops.) >md.p
+
+(>choose) >md.h3
+
+(Signature: `\28\Bool, Value, Value\29\ -> Value`) >md.p
+
+(Pops three values `\28\false_val, true_val, condition\29\` from the AL and pushes the selected value based on the condition. Does NOT execute the selected value.) >md.p
+
+(Behavior:) >md.p
+
+(- If `condition` is `True`, pushes `true_val`)
+(- If `condition` is `False`, pushes `false_val`)
+(- The selected value is pushed to AL as-is \28\not executed\29\)
+(- To execute the result, use `>^` or `>chain` after `>choose`)
+>md.ul
+
+(Examples:) >md.p
+
+(soma) (; Select a value
+True 10 20 >choose      ; AL: \28\10\29\
+False 10 20 >choose     ; AL: \28\20\29\
+
+; Select and execute a block
+5 3 ><
+  { \28\small\29\ >print }
+  { \28\large\29\ >print }
+>choose >^              ; Selects { \28\large\29\ >print }, then executes it
+
+; Common pattern: select block for loop continuation
+counter 10 ><
+  >block                ; Continue - return current block
+  Nil                   ; Stop
+>choose                 ; AL: \28\block\29\ or \28\Nil\29\) >md.code
+
+(Errors: Fatal if AL has fewer than 3 values or if first value is not a Boolean.) >md.p
+
+(>chain) >md.h3
+
+(Signature: `\28\Value\29\ -> \28\\29\`) >md.p
+
+(Pops a value from the AL. If it's a Block, executes it and repeats \28\pops again\29\. If it's not a Block, stops.) >md.p
+
+(Behavior:) >md.p
+
+(- Pops top value from AL)
+(- If value is a Block: executes it, then repeats \28\pops from AL again\29\)
+(- If value is NOT a Block: stops execution)
+(- Enables loops, recursion, and state machines)
+(- Perfect for tail-call optimization \28\no stack growth\29\)
+>md.ul
+
+(Examples:) >md.p
+
+(soma) (; Execute a block once
+{ 5 3 >+ } >chain       ; AL: \28\8\29\
+
+; Infinite loop \28\block returns itself\29\
+{
+  \28\tick\29\ >print
+  >block                ; Push self back to AL
+} >chain                ; Prints "tick" forever
+
+; Conditional loop \28\using >choose\29\
+0 !counter
+{
+  counter >toString >print
+  counter >inc !counter
+  counter 10 ><
+    >block              ; Continue: push self
+    Nil                 ; Stop: push Nil
+  >choose
+} !loop
+loop >chain             ; Prints 0..9, then stops
+
+; State machine
+{ \28\A\29\ >print state-b } !state-a
+{ \28\B\29\ >print state-c } !state-b
+{ \28\C\29\ >print Nil } !state-c
+state-a >chain          ; Prints "A", "B", "C", stops) >md.code
+
+(Errors: None \28\stops cleanly on non-Block values\29\.) >md.p
+
+(>block) >md.h3
+
+(Signature: `\28\\29\ -> Block`) >md.p
+
+(Pushes the currently executing block onto the AL.) >md.p
+
+(Behavior:) >md.p
+
+(- Always succeeds \28\execution always occurs within a block context\29\)
+(- At top-level: returns the outermost block \28\the implicit "program" block\29\)
+(- In nested blocks: returns the current block \28\not the parent block\29\)
+(- Enables self-reference for loops and recursion)
+(- Can be aliased like any built-in, enabling internationalization)
+>md.ul
+
+(Examples:) >md.p
+
+(soma) (; Get current block for recursion
+0 !counter
+{
+  counter >toString >print
+  counter >inc !counter
+  counter 5 ><
+    >block              ; Continue: push self
+    Nil                 ; Stop
+  >choose
+} >chain                ; Prints 0..4
+
+; Store reference to current block
+{ >block !_.me _.me }   ; Store reference in Register, push to AL
+
+; Internationalization via aliasing
+block !блок             ; Russian
+block !ブロック          ; Japanese
+{ \28\loop\29\ >print >блок } >chain   ; Use Russian alias) >md.code
+
+(Errors: None.) >md.p
+
+(No-Op) >md.h2
+
+(>noop) >md.h3
+
+(Signature: `\28\\29\ -> \28\\29\`) >md.p
+
+(Performs no operation. The AL is unchanged.) >md.p
+
+(Example:) >md.p
+
+(soma) (>noop         ; AL unchanged) >md.code
+
+(Errors: None.) >md.p
+
+(Reference Table) >md.h2
+
+(The following table summarizes all core built-in operations:) >md.p
+
+(AL Contracts) >md.h2
+
+(Each built-in has a fixed AL contract:) >md.p
+
+(- AL underflow: Attempting to pop from an empty AL is a fatal error)
+(- Type mismatch: Providing the wrong type to a built-in is a fatal error)
+(- Arity violation: Having insufficient values on the AL for an operation is a fatal error)
+>md.ul
+
+(SOMA does not attempt recovery from violations. Program correctness is the programmer's responsibility.) >md.p
+
+(Notes) >md.h2
+
+(- While built-ins could theoretically be overridden \28\they're just Store paths\29\, doing so is strongly discouraged)
+(- All built-in operations are synchronous and deterministic \28\except those involving external I/O\29\)
+(- Built-ins operate directly on the AL and do not access the Store unless explicitly documented)
+(- More specialized built-ins may be defined in extensions \28\e.g., for Things, concurrency, or I/O\29\)
+>md.ul
+
+>md.print

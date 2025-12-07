@@ -1,0 +1,188 @@
+) ============================================================================
+) ERROR HANDLING AND VALUE SEMANTICS IN SOMA
+) ============================================================================
+)
+) Purpose: Define the error model, Nil vs Void distinction, and formal
+)          semantics for Store operations in SOMA.
+)
+) Philosophy: Computation is state transformation. Errors are either machine
+)             violations (fatal) or logical conditions representable in state
+)             (non-fatal).
+)
+) Created: 2024-12-06
+) ============================================================================
+
+(python) >use (markdown) >use
+>md.start
+
+) ============================================================================
+) DOCUMENT HEADER
+) ============================================================================
+
+(Error Handling and Value Semantics in SOMA) >md.h1
+
+) ============================================================================
+) OVERVIEW
+) ============================================================================
+
+(Overview) >md.h2
+
+(SOMA defines a minimal, explicit error model that reflects its operational philosophy: )
+(computation is state transformation, and errors are either machine violations \29\fatal\29\ or )>concat
+(logical conditions representable in state \29\non-fatal\29\. This document clarifies the critical )>concat
+(distinctions between Nil and Void, the nature of fatal versus non-fatal conditions, the semantics )>concat
+(of the ) (!) >md.c ( operator, and the formal rules governing Store mutation and error handling.)>concat
+>md.p
+
+(SOMA does not provide exceptions, stack unwinding, try/catch blocks, or recovery mechanisms. )
+(Errors are either terminal \29\causing thread halt\29\ or expressible as values that program )>concat
+(logic handles via ) (>choose) >md.c ( and explicit branching.)>concat
+>md.p
+
+) ============================================================================
+) SECTION 1: NIL VS VOID - THE FUNDAMENTAL DISTINCTION
+) ============================================================================
+
+(1. Nil vs Void: The Fundamental Distinction) >md.h2
+
+(The most critical distinction in SOMA's value model is between ) (Nil) >md.b ( and ) (Void) >md.b (. )
+(These represent fundamentally different semantic concepts:)>concat
+>md.p
+
+(Void) >md.b ( = "This cell has never been explicitly set" \29\absence, uninitialized\29\) >md.t >md.uli
+(Nil) >md.b ( = "This cell has been explicitly set to empty/nothing" \29\presence of emptiness\29\) >md.t >md.uli
+>md.ul
+
+(This distinction mirrors several important concepts in computer science:) >md.p
+
+(In logic:) >md.b ( Void = logical absurdity \29\⊥\29\ vs Nil = the empty set \29\∅\29\) >md.t >md.uli
+(In type theory:) >md.b ( Void = bottom type vs Nil = unit type / Maybe Nothing) >md.t >md.uli
+(In programming:) >md.b ( Void = ) (undefined) >md.c ( \29\JavaScript\29\ vs Nil = ) (null) >md.c (/) (None) >md.c (/) (nil) >md.c >md.t >md.uli
+(In databases:) >md.b ( Void = column never inserted vs Nil = NULL value explicitly inserted) >md.t >md.uli
+>md.ul
+
+(The key insight:) >md.b ( "Never set" is semantically different from "set to nothing.") >md.t >md.p
+
+) ----------------------------------------------------------------------------
+) 1.1 Nil: Explicit Emptiness
+) ----------------------------------------------------------------------------
+
+(1.1 Nil: Explicit Emptiness) >md.h3
+
+(Nil) >md.b ( is a ) (literal value) >md.b ( representing intentional, explicit emptiness.)>concat
+>md.p
+
+(Properties:) >md.p
+
+(Nil ) (is a legal payload) >md.b ( that can be stored in any Cell)>concat >md.uli
+(A Cell containing Nil ) (has been explicitly set) >md.b ( \29\but to an empty value\29\)>concat >md.uli
+(Nil ) (MAY) >md.b ( be pushed onto the AL)>concat >md.uli
+(Nil ) (MAY) >md.b ( be stored in any Cell as its payload)>concat >md.uli
+(Nil ) (MAY) >md.b ( be read back unchanged)>concat >md.uli
+(Nil does ) (NOT) >md.b ( affect Store structure)>concat >md.uli
+(Nil represents ) (deliberate choice) >md.b ( to have no value)>concat >md.uli
+>md.ul
+
+(Important:) >md.b ( Cells with Nil value can still have children. A Cell's value and its )
+(subpaths \29\children\29\ are completely orthogonal — setting or reading one does not affect the other.)>concat
+>md.p
+
+(Example \29\basic usage\29\:) >md.p
+
+(Nil !config.middle_name        ; Explicitly set to empty
+config.middle_name             ; AL = [Nil] — was set, but to nothing
+config.middle_name >isVoid     ; False — has been set) (soma) >md.code
+
+(Example \29\Nil with children\29\:) >md.p
+
+(Nil !a.b          ; Set a.b's VALUE to Nil
+23 !a.b.c         ; Create child 'c' in a.b's SUBPATHS
+
+a.b               ; Returns Nil \29\reads a.b's VALUE\29\
+a.b.c             ; Returns 23 \29\traverses a.b's SUBPATHS to c\29\) (soma) >md.code
+
+(Nil represents "explicitly empty" — the Cell exists and has been set, but it carries the value )
+("nothing." This is useful for representing optional fields that are intentionally left empty.)>concat
+>md.p
+
+) ----------------------------------------------------------------------------
+) 1.2 Void: Never Set / Uninitialized
+) ----------------------------------------------------------------------------
+
+(1.2 Void: Never Set / Uninitialized) >md.h3
+
+(Void) >md.b ( is a ) (literal value) >md.b ( representing ) (cells that have never been explicitly set) >md.b (.)>concat
+>md.p
+
+(Properties:) >md.p
+
+(Void is ) (NOT a writable payload) >md.b ( — you cannot write Void to a cell)>concat >md.uli
+(Void ) (denotes uninitialized state) >md.b ( — cells auto-created during path writes)>concat >md.uli
+(Void ) (MAY) >md.b ( be pushed onto the AL \29\when reading unset paths\29\)>concat >md.uli
+(Void ) (MAY) >md.b ( participate in AL-level logic or branching)>concat >md.uli
+(Void ) (MAY) >md.b ( be used in structural deletion operations \29\) (Void !path.) >md.c (\29\)>concat >md.uli
+(Void ) (MUST NOT) >md.b ( be written as a payload \29\) (Void !path) >md.c ( is fatal\29\)>concat >md.uli
+(Void represents ) (structural scaffolding) >md.b ( — cells that exist for structure but were never given values)>concat >md.uli
+>md.ul
+
+(Important:) >md.b ( Cells with Void value can still have children. A Cell's value and its )
+(subpaths \29\children\29\ are completely orthogonal — setting or reading one does not affect the other.)>concat
+>md.p
+
+(Example \29\reading never-set paths\29\:) >md.p
+
+(42 !a.b.c         ; Auto-vivifies a and a.b with Void payload
+a.b.c             ; Returns 42 \29\explicitly set\29\
+a.b               ; Returns Void \29\auto-vivified, never set\29\
+a                 ; Returns Void \29\auto-vivified, never set\29\
+
+a.b >isVoid       ; True — never explicitly set) (soma) >md.code
+
+(Example \29\Void with children\29\:) >md.p
+
+(42 !parent.child  ; Auto-vivifies parent with Void value
+parent            ; Returns Void \29\parent's VALUE\29\
+parent.child      ; Returns 42 \29\traverses parent's SUBPATHS\29\) (soma) >md.code
+
+(Example \29\structural deletion\29\:) >md.p
+
+(42 !a.b.c         ; Create Cell a.b.c with payload 42
+Void !a.b.c.      ; Delete Cell a.b.c and its entire subtree
+a.b.c             ; AL = [Void] — the Cell no longer exists) (soma) >md.code
+
+) ============================================================================
+) CONCLUSION - SUMMARY VERSION
+) ============================================================================
+) Note: This is a condensed version. The full document is ~2000 lines.
+) The complete conversion would include all sections:
+)   - Section 1.3-1.5: Void as storable value, summary table, auto-vivification
+)   - Section 2: Fatal errors (all 10 subsections with detailed examples)
+)   - Section 3: Non-fatal conditions
+)   - Section 4: The ! operator (complete semantics)
+)   - Section 5: Formal rules
+)   - Section 6: Examples of correct/incorrect usage
+)   - Section 7: Ambiguities and open questions
+)   - Section 8: Common mistakes and anti-patterns
+)   - Section 9: Conclusion
+
+(Conclusion) >md.h2
+
+(SOMA's error model is intentionally minimal and explicit:) >md.p
+
+(Fatal errors) >md.b ( terminate execution when machine invariants are violated)>concat >md.uli
+(Non-fatal conditions) >md.b ( are represented as values and handled via explicit control flow)>concat >md.uli
+(Strict read semantics) >md.b ( — reading undefined paths raises RuntimeError)>concat >md.uli
+(Auto-vivified paths can be read) >md.b ( — writing to nested paths creates intermediate cells with Void)>concat >md.uli
+(Nil) >md.b ( represents explicit emptiness — deliberately set to "nothing")>concat >md.uli
+(Void) >md.b ( represents "never set" in auto-vivified cells)>concat >md.uli
+(The ! operator) >md.b ( creates, replaces, and deletes Cells based on path form)>concat >md.uli
+(CellRefs) >md.b ( are immutable values that provide access to Cells)>concat >md.uli
+(Cells persist independently of paths) >md.b ( — no "dangling" references)>concat >md.uli
+(No exceptions, unwinding, or recovery) >md.b ( mechanisms exist)>concat >md.uli
+>md.ul
+
+(This model forces programmers to handle error conditions explicitly through state inspection and )
+(branching, reflecting SOMA's philosophy that computation is observable state transformation.)>concat
+>md.p
+
+>md.print

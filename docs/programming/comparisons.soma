@@ -1,0 +1,128 @@
+(python) >use (markdown) >use
+>md.start
+
+(SOMA Language Comparisons) >md.h1
+
+(Emergent Macros and Computational Models) >md.h2
+
+(Introduction) >md.h3
+(SOMA occupies a unique position among languages\29\ It is neither functional nor imperative\29\ It achieves capabilities found in both through fundamentally different means.)
+(This document compares SOMA to five influential computational models\29\) >md.p
+
+(Common Lisp - emergent macros vs syntactic extension)
+(Forth - stack orientation vs state transformation)
+(Haskell - explicit state vs monadic abstraction)
+(Lambda Calculus - execution vs reduction)
+(Actor Model - shared state vs message passing) >md.ul
+
+(Common Lisp: Emergent Macros) >md.h3
+
+(Common Lisp achieves user-defined syntax through macros\29\ SOMA achieves equivalent power through blocks\29\ >choose\29\ and >chain with no special compile-time phase\29\) >md.p
+
+(Lisp Macro Example\29\) >md.h4
+(lisp) (defmacro when: takes condition and body) >md.code
+(SOMA Pattern\29\) >md.h4
+(soma) ({ {} >choose >^ } !when) >md.code
+
+(Key Insight\29\) >md.p
+(SOMA has no compile-time macro phase\29\ Yet blocks achieve equivalent power through first-class blocks and explicit control flow\29\ The >path operator enables macro-like behavior by allowing blocks to execute blocks\29\) >md.p
+
+(The ^ Operator: User-Defined EXECUTE) >md.h4
+(soma) ({ !_ >_ } !^) >md.code
+
+(This two-token block creates an operator equivalent to Lisp\5c\27s FUNCALL\29\ It\5c\27s user-defined\29\ not a language primitive\29\) >md.p
+
+(Forth: Stack Orientation vs State Transformation) >md.h3
+
+(Forth and SOMA both use stack-based value passing\29\ but their execution models differ fundamentally\29\) >md.p
+
+(Forth Similarities) >md.h4
+(Both use a stack for data passing)
+(Both have minimal syntax)
+(Both execute left-to-right)
+(Both are dynamically typed)
+(Both allow defining new words or blocks) >md.ul
+
+(Key Difference: EXECUTE) >md.h4
+(Forth has a built-in EXECUTE primitive that you cannot redefine\29\) >md.p
+(forth) (' GREET EXECUTE) >md.code
+
+(SOMA has no built-in execute operation\29\ but users can define it\29\) >md.p
+(soma) ({ !_ >_ } !^) >md.code
+
+(This shows how powerful operations emerge from simple primitives in SOMA\29\) >md.p
+
+(Haskell: State vs Monadic Abstraction) >md.h3
+
+(Haskell starts with purity and encodes state using monads\29\ SOMA starts with mutation and makes state explicit\29\) >md.p
+
+(Haskell Counter Example\29\) >md.h4
+(haskell) (increment = modify (+1)) >md.code
+
+(SOMA Counter) >md.h4
+(soma) (0 !counter { counter 1 >+ !counter } !increment) >md.code
+
+(State is in the Store\29\ Mutations are explicit\29\ No monad needed\29\) >md.p
+
+(Lambda Calculus: Execution vs Reduction) >md.h3
+
+(Lambda Calculus and SOMA are fundamentally incompatible models\29\) >md.p
+
+(Lambda Calculus:) >md.h4
+(Uses symbolic rewriting via substitution and beta-reduction)
+(Execution = rewriting expressions to normal form)
+(Stateless and symbolic) >md.ul
+
+(SOMA:) >md.h4
+(Uses state transformation)
+(Execution = sequential state transitions)
+(Stateful and operational) >md.ul
+
+(No Substitution in SOMA) >md.h4
+(soma) (3 2 >+ !x x x >* >print) >md.code
+
+(No term is substituted\29\ The path resolves to current value at read time\29\) >md.p
+
+(Actor Model: Shared State vs Message Passing) >md.h3
+
+(The Actor Model and SOMA represent opposite concurrency philosophies\29\) >md.p
+
+(Actors:) >md.h4
+(Have private state)
+(Communicate via asynchronous messages)
+(Process one message at a time)
+(Prevent races through isolation) >md.ul
+
+(SOMA Threads:) >md.h4
+(Have private AL)
+(Share the Store)
+(Execute blocks independently)
+(Can mutate shared Cells with no built-in synchronization) >md.ul
+
+(Example: Parallel Accumulation) >md.h4
+(soma) (0 !total { total 10 >+ !total } >thread) >md.code
+
+(Actors prevent concurrency bugs by design\29\ SOMA leaves concurrency discipline to the programmer\29\) >md.p
+
+(Conclusion) >md.h2
+
+(SOMA occupies a unique position\29\) >md.p
+
+(Like Lisp:) (achieves syntactic extension via >path) >md.oli
+(Like Forth:) (uses stack-based execution with user-defined EXECUTE) >md.oli
+(Like Haskell:) (manages state explicitly) >md.oli
+(Like Lambda Calculus:) (is a formal computational model) >md.oli
+(Like Actors:) (supports concurrency via shared state) >md.oli
+>md.ol
+
+(Key Insights\29\) >md.h3
+
+(The >path operator makes execution first-class\29\ Blocks can execute blocks\29\ enabling user-defined control structures\29\) >md.p
+
+(The ^ operator demonstrates emergent behavior\29\ What Forth provides as EXECUTE and Lisp as FUNCALL emerges from two primitives\29\) >md.p
+
+(Macro-like behavior emerges from semantics\29\ Because blocks are values and execution is explicit\29\ control structures are just blocks that choose whether to execute their arguments\29\) >md.p
+
+(SOMA is a machine algebra\29\ It describes what machines do\29\ not what expressions mean\29\) >md.p
+
+(comparisons.md) >md.render

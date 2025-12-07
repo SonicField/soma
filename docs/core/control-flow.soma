@@ -1,0 +1,261 @@
+(python) >use (markdown) >use
+>md.start
+
+(Control Flow: The Emergent Macro System) >md.h1
+
+(SOMA takes a radical approach to control flow. Unlike traditional languages with built-in keywords like if, while, or for, SOMA defines only two control primitives: >choose and >chain. From these, all traditional control structures emerge as user-defined patterns.) >md.p
+
+(The Two Primitives) >md.h2
+
+(>choose - Conditional Selection) >md.h3
+
+(>choose is SOMA's only branching primitive. It is a SELECTOR, not an executor.) >md.p
+
+(AL Contract \28\pre-execution\29\ - Stack State:) >md.h4
+
+(Top  C - false branch value)
+(B - true branch value)
+(A - boolean condition)
+>md.ul
+
+(Semantics:) >md.h4
+
+(Pop three values from AL: C, B, A)
+(If A == True: push value B onto AL)
+(If A == False: push value C onto AL)
+(>choose does NOT execute blocks - it only selects one value)
+(The unchosen value is discarded)
+>md.ol
+
+(Example:) >md.p
+
+(True) >md.c
+(  { \34\Path taken\34\ >print }) >md.c
+(  { \34\Path not taken\34\ >print }) >md.c
+(>choose) >md.c
+Nil >md.code
+
+(To execute the selected block, use the caret operator:) >md.p
+
+(True) >md.c
+(  { \34\Path taken\34\ >print }) >md.c
+(  { \34\Path not taken\34\ >print }) >md.c
+(>choose >^) >md.c
+Nil >md.code
+
+(Output:) >md.c
+(Path taken) >md.c
+>md.ol
+
+(>chain - Block Continuation Loop) >md.h3
+
+(>chain is SOMA's only looping primitive. It repeatedly executes blocks until the AL top is no longer a block.) >md.p
+
+(Key insight: >chain does not recurse and does not grow a call stack. It is a flat iteration over a sequence of blocks.) >md.p
+
+(Example 1: Single block execution) >md.h4
+
+({ 5 5 >* }) >md.c
+(>chain) >md.c
+Nil >md.code
+
+(Result: AL contains [25]. The block executes once, leaves 25 on AL, and >chain terminates.) >md.p
+
+(Building Emergent Control Structures) >md.h2
+
+(IF - Single Branch) >md.h3
+
+(SOMA pattern:) >md.p
+
+(condition) >md.c
+(  { body }) >md.c
+(  { }) >md.c
+(>choose >^) >md.c
+Nil >md.code
+
+(Example:) >md.p
+
+(x 10 >>) >md.c
+(  { \34\x is greater than 10\34\ >print }) >md.c
+(  { }) >md.c
+(>choose >^) >md.c
+Nil >md.code
+
+(IF/ELSE - Two Branches) >md.h3
+
+(SOMA pattern using >ifelse from stdlib:) >md.p
+
+(condition) >md.c
+(  { true_body }) >md.c
+(  { false_body }) >md.c
+(>ifelse) >md.c
+Nil >md.code
+
+(The >ifelse helper is defined as { >choose >^ } which combines selection and execution.) >md.p
+
+(WHILE Loop) >md.h3
+
+(SOMA pattern:) >md.p
+
+({) >md.c
+(  condition) >md.c
+(  { body >block }) >md.c
+(  { }) >md.c
+(  >choose >^) >md.c
+(}) >md.c
+(>chain) >md.c
+Nil >md.code
+
+(Complete example: Count to 5:) >md.p
+
+(0 !counter) >md.c
+({) >md.c
+(  counter 5 ><) >md.c
+(  { counter >print) >md.c
+(    counter 1 >+ !counter) >md.c
+(    >block }) >md.c
+(  { }) >md.c
+(  >choose >^) >md.c
+(}) >md.c
+(>chain) >md.c
+Nil >md.code
+
+(Output:) >md.h4
+
+(0) (1) (2) (3) (4) >md.ol
+
+(DO Loop - Body-First Loop) >md.h3
+
+(SOMA pattern:) >md.p
+
+({) >md.c
+(  body) >md.c
+(  condition) >md.c
+(  { >block }) >md.c
+(  { }) >md.c
+(  >choose >^) >md.c
+(}) >md.c
+(>chain) >md.c
+Nil >md.code
+
+(The body executes first, then the condition is checked. If true, >block causes the loop to continue.) >md.p
+
+(Infinite Loop) >md.h3
+
+(SOMA pattern:) >md.p
+
+({ body >block }) >md.c
+(>chain) >md.c
+Nil >md.code
+
+(The block always pushes itself onto the AL via >block, so >chain always sees a block and continues forever.) >md.p
+
+(The Caret Operator: User-Defined Execution) >md.h2
+
+(The problem: Forth and Lisp have built-in execute primitives. SOMA has none. But you can define it:) >md.p
+
+({ !_ >_ }) >md.c
+(!^) >md.c
+Nil >md.code
+
+(This creates the >^ operator that behaves exactly like Forth's EXECUTE:) >md.p
+
+((Cats)) >md.c
+(print) >md.c
+(>^) >md.c
+Nil >md.code
+
+(This proves execution itself is not a primitive in SOMA - it's user-defined using only ! and >.) >md.p
+
+(Why This Matters) >md.h3
+
+(In traditional languages, control structures are syntax. In SOMA, they are values \28\blocks\29\. You can define new ones using only >choose and >chain.) >md.p
+
+(The boundary between language and library disappears. This is SOMA's emergent macro system.) >md.p
+
+(Dispatch Tables Using >path) >md.h2
+
+(One of SOMA's most powerful patterns: storing operations at paths and executing them dynamically.) >md.p
+
+(Basic example:) >md.p
+
+({ \28\add\29\ >print }) >md.c
+(!handlers.add) >md.c
+({ \28\sub\29\ >print }) >md.c
+(!handlers.sub) >md.c
+Nil >md.code
+
+(Dynamic dispatch:) >md.p
+
+(Build a path and execute the operation dynamically) >md.p
+
+(In real usage, this would read from user input and execute the corresponding handler.) >md.p
+
+(Higher-Order Blocks) >md.h2
+
+(Execute a Block Twice) >md.h3
+
+({ !_.f >_.f >_.f }) >md.c
+(!twice) >md.c
+Nil >md.code
+
+({ \28\Hello\29\ >print }) >md.c
+(>twice) >md.c
+Nil >md.code
+
+(Output:) >md.h4
+
+(Hello)
+(Hello)
+>md.ol
+
+(Finite State Machine) >md.h3
+
+(State machines are a natural fit for SOMA. Each state is a block that transitions to the next state.) >md.p
+
+({ \34\RED\34\ >print green }) >md.c
+(!red) >md.c
+({ \34\GREEN\34\ >print yellow }) >md.c
+(!green) >md.c
+({ \34\YELLOW\34\ >print red }) >md.c
+(!yellow) >md.c
+(red >chain) >md.c
+Nil >md.code
+
+(Each state is a block. Transitions are explicit - push the next block. No hidden interpreter needed.) >md.p
+
+(Key Insights) >md.h2
+
+(Control Flow Is Data) >md.h3
+
+(In SOMA, control flow decisions are made by values on the AL:) >md.p
+
+(Booleans determine which branch to take)
+(Blocks determine what to execute next)
+(The AL holds the program counter implicitly)
+>md.ul
+
+(No Special Forms Needed) >md.h3
+
+(SOMA does not need if, while, for, or switch keywords. All are user-defined.) >md.p
+
+(The Emergent Macro Property) >md.h3
+
+(The macro-like behavior emerges from three properties:) >md.p
+
+(Blocks are first-class - can be stored and named)
+(>choose selects blocks - branching without syntax)
+(>chain executes blocks - looping without syntax)
+>md.ol
+
+(Together, these create a compositional control flow algebra where complex patterns emerge from simple primitives.) >md.p
+
+(Summary) >md.h2
+
+(SOMA's control flow is emergent rather than prescribed. By providing only >choose and >chain, SOMA creates a foundation on which all traditional control structures emerge as user-defined patterns.) >md.p
+
+(These patterns are blocks - first-class values that behave exactly like built-in language features.) >md.p
+
+(From this foundation emerge function calls, dynamic dispatch, higher-order functions, control structures, state machines, tail-call optimized recursion, and everything that looks like a language feature.) >md.p
+
+(control-flow.md) >md.render

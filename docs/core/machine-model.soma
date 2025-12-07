@@ -1,0 +1,125 @@
+) ============================================================================
+) SOMA v1.0 — Machine Model (CONDENSED DEMO)
+) ============================================================================
+)
+) This is a MINIMAL condensed version demonstrating the SOMA markdown DSL.
+) Full version with complete examples to be added in future iterations.
+)
+) Created: 2024-12-06
+) ============================================================================
+
+(python) >use (markdown) >use
+>md.start
+
+(03 — Machine Model) >md.h1
+
+(SOMA v1.0 Language Specification) >md.b >md.p
+(State-Oriented Machine Algebra) >md.b >md.p
+
+>md.hr
+
+(Overview) >md.h2
+
+(SOMA is a machine algebra defined by observable state transformations.)
+(It has three fundamental structures: AL, Store, and Register.)
+>md.p
+
+(1. The Accumulator List \28\AL\29\) >md.h2
+
+(The AL is a shared LIFO stack for passing values between blocks.)
+(It is NOT a call stack - it's a value conduit.)
+>md.p
+
+(Key properties:) >md.p
+
+(Shared by all blocks)
+(LIFO ordering)
+(No return addresses)
+(No stack frames)
+>md.ul
+
+(2. The Store) >md.h2
+
+(The Store is a persistent hierarchical graph of Cells.)
+(It provides global, shared state across all blocks.)
+>md.p
+
+(Cells and Payloads) >md.h3
+
+(Each Cell has two orthogonal components:) >md.p
+
+(Value) (The data payload)
+(Subpaths) (Dictionary of child Cells)
+>md.dul
+
+(These are completely independent - setting a value doesn't affect subpaths.)
+>md.p
+
+(Nil vs Void) >md.h3
+
+(Concept) (Meaning)
+>md.table.header
+(Void) (Never been set - auto-vivified)
+>md.table.row
+(Nil) (Explicitly set to empty)
+>md.table.row
+>md.table
+
+(3. The Register) >md.h2
+
+(The Register is block-local, isolated storage.)
+(Each block gets a fresh Register that is destroyed when the block completes.)
+>md.p
+
+(Critical Principle) >md.b (: Inner blocks CANNOT see outer block Registers.)>md.t >md.p
+
+(Store vs Register) >md.h3
+
+(Feature) (Store) (Register)
+>md.table.header
+(Scope) (Global) (Block-local)
+>md.table.row
+(Lifetime) (Persistent) (Block execution only)
+>md.table.row
+(Sharing) (All blocks) (Isolated per block)
+>md.table.row
+>md.table
+
+(4. Cells and CellReferences) >md.h2
+
+(A Cell is the fundamental unit of storage with:) >md.p
+
+(Identity independent of value)
+(A payload of any type)
+(Child Cells for hierarchy)
+>md.ul
+
+(A CellReference is an immutable value providing access to a Cell.)
+(CellRefs can be stored, passed, and outlive the paths that created them.)
+>md.p
+
+(5. Machine State Summary) >md.h2
+
+(The SOMA machine state consists of:) >md.p
+
+(AL) (LIFO value stack)
+(Store) (Global hierarchical graph)
+(Register) (Block-local hierarchical graph)
+(IP) (Instruction pointer)
+>md.dul
+
+(Each token transforms this state explicitly.)
+(There are no hidden stacks, returns, or exceptions.)
+>md.p
+
+>md.hr
+
+(Note) >md.b (: This is a condensed demonstration version.)>md.t ( )
+(Full specification includes detailed examples, edge cases, and concurrency model.)
+>md.t >md.p
+
+>md.hr
+
+(End of Machine Model) >md.p
+
+>md.print

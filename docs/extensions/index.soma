@@ -1,0 +1,186 @@
+(python) >use (markdown) >use
+
+(SOMA Extensions) >md.h1
+(Implementation-Specific Features) >md.p
+
+(This directory contains documentation for features that are not part of the core SOMA specification but are specific to particular implementations. These extensions demonstrate how SOMA\27\s minimal core can be augmented with platform-specific capabilities while maintaining the language\27\s philosophical principles.) >md.p
+
+(What Belongs Here) >md.h2
+
+(Extensions are features that\29\:) >md.p
+(- Are specific to a particular implementation \28\ e.g., Python reference implementation\29\) >md.p
+(- Provide platform integration \28\ FFI, I/O beyond basic print, OS interaction\29\) >md.p
+(- Extend SOMA with capabilities not in the core specification) >md.p
+(- Are optional - other implementations may provide different extensions) >md.p
+
+(Not Extensions \28\ these belong in core docs\29\:) >md.p
+(- Core language features \28\ AL, Store, Register, blocks\29\) >md.p
+(- Standard library built from core primitives) >md.p
+(- Language semantics and execution model) >md.p
+(- Built-ins required by the specification) >md.p
+
+(Philosophy of Extensions) >md.h2
+
+(SOMA\27\s design principle\29\: Minimal primitives, maximal expressiveness.) >md.p
+
+(Extensions follow this principle by\29\:) >md.p
+(1. Adding minimal builtins - One primitive that serves as a gateway) >md.p
+(2. Building ecosystems in SOMA - Use first-class blocks to create abstractions) >md.p
+(3. Maintaining explicitness - No hidden behavior, clear execution model) >md.p
+(4. Leveraging composition - Build complex features from simple blocks) >md.p
+
+(Example\29\: Python FFI) >md.h3
+
+(Rather than adding dozens of builtins for exception handling, type checking, file I/O, etc., the Python implementation adds one FFI builtin \28\ >python\29\ and builds everything else in SOMA\29\:) >md.p
+
+(\5c\ \29\ Single primitive builtin) >md.p
+(>python  \5c\ \29\ Call any Python function) >md.p
+() >md.p
+(\5c\ \29\ Build the ecosystem in SOMA) >md.p
+(\28\ Void >swap \28\ soma.isException\29\ >python \29\ !python.isException) >md.p
+(\28\ Void >swap \28\ soma.getMessage\29\ >python \29\ !python.getMessage) >md.p
+(\28\ Void >swap \28\ soma.readFile\29\ >python \29\ !python.readFile) >md.p
+() >md.p
+(\5c\ \29\ Create high-level abstractions) >md.p
+(\7b\ ) >md.p
+(  !_.path) >md.p
+(  _.path >python.readFile) >md.p
+(  !_.exc !_.ret) >md.p
+(  _.exc >python.isException) >md.p
+(    \7b\ \5c\ \28\ Error\29\ >print Void \5c\ \29\ \7d\ ) >md.p
+(    \7b\ _.ret \7d\ ) >md.p
+(  >ifelse) >md.p
+(\7d\ !file.read.safe) >md.p
+
+(This demonstrates SOMA\27\s macro-like power without requiring a macro system.) >md.p
+
+(Available Extensions) >md.h2
+
+(Python FFI Interface) >md.h3
+
+(Implementation\29\: Python Reference Implementation) >md.p
+(Status\29\: Proposed \28\ v1.1\29\) >md.p
+
+(The >python builtin provides a universal gateway to Python code, enabling\29\:) >md.p
+(- Foreign function calls with automatic exception handling) >md.p
+(- Python helper library pattern \28\ soma.py + SOMA wrappers\29\) >md.p
+(- Building domain-specific APIs \28\ file I/O, networking, etc.\29\ without new builtins) >md.p
+(- Type introspection and conversion) >md.p
+
+(Key Features\29\:) >md.p
+(- Single builtin\29\: >python) >md.p
+(- Void-terminated argument lists) >md.p
+(- Dual return\29\: value + exception) >md.p
+(- Clean namespace hierarchy via python.* wrappers) >md.p
+(- Demonstrates first-class blocks as macro replacement) >md.p
+
+(Use Cases\29\:) >md.p
+(- File I/O beyond basic >print) >md.p
+(- Network operations) >md.p
+(- Mathematical libraries \28\ NumPy, SciPy\29\) >md.p
+(- System interaction \28\ subprocess, environment variables\29\) >md.p
+(- Integration with existing Python codebases) >md.p
+
+(See Python-Interface.md for complete specification and examples.) >md.p
+
+(Load Extension) >md.h3
+
+(Implementation\29\: Python Reference Implementation) >md.p
+(Status\29\: Complete \28\ v1.0\29\) >md.p
+(Dependencies\29\: Python FFI Extension) >md.p
+
+(The load extension provides file loading and path searching for SOMA programs, enabling modular code organization.) >md.p
+
+(Key Innovation\29\: Implemented entirely in pure SOMA code - adds zero Python builtins.) >md.p
+
+(Key Features\29\:) >md.p
+(- Single public function\29\: >load) >md.p
+(- Path searching\29\: current directory → $SOMA_LIB) >md.p
+(- Clear error messages) >md.p
+(- Pure SOMA implementation using Python FFI primitives) >md.p
+(- Demonstrates context-passing idiom throughout) >md.p
+
+(Use Cases\29\:) >md.p
+(- Splitting code across multiple files) >md.p
+(- Creating reusable library modules) >md.p
+(- Sharing common code via $SOMA_LIB) >md.p
+(- Building modular applications) >md.p
+
+(Example\29\:) >md.p
+(\5c\ \28\ python\5c\ \29\ >use) >md.p
+(\5c\ \28\ load\5c\ \29\ >use) >md.p
+() >md.p
+(\5c\ \28\ my_library.soma\5c\ \29\ >load) >md.p
+(my_library.function) >md.p
+
+(See Load.md for complete documentation and implementation details.) >md.p
+
+(Future Extensions) >md.h2
+
+(Potential extensions for various implementations\29\:) >md.p
+
+(JavaScript/WebAssembly Implementation) >md.h3
+(- Browser DOM interaction) >md.p
+(- Web APIs \28\ fetch, localStorage\29\) >md.p
+(- WebAssembly module loading) >md.p
+
+(Native Implementation \28\ C/C++/Rust\29\) >md.h3
+(- System calls via FFI) >md.p
+(- Direct memory access) >md.p
+(- Performance-critical operations) >md.p
+
+(JVM Implementation) >md.h3
+(- Java interop) >md.p
+(- JVM library access) >md.p
+(- Reflection and introspection) >md.p
+
+(Network Extensions) >md.h3
+(- HTTP client/server) >md.p
+(- WebSocket support) >md.p
+(- Protocol implementations) >md.p
+
+(Database Extensions) >md.h3
+(- SQL queries) >md.p
+(- NoSQL operations) >md.p
+(- Transaction management) >md.p
+
+(Graphics Extensions) >md.h3
+(- 2D/3D rendering) >md.p
+(- GUI frameworks) >md.p
+(- Image processing) >md.p
+
+(Guidelines for Creating Extensions) >md.h2
+
+(When creating a new extension\29\:) >md.p
+
+(1. Start with one primitive - Don\27\t add multiple builtins when one gateway suffices) >md.p
+(2. Build in SOMA - Create helper libraries and wrappers as SOMA blocks) >md.p
+(3. Document the ecosystem - Show how to compose abstractions) >md.p
+(4. Follow naming conventions - Use namespaced paths \28\ e.g., python.*, http.*\29\) >md.p
+(5. Handle errors explicitly - Return error indicators, don\27\t hide failures) >md.p
+(6. Maintain SOMA philosophy - Explicit state, visible execution, composable blocks) >md.p
+
+(Extension Documentation Template) >md.h3
+
+(Each extension document should include\29\:) >md.p
+
+(1. Overview - What problem does this solve\29\?) >md.p
+(2. Specification - Precise builtin contracts \28\ AL consumption/production\29\) >md.p
+(3. Helper Library Pattern - How to build the ecosystem) >md.p
+(4. Complete Examples - Working code demonstrating typical usage) >md.p
+(5. Best Practices - Patterns and anti-patterns) >md.p
+(6. Implementation Notes - How to implement in the target platform) >md.p
+
+(Contributing Extensions) >md.h2
+
+(To propose a new extension\29\:) >md.p
+
+(1. Create a draft document in docs/extensions/) >md.p
+(2. Follow the template above) >md.p
+(3. Show how it maintains SOMA\27\s principles) >md.p
+(4. Provide working implementation or detailed specification) >md.p
+(5. Update this index with a summary) >md.p
+
+(Extensions should be implementation-specific. If a feature could be built entirely from existing primitives, it belongs in the standard library, not as an extension.) >md.p
+
+>md.print
