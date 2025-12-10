@@ -712,22 +712,26 @@ def nest_builtin(vm):
     current_depth = vm.store.read_value(['md', 'state', 'depth'])
     current_stack = vm.store.read_value(['md', 'state', 'stack'])
 
-    # Save current accumulator state (both oli and uli)
+    # Save current accumulator state (oli, uli, and dli)
     oli_accumulator = vm.store.read_value(['md', 'state', 'oli', 'items'])
     uli_accumulator = vm.store.read_value(['md', 'state', 'uli', 'items'])
+    dli_accumulator = vm.store.read_value(['md', 'state', 'dli', 'items'])
 
     # Ensure they're lists
     if not isinstance(oli_accumulator, list):
         oli_accumulator = []
     if not isinstance(uli_accumulator, list):
         uli_accumulator = []
+    if not isinstance(dli_accumulator, list):
+        dli_accumulator = []
 
     # Create context for this level (save items AND accumulator state)
     context = {
         'items': items,
         'depth': current_depth,
         'oli_accumulator': oli_accumulator[:],  # Copy
-        'uli_accumulator': uli_accumulator[:]   # Copy
+        'uli_accumulator': uli_accumulator[:],  # Copy
+        'dli_accumulator': dli_accumulator[:]   # Copy
     }
 
     # Push context onto stack
@@ -739,6 +743,7 @@ def nest_builtin(vm):
     # Clear accumulators for nested level
     vm.store.write_value(['md', 'state', 'oli', 'items'], [])
     vm.store.write_value(['md', 'state', 'uli', 'items'], [])
+    vm.store.write_value(['md', 'state', 'dli', 'items'], [])
 
     # Increase depth for nested content
     vm.store.write_value(['md', 'state', 'depth'], current_depth + 1)
@@ -1282,10 +1287,77 @@ def drain_and_format_dul_builtin(vm):
             # Return empty string - text already added to parent context
             result = ""
         else:
-            # We're the outer formatter - format at current depth
+            # We're the outer formatter - pop ALL parent contexts at our depth and render everything
             new_stack = []
-            new_depth = 0
-            result = emitter.unordered_list(resolved_items, depth)
+            contexts_to_render = []
+
+            # Pop all contexts at parent_depth
+            for ctx in stack:
+                if ctx['depth'] == parent_depth:
+                    contexts_to_render.append(ctx)
+                else:
+                    new_stack.append(ctx)
+
+            result_parts = []
+            if emitter.can_concat_lists():
+                # HTML: Build proper nested structure with nested lists inside <li> tags
+                all_items = []
+
+                # Process parent contexts
+                for ctx in contexts_to_render:
+                    parent_items = ctx['items']
+                    nested_text = ctx.get('nested_text', '')
+                    parent_accumulator = ctx.get('dli_accumulator', [])
+
+                    for item in parent_items:
+                        item_text = replace_placeholder(item, parent_accumulator)
+                        # Append nested content to the item
+                        if nested_text:
+                            all_items.append(item_text + nested_text)
+                            nested_text = ''  # Use it once
+                        else:
+                            all_items.append(item_text)
+
+                # Add current items
+                all_items.extend(resolved_items)
+
+                # Use emitter to format
+                result = emitter.unordered_list(all_items, parent_depth)
+            else:
+                # Markdown: Use manual formatting to preserve exact spacing
+                parent_indent = "  " * parent_depth
+                for ctx in contexts_to_render:
+                    parent_items = ctx['items']
+                    nested_text = ctx.get('nested_text', '')
+                    parent_accumulator = ctx.get('dli_accumulator', [])
+
+                    # Render parent items using UL format (replace placeholders if needed)
+                    for item in parent_items:
+                        item_text = replace_placeholder(item, parent_accumulator)
+                        result_parts.append(f"{parent_indent}- {item_text}\n")
+
+                    # Insert nested text
+                    if nested_text:
+                        result_parts.append(nested_text)
+
+                # Render current items at same depth
+                for item in resolved_items:
+                    result_parts.append(f"{parent_indent}- {item}\n")
+
+                result = ''.join(result_parts)
+
+            # Set new depth based on remaining stack
+            if new_stack:
+                # Still nested - add result to parent context and return empty string
+                new_stack[-1]['nested_text'] = new_stack[-1].get('nested_text', '') + result
+                result = ""  # Don't add to document yet
+                new_depth = new_stack[-1]['depth']
+            else:
+                # Top level - add to document
+                new_depth = 0
+                # Add final blank line only at depth 0
+                if new_depth == 0 and not emitter.can_concat_lists():
+                    result += "\n"
     else:
         # No nesting - use emitter for simple case
         new_stack = []
@@ -1409,10 +1481,80 @@ def drain_and_format_dol_builtin(vm):
             # Return empty string - text already added to parent context
             result = ""
         else:
-            # We're the outer formatter - format at current depth
+            # We're the outer formatter - pop ALL parent contexts at our depth and render everything
             new_stack = []
-            new_depth = 0
-            result = emitter.ordered_list(resolved_items, depth)
+            contexts_to_render = []
+
+            # Pop all contexts at parent_depth
+            for ctx in stack:
+                if ctx['depth'] == parent_depth:
+                    contexts_to_render.append(ctx)
+                else:
+                    new_stack.append(ctx)
+
+            result_parts = []
+            if emitter.can_concat_lists():
+                # HTML: Build proper nested structure with nested lists inside <li> tags
+                all_items = []
+
+                # Process parent contexts
+                for ctx in contexts_to_render:
+                    parent_items = ctx['items']
+                    nested_text = ctx.get('nested_text', '')
+                    parent_accumulator = ctx.get('dli_accumulator', [])
+
+                    for item in parent_items:
+                        item_text = replace_placeholder(item, parent_accumulator)
+                        # Append nested content to the item
+                        if nested_text:
+                            all_items.append(item_text + nested_text)
+                            nested_text = ''  # Use it once
+                        else:
+                            all_items.append(item_text)
+
+                # Add current items
+                all_items.extend(resolved_items)
+
+                # Use emitter to format
+                result = emitter.ordered_list(all_items, parent_depth)
+            else:
+                # Markdown: Use manual formatting to preserve exact spacing
+                parent_indent = "  " * parent_depth
+                counter = 1
+                for ctx in contexts_to_render:
+                    parent_items = ctx['items']
+                    nested_text = ctx.get('nested_text', '')
+                    parent_accumulator = ctx.get('dli_accumulator', [])
+
+                    # Render parent items using OL format (replace placeholders if needed)
+                    for item in parent_items:
+                        item_text = replace_placeholder(item, parent_accumulator)
+                        result_parts.append(f"{parent_indent}{counter}. {item_text}\n")
+                        counter += 1
+
+                    # Insert nested text
+                    if nested_text:
+                        result_parts.append(nested_text)
+
+                # Render current items at same depth (continue counter)
+                for item in resolved_items:
+                    result_parts.append(f"{parent_indent}{counter}. {item}\n")
+                    counter += 1
+
+                result = ''.join(result_parts)
+
+            # Set new depth based on remaining stack
+            if new_stack:
+                # Still nested - add result to parent context and return empty string
+                new_stack[-1]['nested_text'] = new_stack[-1].get('nested_text', '') + result
+                result = ""  # Don't add to document yet
+                new_depth = new_stack[-1]['depth']
+            else:
+                # Top level - add to document
+                new_depth = 0
+                # Add final blank line only at depth 0
+                if new_depth == 0 and not emitter.can_concat_lists():
+                    result += "\n"
     else:
         # No nesting - use emitter for simple case
         new_stack = []

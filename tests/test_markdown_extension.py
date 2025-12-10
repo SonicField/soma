@@ -2948,6 +2948,177 @@ class TestPerItemNesting(unittest.TestCase):
         self.assertIn("DliPlaceholder", str(context.exception))
         self.assertIn(">md.dol", str(context.exception))
 
+    def test_dul_nested_in_dul(self):
+        """Test >md.dul nested directly inside another >md.dul."""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False) as f:
+            temp_path = f.name
+
+        try:
+            code = f"""
+            (python) >use
+            (markdown) >use
+
+            >md.start
+            (Outer A) (Value A) >md.dli
+            >md.nest
+              (Inner X) (Value X) >md.dli
+              (Inner Y) (Value Y) >md.dli
+              >md.dul
+            (Outer B) (Value B) >md.dli
+            >md.dul
+            ({temp_path}) >md.render
+            """
+            run_soma_program(code)
+
+            content = Path(temp_path).read_text()
+            expected = (
+                "- **Outer A**: Value A\n"
+                "  - **Inner X**: Value X\n"
+                "  - **Inner Y**: Value Y\n"
+                "- **Outer B**: Value B\n\n"
+            )
+            self.assertEqual(content, expected)
+        finally:
+            os.unlink(temp_path)
+
+    def test_dol_nested_in_dol(self):
+        """Test >md.dol nested directly inside another >md.dol."""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False) as f:
+            temp_path = f.name
+
+        try:
+            code = f"""
+            (python) >use
+            (markdown) >use
+
+            >md.start
+            (Step 1) (First step) >md.dli
+            >md.nest
+              (Sub-step A) (Do A) >md.dli
+              (Sub-step B) (Do B) >md.dli
+              >md.dol
+            (Step 2) (Second step) >md.dli
+            >md.dol
+            ({temp_path}) >md.render
+            """
+            run_soma_program(code)
+
+            content = Path(temp_path).read_text()
+            expected = (
+                "1. **Step 1**: First step\n"
+                "  1. **Sub-step A**: Do A\n"
+                "  2. **Sub-step B**: Do B\n"
+                "2. **Step 2**: Second step\n\n"
+            )
+            self.assertEqual(content, expected)
+        finally:
+            os.unlink(temp_path)
+
+    def test_dul_in_dul_in_ol(self):
+        """Test triple nesting: >md.dul inside >md.dul inside >md.ol."""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False) as f:
+            temp_path = f.name
+
+        try:
+            code = f"""
+            (python) >use
+            (markdown) >use
+
+            >md.start
+            (First outer item) >md.oli
+            >md.nest
+              (Inner A) (Value A) >md.dli
+              >md.nest
+                (Deep X) (Value X) >md.dli
+                (Deep Y) (Value Y) >md.dli
+                >md.dul
+              (Inner B) (Value B) >md.dli
+              >md.dul
+            (Second outer item) >md.oli
+            >md.ol
+            ({temp_path}) >md.render
+            """
+            run_soma_program(code)
+
+            content = Path(temp_path).read_text()
+            expected = (
+                "1. First outer item\n"
+                "  - **Inner A**: Value A\n"
+                "    - **Deep X**: Value X\n"
+                "    - **Deep Y**: Value Y\n"
+                "  - **Inner B**: Value B\n"
+                "2. Second outer item\n\n"
+            )
+            self.assertEqual(content, expected)
+        finally:
+            os.unlink(temp_path)
+
+    def test_mixed_dul_and_dol_nesting(self):
+        """Test mixing >md.dul and >md.dol in nested structures."""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False) as f:
+            temp_path = f.name
+
+        try:
+            code = f"""
+            (python) >use
+            (markdown) >use
+
+            >md.start
+            (Category) (Main category) >md.dli
+            >md.nest
+              (Step 1) (First step) >md.dli
+              (Step 2) (Second step) >md.dli
+              >md.dol
+            (Another) (Another category) >md.dli
+            >md.dul
+            ({temp_path}) >md.render
+            """
+            run_soma_program(code)
+
+            content = Path(temp_path).read_text()
+            expected = (
+                "- **Category**: Main category\n"
+                "  1. **Step 1**: First step\n"
+                "  2. **Step 2**: Second step\n"
+                "- **Another**: Another category\n\n"
+            )
+            self.assertEqual(content, expected)
+        finally:
+            os.unlink(temp_path)
+
+    def test_dol_with_nested_dul(self):
+        """Test >md.dol with nested >md.dul inside."""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False) as f:
+            temp_path = f.name
+
+        try:
+            code = f"""
+            (python) >use
+            (markdown) >use
+
+            >md.start
+            (Phase 1) (Planning phase) >md.dli
+            >md.nest
+              (Owner) (Alice) >md.dli
+              (Status) (Complete) >md.dli
+              >md.dul
+            (Phase 2) (Execution phase) >md.dli
+            >md.dol
+            ({temp_path}) >md.render
+            """
+            run_soma_program(code)
+
+            content = Path(temp_path).read_text()
+            expected = (
+                "1. **Phase 1**: Planning phase\n"
+                "  - **Owner**: Alice\n"
+                "  - **Status**: Complete\n"
+                "2. **Phase 2**: Execution phase\n\n"
+            )
+            self.assertEqual(content, expected)
+        finally:
+            os.unlink(temp_path)
+
 
 if __name__ == '__main__':
     unittest.main()
