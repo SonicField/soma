@@ -370,6 +370,32 @@ class TestStoreOperations(unittest.TestCase):
         compiled.execute(vm)
         self.assertEqual(vm.al, [1])
 
+    def test_store_cellref_overwrite(self):
+        """Test overwriting a CellRef with a new CellRef replaces it, not writes through."""
+        vm = VM(load_stdlib=False)
+        # Create first cell and store its CellRef at 'ref'
+        vm.store.write_value(["cell1"], "first")
+        cellref1 = vm.store.read_ref(["cell1"])
+        vm.store.write_value(["ref"], cellref1)
+
+        # Verify ref points to cell1
+        ref_value = vm.store.read_value(["ref"])
+        self.assertIsInstance(ref_value, CellRef)
+        self.assertEqual(ref_value.cell.value, "first")
+
+        # Create second cell and store its CellRef at 'ref' (should overwrite, not write through)
+        vm.store.write_value(["cell2"], "second")
+        cellref2 = vm.store.read_ref(["cell2"])
+        vm.store.write_value(["ref"], cellref2)
+
+        # Verify ref now points to cell2
+        ref_value = vm.store.read_value(["ref"])
+        self.assertIsInstance(ref_value, CellRef)
+        self.assertEqual(ref_value.cell.value, "second")
+
+        # Verify cell1 was NOT modified (write-through would have changed it)
+        self.assertEqual(vm.store.read_value(["cell1"]), "first")
+
 
 class TestRegisterOperations(unittest.TestCase):
     """Tests for Register read/write operations."""

@@ -382,11 +382,12 @@ class Store:
         cell = self._get_or_create_cell(components)
 
         # Check if current value is a CellRef - if so, write through
-        if isinstance(cell.value, CellRef):
+        # UNLESS we're writing a new CellRef (replacing the reference itself)
+        if isinstance(cell.value, CellRef) and not isinstance(value, CellRef):
             # Write to the Cell that the CellRef points to
             cell.value.cell.value = value
         else:
-            # Normal write
+            # Normal write (or replacing a CellRef with a new CellRef)
             cell.value = value
 
     def write_ref(self, components: List[str], value: Thing):
@@ -618,11 +619,12 @@ class Register:
         cell = self._get_or_create_cell(components)
 
         # Check if current value is a CellRef - if so, write through
-        if isinstance(cell.value, CellRef):
+        # UNLESS we're writing a new CellRef (replacing the reference itself)
+        if isinstance(cell.value, CellRef) and not isinstance(value, CellRef):
             # Write to the Cell that the CellRef points to
             cell.value.cell.value = value
         else:
-            # Normal write
+            # Normal write (or replacing a CellRef with a new CellRef)
             cell.value = value
 
     def write_ref(self, components: List[str], value: Thing):

@@ -265,18 +265,19 @@
 ) list.map: Apply transform to each element
 ) AL: [transform_block, list, ...] -> [mapped_list, ...]
 ) Converts list to AL, applies transform to each item, builds new list
+) Order is preserved: al.drain processes in LIFO order, cons prepends,
+) so the two reversals cancel out and we get the original order.
 {
   !_.transform !_.list              ) Pop in LIFO: transform (top), then list
   _.transform !temp.map_transform   ) Store transform temporarily in Store
-  _.list >list.to_al                ) Convert list to AL: AL=[items..., ...]
-  Void >swap                        ) Prepend Void marker: AL=[Void, items..., ...]
+  Void                              ) Push Void marker first
+  _.list >list.to_al                ) Convert list to AL: AL=[Void, items..., ...]
   Nil                                ) Initial accumulator (empty list)
   {
     !_.persistent !_.current         ) Pop current item and accumulated list
     _.current temp.map_transform >^  ) Apply transform using Store path
     _.persistent >list.cons          ) Cons onto list: AL=[new_list, ...]
   }
-  >al.drain                          ) Build list (in reverse order)
-  >list.reverse                      ) Reverse to preserve original order
+  >al.drain                          ) Build list (order preserved by double-reversal)
 } !list.map
 

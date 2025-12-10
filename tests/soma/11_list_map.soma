@@ -5,14 +5,17 @@
 
 ) TEST: Map to double all numbers - complete workflow
 ) EXPECT_AL: [True, True, True, True, True]
+) list.to_al puts last element on top
+) We pop each value into a register, then compare all
 Void 1 2 3 4 5 >list.from_al
 { 2 >* } >list.map
 >list.to_al
-2 >==
->swap 4 >==
->swap 6 >==
->swap 8 >==
->swap 10 >==
+!_.e !_.d !_.c !_.b !_.a
+_.a 2 >==
+_.b 4 >==
+_.c 6 >==
+_.d 8 >==
+_.e 10 >==
 
 ) TEST: Map over empty list - returns empty list
 ) EXPECT_AL: [True]
@@ -20,7 +23,7 @@ Nil { 2 >* } >list.map >isNil
 
 ) TEST: Map single item - doubles the value
 ) EXPECT_AL: [True, True]
-(5) Nil >list.cons
+5 Nil >list.cons
 { 2 >* } >list.map
 !result
 result.value 10 >==
