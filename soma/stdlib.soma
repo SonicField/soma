@@ -281,3 +281,126 @@
   >al.drain                          ) Build list (order preserved by double-reversal)
 } !list.map
 
+) list.length: Count elements in list
+) AL: [list, ...] -> [count, ...]
+) Traverses list, counting nodes until Nil
+{
+  {
+    !_.list !_.count                  ) Pop list (top) and count
+    _.                                ) Push context for choose
+    _.list >isNil                     ) Check if Nil
+    {
+      !_.                             ) Pop context
+      _.count                         ) Return count
+      Nil                             ) Stop chain
+    }
+    {
+      !_.                             ) Pop context
+      _.count 1 >+                    ) Increment count
+      _.list.next                     ) Get next node
+      list.length.#loop               ) Continue
+    }
+    >choose >^
+  } !list.length.#loop
+
+  0 >swap                             ) AL=[0, list, ...]
+  list.length.#loop
+  >chain
+  >drop
+} !list.length
+
+) list.fold: Reduce list with accumulator
+) AL: [folder, init, list, ...] -> [result, ...]
+) folder receives [current, acc, ...] and returns new acc
+) Processes from head to tail (left fold)
+{
+  !_.list !_.init !_.folder           ) Pop: list (top), init, folder
+  _.folder !temp.fold_fn              ) Store folder in temp
+
+  {
+    !_.list !_.acc                    ) Pop list (top) and accumulator
+    _.                                ) Push context for choose
+    _.list >isNil                     ) Check if Nil
+    {
+      !_.                             ) Pop context
+      _.acc                           ) Return accumulator
+      Nil                             ) Stop chain
+    }
+    {
+      !_.                             ) Pop context
+      _.acc _.list.value temp.fold_fn >^  ) Apply folder: [current, acc] -> new_acc
+      !_.new_acc                      ) Save new accumulator
+      _.new_acc _.list.next           ) Push [new_acc, next] for iteration
+      list.fold.#loop                 ) Continue
+    }
+    >choose >^
+  } !list.fold.#loop
+
+  _.init _.list                       ) Push [init, list]
+  list.fold.#loop
+  >chain
+  >drop
+} !list.fold
+
+) list.append: Concatenate two lists
+) AL: [list1, list2, ...] -> [concatenated, ...]
+) Result has list1 elements followed by list2 elements
+{
+  !_.list2 !_.list1                   ) Pop list2 (top), list1
+  _.list1 >list.reverse               ) Reverse list1
+  !_.reversed
+
+  {
+    !_.list !_.acc                    ) Pop reversed (top) and accumulator (list2)
+    _.                                ) Push context for choose
+    _.list >isNil                     ) Check if Nil
+    {
+      !_.                             ) Pop context
+      _.acc                           ) Return result
+      Nil                             ) Stop chain
+    }
+    {
+      !_.                             ) Pop context
+      _.list.value _.acc >list.cons   ) Cons value onto accumulator
+      !_.new_acc
+      _.new_acc _.list.next           ) Push [new_acc, next]
+      list.append.#loop               ) Continue
+    }
+    >choose >^
+  } !list.append.#loop
+
+  _.list2 _.reversed                  ) Push [list2, reversed]
+  list.append.#loop
+  >chain
+  >drop
+} !list.append
+
+) list.filter: Keep elements matching predicate
+) AL: [predicate, list, ...] -> [filtered, ...]
+) predicate receives [value, ...] and returns bool
+) Order is preserved (same trick as list.map)
+{
+  !_.list !_.predicate                ) Pop list (top), predicate
+  _.predicate !temp.filter_pred       ) Store predicate in temp
+  Void                                ) Push Void marker
+  _.list >list.to_al                  ) Convert to AL: [Void, items...]
+  Nil                                 ) Initial accumulator (empty list)
+  {
+    !_.acc !_.current                 ) Pop accumulator (top), current
+    _.current temp.filter_pred >^     ) Apply predicate
+    !_.keep                           ) Save result
+    _.                                ) Push context for choose
+    _.keep                            ) Push bool for choose
+    {
+      !_.                             ) Pop context
+      _.current _.acc >list.cons      ) Keep: cons onto accumulator
+    }
+    {
+      !_.                             ) Pop context
+      _.acc                           ) Discard: return accumulator unchanged
+    }
+    >choose >^                        ) Execute chosen branch
+  }
+  >al.drain                           ) Build filtered list
+} !list.filter
+
