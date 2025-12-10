@@ -145,381 +145,266 @@ def drain_and_join_builtin(vm):
     vm.al.append(result)
 
 
-def drain_and_format_ul_builtin(vm):
+def format_list_with_nesting(
+    vm,
+    list_type,              # 'ordered' or 'unordered'
+    expected_placeholder,   # UliPlaceholder, OliPlaceholder, or DliPlaceholder
+    accumulator_key,        # 'uli_accumulator', 'oli_accumulator', or 'dli_accumulator'
+    operation_name,         # '>md.ul', '>md.ol', '>md.dul', '>md.dol'
+    supports_pair_pattern=False,  # True for dul/dol
+    emitter=None            # For pair pattern formatting
+):
     """
-    >use.md.drain.ul builtin - Drain AL, check nesting stack, format as unordered list.
+    Generic list formatter with nesting support.
 
-    AL before: [void, item1, item2, ..., itemN, depth, stack, accumulator, emitter, ...]
-    AL after: ["- item1\n...\n\n", new_depth, new_stack, void, ...]
+    AL before: [void, items..., depth, stack, accumulator, emitter]
+    AL after: [result, new_depth, new_stack, void]
 
-    Items may include placeholders like "__MD_ITEM_PLACEHOLDER_N__" which are
-    replaced with accumulated items from the accumulator list.
-    Uses emitter.unordered_list() to format.
+    Handles:
+    - Placeholder resolution (replacing placeholders with accumulated items)
+    - Wrong placeholder type detection with helpful error messages
+    - Nested list rendering (depth > parent_depth case)
+    - Outer formatter rendering with parent context processing
+    - Multi-level nesting with remaining stack handling
     """
     from soma.vm import Void, VoidSingleton
 
-    # Pop emitter
-    if len(vm.al) < 1:
-        raise RuntimeError("AL underflow: md.drain.ul requires emitter")
-    emitter = vm.al.pop()
+    # Determine formatting functions based on list_type
+    is_ordered = (list_type == 'ordered')
 
-    # Pop accumulator, stack and depth
+    def format_item_prefix(index, indent):
+        if is_ordered:
+            return f"{indent}{index}. "
+        else:
+            return f"{indent}- "
+
+    def emitter_format_list(emitter_obj, items, depth):
+        if is_ordered:
+            return emitter_obj.ordered_list(items, depth)
+        else:
+            return emitter_obj.unordered_list(items, depth)
+
+    # --- Pop parameters from AL ---
+    if len(vm.al) < 1:
+        raise RuntimeError(f"AL underflow: {operation_name} requires emitter")
+    emitter_obj = vm.al.pop()
+
     if len(vm.al) < 3:
-        raise RuntimeError("AL underflow: md.drain.ul requires accumulator, stack and depth")
+        raise RuntimeError(f"AL underflow: {operation_name} requires accumulator, stack and depth")
     accumulator = vm.al.pop()
     stack = vm.al.pop()
     depth = int(vm.al.pop())
 
-    # Ensure accumulator is a list
     if not isinstance(accumulator, list):
         accumulator = []
 
-    # Pop items until Void
+    # --- Drain items until Void ---
     items = []
     while True:
         if len(vm.al) < 1:
-            raise RuntimeError("AL underflow: md.drain.ul requires Void terminator")
+            raise RuntimeError(f"AL underflow: {operation_name} requires Void terminator")
 
         item = vm.al.pop()
 
         if isinstance(item, VoidSingleton):
             break
 
-        items.append(item)  # Keep as object for now
+        items.append(item)
 
-    # Items are in reverse order (LIFO), so reverse them
     items.reverse()
 
-    # Replace placeholders with accumulated items and validate types
-    for i in range(len(items)):
-        item = items[i]
-        if isinstance(item, UliPlaceholder):
-            # Correct placeholder type - replace with accumulated item
-            if 0 <= item.index < len(accumulator):
-                items[i] = accumulator[item.index]
-            else:
-                raise RuntimeError(f"UliPlaceholder index {item.index} out of range (accumulator has {len(accumulator)} items)")
-        elif isinstance(item, OliPlaceholder):
-            # Wrong placeholder type!
-            raise RuntimeError(
-                f">md.ul encountered OliPlaceholder (from >md.oli). "
-                f"Use >md.ol for ordered list items, not >md.ul. "
-                f"Did you mean to use >md.ol instead of >md.ul?"
-            )
-        elif isinstance(item, DliPlaceholder):
-            # Wrong placeholder type!
-            raise RuntimeError(
-                f">md.ul encountered DliPlaceholder (from >md.dli). "
-                f"Use >md.dul for definition list items, not >md.ul. "
-                f"Did you mean to use >md.dul instead of >md.ul?"
-            )
-        else:
-            # Regular item - convert to string
-            items[i] = str(item)
+    # --- Resolve placeholders ---
+    if supports_pair_pattern:
+        # Check if we have expected placeholders or raw items (pair pattern)
+        has_expected_placeholders = any(isinstance(item, expected_placeholder) for item in items)
 
-    # Build result - use emitter for simple non-nested lists
+        if has_expected_placeholders:
+            resolved_items = []
+            for item in items:
+                if isinstance(item, expected_placeholder):
+                    if 0 <= item.index < len(accumulator):
+                        resolved_items.append(accumulator[item.index])
+                    else:
+                        raise RuntimeError(
+                            f"{type(item).__name__} index {item.index} out of range "
+                            f"(accumulator has {len(accumulator)} items)"
+                        )
+                elif isinstance(item, (OliPlaceholder, UliPlaceholder, DliPlaceholder)):
+                    # Wrong placeholder type
+                    raise RuntimeError(
+                        f"{operation_name} encountered {type(item).__name__}. "
+                        f"Use the appropriate list type for this placeholder."
+                    )
+                else:
+                    resolved_items.append(str(item))
+        else:
+            # Pair pattern: treat as label-value pairs
+            if len(items) % 2 != 0:
+                raise ValueError(
+                    f"{operation_name} requires even number of items for label-value pairs, "
+                    f"got {len(items)}. Hint: Each label needs a value."
+                )
+            resolved_items = []
+            for i in range(0, len(items), 2):
+                label = str(items[i])
+                value = str(items[i + 1])
+                resolved_items.append(emitter_obj.list_item_formatted(label, value))
+    else:
+        # Standard placeholder resolution
+        resolved_items = []
+        for item in items:
+            if isinstance(item, expected_placeholder):
+                if 0 <= item.index < len(accumulator):
+                    resolved_items.append(accumulator[item.index])
+                else:
+                    raise RuntimeError(
+                        f"{type(item).__name__} index {item.index} out of range "
+                        f"(accumulator has {len(accumulator)} items)"
+                    )
+            elif isinstance(item, OliPlaceholder):
+                raise RuntimeError(
+                    f"{operation_name} encountered OliPlaceholder (from >md.oli). "
+                    f"Use >md.ol for ordered list items, not {operation_name}. "
+                    f"Did you mean to use >md.ol instead of {operation_name}?"
+                )
+            elif isinstance(item, UliPlaceholder):
+                raise RuntimeError(
+                    f"{operation_name} encountered UliPlaceholder (from >md.uli). "
+                    f"Use >md.ul for unordered list items, not {operation_name}. "
+                    f"Did you mean to use >md.ul instead of {operation_name}?"
+                )
+            elif isinstance(item, DliPlaceholder):
+                raise RuntimeError(
+                    f"{operation_name} encountered DliPlaceholder (from >md.dli). "
+                    f"Use >md.dul or >md.dol for definition list items, not {operation_name}. "
+                    f"Did you mean to use >md.dul instead of {operation_name}?"
+                )
+            else:
+                resolved_items.append(str(item))
+
+    # --- Handle nesting ---
     result_parts = []
 
-    # Check if we have a parent context on the stack
     if isinstance(stack, list) and len(stack) > 0:
         parent_ctx = stack[-1]
         parent_depth = parent_ctx['depth']
 
         if depth > parent_depth:
-            # We're a nested formatter - render only our items, add to parent context
-            if emitter.can_concat_lists():
-                # HTML: Use proper nested <ul> structure
-                nested_result = emitter.unordered_list(items, depth)
+            # Nested formatter - render items and add to parent context
+            if emitter_obj.can_concat_lists():
+                nested_result = emitter_format_list(emitter_obj, resolved_items, depth)
             else:
-                # Markdown: Use manual formatting to preserve exact spacing
                 indent = "  " * depth
-                for item in items:
-                    result_parts.append(f"{indent}- {item}\n")
+                counter = 1
+                for item in resolved_items:
+                    result_parts.append(f"{format_item_prefix(counter, indent)}{item}\n")
+                    counter += 1
                 nested_result = ''.join(result_parts)
 
-            # Update parent context with nested text
             parent_ctx['nested_text'] = parent_ctx.get('nested_text', '') + nested_result
-
-            # Don't pop stack, just update it
             new_stack = stack
-            new_depth = parent_depth  # Return to parent depth
-
-            # Return empty string - text already added to parent context
-            # Don't add blank line for nested content
+            new_depth = parent_depth
             result = ""
         else:
-            # We're the outer formatter - pop ALL parent contexts at our depth and render everything
+            # Outer formatter - process parent contexts and render everything
             new_stack = []
             contexts_to_render = []
 
-            # Pop all contexts at parent_depth
             for ctx in stack:
                 if ctx['depth'] == parent_depth:
                     contexts_to_render.append(ctx)
                 else:
                     new_stack.append(ctx)
 
-            if emitter.can_concat_lists():
-                # HTML: Build proper nested structure with nested lists inside <li> tags
+            result_parts = []
+            if emitter_obj.can_concat_lists():
                 all_items = []
 
-                # Process parent contexts
                 for ctx in contexts_to_render:
                     parent_items = ctx['items']
                     nested_text = ctx.get('nested_text', '')
-                    parent_accumulator = ctx.get('uli_accumulator', [])
+                    parent_accumulator = ctx.get(accumulator_key, [])
 
                     for item in parent_items:
                         item_text = replace_placeholder(item, parent_accumulator)
-                        # Append nested content to the item
                         if nested_text:
                             all_items.append(item_text + nested_text)
-                            nested_text = ''  # Use it once
+                            nested_text = ''
                         else:
                             all_items.append(item_text)
 
-                # Add current items
-                all_items.extend(items)
-
-                # Use emitter to format
-                result = emitter.unordered_list(all_items, parent_depth)
+                all_items.extend(resolved_items)
+                result = emitter_format_list(emitter_obj, all_items, parent_depth)
             else:
-                # Markdown: Use manual formatting to preserve exact spacing
                 parent_indent = "  " * parent_depth
+                counter = 1
+
                 for ctx in contexts_to_render:
                     parent_items = ctx['items']
                     nested_text = ctx.get('nested_text', '')
-                    parent_accumulator = ctx.get('uli_accumulator', [])
+                    parent_accumulator = ctx.get(accumulator_key, [])
 
-                    # Render parent items using UL format (replace placeholders if needed)
                     for item in parent_items:
                         item_text = replace_placeholder(item, parent_accumulator)
-                        result_parts.append(f"{parent_indent}- {item_text}\n")
+                        result_parts.append(f"{format_item_prefix(counter, parent_indent)}{item_text}\n")
+                        counter += 1
 
-                    # Insert nested text
                     if nested_text:
                         result_parts.append(nested_text)
 
-                # Render current items at same depth
-                for item in items:
-                    result_parts.append(f"{parent_indent}- {item}\n")
+                for item in resolved_items:
+                    result_parts.append(f"{format_item_prefix(counter, parent_indent)}{item}\n")
+                    counter += 1
 
                 result = ''.join(result_parts)
 
-            # Set new depth based on remaining stack
             if new_stack:
-                # Still nested - add result to parent context and return empty string
                 new_stack[-1]['nested_text'] = new_stack[-1].get('nested_text', '') + result
-                result = ""  # Don't add to document yet
+                result = ""
                 new_depth = new_stack[-1]['depth']
             else:
-                # Top level - add to document
                 new_depth = 0
-                # Add final blank line only at depth 0
-                if new_depth == 0 and not emitter.can_concat_lists():
+                if new_depth == 0 and not emitter_obj.can_concat_lists():
                     result += "\n"
     else:
-        # No nesting - use emitter for simple case
+        # No nesting - simple case
         new_stack = []
         new_depth = depth
-        result = emitter.unordered_list(items, depth)
+        result = emitter_format_list(emitter_obj, resolved_items, 0)
 
-    # Push Void sentinel back first, then new stack, then new_depth, then result (LIFO order)
+    # Push results back to AL
     vm.al.append(Void)
     vm.al.append(new_stack)
     vm.al.append(new_depth)
     vm.al.append(result)
+
+
+def drain_and_format_ul_builtin(vm):
+    """
+    >use.md.drain.ul builtin - Drain AL, check nesting stack, format as unordered list.
+    Delegates to format_list_with_nesting helper.
+    """
+    format_list_with_nesting(
+        vm,
+        list_type='unordered',
+        expected_placeholder=UliPlaceholder,
+        accumulator_key='uli_accumulator',
+        operation_name='>md.ul'
+    )
 
 
 def drain_and_format_ol_builtin(vm):
     """
     >use.md.drain.ol builtin - Drain AL, check nesting stack, format as ordered list.
-
-    AL before: [void, item1, item2, ..., itemN, depth, stack, accumulator, emitter, ...]
-    AL after: ["1. item1\n...\n\n", new_depth, new_stack, void, ...]
-
-    Items may include placeholders like "__MD_ITEM_PLACEHOLDER_N__" which are
-    replaced with accumulated items from the accumulator list.
-    Uses emitter.ordered_list() to format.
+    Delegates to format_list_with_nesting helper.
     """
-    from soma.vm import Void, VoidSingleton
-
-    # Pop emitter
-    if len(vm.al) < 1:
-        raise RuntimeError("AL underflow: md.drain.ol requires emitter")
-    emitter = vm.al.pop()
-
-    # Pop accumulator, stack and depth
-    if len(vm.al) < 3:
-        raise RuntimeError("AL underflow: md.drain.ol requires accumulator, stack and depth")
-    accumulator = vm.al.pop()
-    stack = vm.al.pop()
-    depth = int(vm.al.pop())
-
-    # Ensure accumulator is a list
-    if not isinstance(accumulator, list):
-        accumulator = []
-
-    # Pop items until Void
-    items = []
-    while True:
-        if len(vm.al) < 1:
-            raise RuntimeError("AL underflow: md.drain.ol requires Void terminator")
-
-        item = vm.al.pop()
-
-        if isinstance(item, VoidSingleton):
-            break
-
-        items.append(item)  # Keep as object for now
-
-    # Items are in reverse order (LIFO), so reverse them
-    items.reverse()
-
-    # Replace placeholders with accumulated items and validate types
-    for i in range(len(items)):
-        item = items[i]
-        if isinstance(item, OliPlaceholder):
-            # Correct placeholder type - replace with accumulated item
-            if 0 <= item.index < len(accumulator):
-                items[i] = accumulator[item.index]
-            else:
-                raise RuntimeError(f"OliPlaceholder index {item.index} out of range (accumulator has {len(accumulator)} items)")
-        elif isinstance(item, UliPlaceholder):
-            # Wrong placeholder type!
-            raise RuntimeError(
-                f">md.ol encountered UliPlaceholder (from >md.uli). "
-                f"Use >md.ul for unordered list items, not >md.ol. "
-                f"Did you mean to use >md.ul instead of >md.ol?"
-            )
-        elif isinstance(item, DliPlaceholder):
-            # Wrong placeholder type!
-            raise RuntimeError(
-                f">md.ol encountered DliPlaceholder (from >md.dli). "
-                f"Use >md.dol for definition list items, not >md.ol. "
-                f"Did you mean to use >md.dol instead of >md.ol?"
-            )
-        else:
-            # Regular item - convert to string
-            items[i] = str(item)
-
-    # Build result - use emitter for simple non-nested lists
-    result_parts = []
-
-    # Check if we have a parent context on the stack
-    if isinstance(stack, list) and len(stack) > 0:
-        parent_ctx = stack[-1]
-        parent_depth = parent_ctx['depth']
-
-        if depth > parent_depth:
-            # We're a nested formatter - render only our items, add to parent context
-            if emitter.can_concat_lists():
-                # HTML: Use proper nested <ol> structure
-                nested_result = emitter.ordered_list(items, depth)
-            else:
-                # Markdown: Use manual formatting to preserve exact spacing
-                indent = "  " * depth
-                counter = 1
-                for item in items:
-                    result_parts.append(f"{indent}{counter}. {item}\n")
-                    counter += 1
-                nested_result = ''.join(result_parts)
-
-            # Update parent context with nested text
-            parent_ctx['nested_text'] = parent_ctx.get('nested_text', '') + nested_result
-
-            # Don't pop stack, just update it
-            new_stack = stack
-            new_depth = parent_depth  # Return to parent depth
-
-            # Return empty string - text already added to parent context
-            # Don't add blank line for nested content
-            result = ""
-        else:
-            # We're the outer formatter - pop ALL parent contexts at our depth and render everything
-            new_stack = []
-            contexts_to_render = []
-
-            # Pop all contexts at parent_depth
-            for ctx in stack:
-                if ctx['depth'] == parent_depth:
-                    contexts_to_render.append(ctx)
-                else:
-                    new_stack.append(ctx)
-
-            if emitter.can_concat_lists():
-                # HTML: Build proper nested structure with nested lists inside <li> tags
-                all_items = []
-
-                # Process parent contexts
-                for ctx in contexts_to_render:
-                    parent_items = ctx['items']
-                    nested_text = ctx.get('nested_text', '')
-                    parent_accumulator = ctx.get('oli_accumulator', [])
-
-                    for item in parent_items:
-                        item_text = replace_placeholder(item, parent_accumulator)
-                        # Append nested content to the item
-                        if nested_text:
-                            all_items.append(item_text + nested_text)
-                            nested_text = ''  # Use it once
-                        else:
-                            all_items.append(item_text)
-
-                # Add current items
-                all_items.extend(items)
-
-                # Use emitter to format
-                result = emitter.ordered_list(all_items, parent_depth)
-            else:
-                # Markdown: Use manual formatting to preserve exact spacing
-                parent_indent = "  " * parent_depth
-                counter = 1
-                for ctx in contexts_to_render:
-                    parent_items = ctx['items']
-                    nested_text = ctx.get('nested_text', '')
-                    parent_accumulator = ctx.get('oli_accumulator', [])
-
-                    # Render parent items using OL format (replace placeholders if needed)
-                    for item in parent_items:
-                        item_text = replace_placeholder(item, parent_accumulator)
-                        result_parts.append(f"{parent_indent}{counter}. {item_text}\n")
-                        counter += 1
-
-                    # Insert nested text
-                    if nested_text:
-                        result_parts.append(nested_text)
-
-                # Render current items at same depth (continue counter)
-                for item in items:
-                    result_parts.append(f"{parent_indent}{counter}. {item}\n")
-                    counter += 1
-
-                result = ''.join(result_parts)
-
-            # Set new depth based on remaining stack
-            if new_stack:
-                # Still nested - add result to parent context and return empty string
-                new_stack[-1]['nested_text'] = new_stack[-1].get('nested_text', '') + result
-                result = ""  # Don't add to document yet
-                new_depth = new_stack[-1]['depth']
-            else:
-                # Top level - add to document
-                new_depth = 0
-                # Add final blank line only at depth 0
-                if new_depth == 0 and not emitter.can_concat_lists():
-                    result += "\n"
-    else:
-        # No nesting - use emitter for simple case
-        new_stack = []
-        new_depth = depth
-        result = emitter.ordered_list(items, depth)
-
-    # Push Void sentinel back first, then new stack, then new_depth, then result (LIFO order)
-    vm.al.append(Void)
-    vm.al.append(new_stack)
-    vm.al.append(new_depth)
-    vm.al.append(result)
+    format_list_with_nesting(
+        vm,
+        list_type='ordered',
+        expected_placeholder=OliPlaceholder,
+        accumulator_key='oli_accumulator',
+        operation_name='>md.ol'
+    )
 
 
 def drain_and_format_paragraphs_builtin(vm):
@@ -1182,390 +1067,33 @@ def set_emitter_builtin(vm):
 def drain_and_format_dul_builtin(vm):
     """
     >use.md.drain.dul builtin - Drain AL, format as definition unordered list.
-
-    AL before: [void, items..., depth, stack, accumulator, emitter]
-    AL after: [result, new_depth, new_stack, void]
-
-    Supports two patterns:
-    1. With >md.dli: [void, DliPlaceholder(0), DliPlaceholder(1), ..., depth, stack, accumulator, emitter]
-    2. Without >md.dli (pairs): [void, label1, value1, label2, value2, ..., depth, stack, accumulator, emitter]
-
-    For pattern 2, pairs are formatted as "**label**: value" automatically.
-    Supports nesting via depth/stack like md.ul/md.ol.
+    Supports pair pattern (label, value pairs) and >md.dli placeholders.
+    Delegates to format_list_with_nesting helper.
     """
-    from soma.vm import Void, VoidSingleton
-
-    # Pop emitter
-    if len(vm.al) < 1:
-        raise RuntimeError("AL underflow: md.dul requires emitter")
-    emitter = vm.al.pop()
-
-    # Pop accumulator, stack and depth
-    if len(vm.al) < 3:
-        raise RuntimeError("AL underflow: md.dul requires accumulator, stack and depth")
-    accumulator = vm.al.pop()
-    stack = vm.al.pop()
-    depth = int(vm.al.pop())
-
-    # Ensure accumulator is a list
-    if not isinstance(accumulator, list):
-        accumulator = []
-
-    # Pop items until Void
-    items = []
-    while True:
-        if len(vm.al) < 1:
-            raise RuntimeError("AL underflow: md.dul requires Void terminator")
-
-        item = vm.al.pop()
-
-        if isinstance(item, VoidSingleton):
-            break
-
-        items.append(item)
-
-    # Items are in reverse order (LIFO), so reverse them
-    items.reverse()
-
-    # Check if we have DliPlaceholders (new pattern) or raw items (old pair pattern)
-    has_dli_placeholders = any(isinstance(item, DliPlaceholder) for item in items)
-
-    if has_dli_placeholders:
-        # New pattern: replace DliPlaceholders with accumulated items
-        resolved_items = []
-        for item in items:
-            if isinstance(item, DliPlaceholder):
-                if 0 <= item.index < len(accumulator):
-                    resolved_items.append(accumulator[item.index])
-                else:
-                    raise RuntimeError(f"DliPlaceholder index {item.index} out of range (accumulator has {len(accumulator)} items)")
-            elif isinstance(item, (OliPlaceholder, UliPlaceholder)):
-                raise RuntimeError(
-                    f">md.dul encountered {type(item).__name__}. "
-                    f"Use >md.ul for >md.uli items or >md.ol for >md.oli items."
-                )
-            else:
-                resolved_items.append(str(item))
-    else:
-        # Old pattern: treat as pairs and format them
-        if len(items) % 2 != 0:
-            raise ValueError(
-                f">md.dul requires even number of items for label-value pairs, got {len(items)}. "
-                f"Hint: Each label needs a value. Did you forget an item or have an extra one?"
-            )
-        resolved_items = []
-        for i in range(0, len(items), 2):
-            label = str(items[i])
-            value = str(items[i + 1])
-            resolved_items.append(emitter.list_item_formatted(label, value))
-
-    # Check if we have a parent context on the stack (nesting support)
-    if isinstance(stack, list) and len(stack) > 0:
-        parent_ctx = stack[-1]
-        parent_depth = parent_ctx['depth']
-
-        if depth > parent_depth:
-            # We're a nested formatter - render only our items, add to parent context
-            if emitter.can_concat_lists():
-                # HTML: Use proper nested <ul> structure
-                nested_result = emitter.unordered_list(resolved_items, depth)
-            else:
-                # Markdown: Use manual formatting to preserve exact spacing
-                indent = "  " * depth
-                result_parts = []
-                for item in resolved_items:
-                    result_parts.append(f"{indent}- {item}\n")
-                nested_result = ''.join(result_parts)
-
-            # Update parent context with nested text
-            parent_ctx['nested_text'] = parent_ctx.get('nested_text', '') + nested_result
-
-            # Don't pop stack, just update it
-            new_stack = stack
-            new_depth = parent_depth  # Return to parent depth
-
-            # Return empty string - text already added to parent context
-            result = ""
-        else:
-            # We're the outer formatter - pop ALL parent contexts at our depth and render everything
-            new_stack = []
-            contexts_to_render = []
-
-            # Pop all contexts at parent_depth
-            for ctx in stack:
-                if ctx['depth'] == parent_depth:
-                    contexts_to_render.append(ctx)
-                else:
-                    new_stack.append(ctx)
-
-            result_parts = []
-            if emitter.can_concat_lists():
-                # HTML: Build proper nested structure with nested lists inside <li> tags
-                all_items = []
-
-                # Process parent contexts
-                for ctx in contexts_to_render:
-                    parent_items = ctx['items']
-                    nested_text = ctx.get('nested_text', '')
-                    parent_accumulator = ctx.get('dli_accumulator', [])
-
-                    for item in parent_items:
-                        item_text = replace_placeholder(item, parent_accumulator)
-                        # Append nested content to the item
-                        if nested_text:
-                            all_items.append(item_text + nested_text)
-                            nested_text = ''  # Use it once
-                        else:
-                            all_items.append(item_text)
-
-                # Add current items
-                all_items.extend(resolved_items)
-
-                # Use emitter to format
-                result = emitter.unordered_list(all_items, parent_depth)
-            else:
-                # Markdown: Use manual formatting to preserve exact spacing
-                parent_indent = "  " * parent_depth
-                for ctx in contexts_to_render:
-                    parent_items = ctx['items']
-                    nested_text = ctx.get('nested_text', '')
-                    parent_accumulator = ctx.get('dli_accumulator', [])
-
-                    # Render parent items using UL format (replace placeholders if needed)
-                    for item in parent_items:
-                        item_text = replace_placeholder(item, parent_accumulator)
-                        result_parts.append(f"{parent_indent}- {item_text}\n")
-
-                    # Insert nested text
-                    if nested_text:
-                        result_parts.append(nested_text)
-
-                # Render current items at same depth
-                for item in resolved_items:
-                    result_parts.append(f"{parent_indent}- {item}\n")
-
-                result = ''.join(result_parts)
-
-            # Set new depth based on remaining stack
-            if new_stack:
-                # Still nested - add result to parent context and return empty string
-                new_stack[-1]['nested_text'] = new_stack[-1].get('nested_text', '') + result
-                result = ""  # Don't add to document yet
-                new_depth = new_stack[-1]['depth']
-            else:
-                # Top level - add to document
-                new_depth = 0
-                # Add final blank line only at depth 0
-                if new_depth == 0 and not emitter.can_concat_lists():
-                    result += "\n"
-    else:
-        # No nesting - use emitter for simple case
-        new_stack = []
-        new_depth = depth
-        result = emitter.unordered_list(resolved_items, 0)
-
-    # Push Void sentinel back first, then new stack, then new_depth, then result (LIFO order)
-    vm.al.append(Void)
-    vm.al.append(new_stack)
-    vm.al.append(new_depth)
-    vm.al.append(result)
+    format_list_with_nesting(
+        vm,
+        list_type='unordered',
+        expected_placeholder=DliPlaceholder,
+        accumulator_key='dli_accumulator',
+        operation_name='>md.dul',
+        supports_pair_pattern=True
+    )
 
 
 def drain_and_format_dol_builtin(vm):
     """
     >use.md.drain.dol builtin - Drain AL, format as definition ordered list.
-
-    AL before: [void, items..., depth, stack, accumulator, emitter]
-    AL after: [result, new_depth, new_stack, void]
-
-    Supports two patterns:
-    1. With >md.dli: [void, DliPlaceholder(0), DliPlaceholder(1), ..., depth, stack, accumulator, emitter]
-    2. Without >md.dli (pairs): [void, label1, value1, label2, value2, ..., depth, stack, accumulator, emitter]
-
-    For pattern 2, pairs are formatted as "**label**: value" automatically.
-    Supports nesting via depth/stack like md.ul/md.ol.
+    Supports pair pattern (label, value pairs) and >md.dli placeholders.
+    Delegates to format_list_with_nesting helper.
     """
-    from soma.vm import Void, VoidSingleton
-
-    # Pop emitter
-    if len(vm.al) < 1:
-        raise RuntimeError("AL underflow: md.dol requires emitter")
-    emitter = vm.al.pop()
-
-    # Pop accumulator, stack and depth
-    if len(vm.al) < 3:
-        raise RuntimeError("AL underflow: md.dol requires accumulator, stack and depth")
-    accumulator = vm.al.pop()
-    stack = vm.al.pop()
-    depth = int(vm.al.pop())
-
-    # Ensure accumulator is a list
-    if not isinstance(accumulator, list):
-        accumulator = []
-
-    # Pop items until Void
-    items = []
-    while True:
-        if len(vm.al) < 1:
-            raise RuntimeError("AL underflow: md.dol requires Void terminator")
-
-        item = vm.al.pop()
-
-        if isinstance(item, VoidSingleton):
-            break
-
-        items.append(item)
-
-    # Items are in reverse order (LIFO), so reverse them
-    items.reverse()
-
-    # Check if we have DliPlaceholders (new pattern) or raw items (old pair pattern)
-    has_dli_placeholders = any(isinstance(item, DliPlaceholder) for item in items)
-
-    if has_dli_placeholders:
-        # New pattern: replace DliPlaceholders with accumulated items
-        resolved_items = []
-        for item in items:
-            if isinstance(item, DliPlaceholder):
-                if 0 <= item.index < len(accumulator):
-                    resolved_items.append(accumulator[item.index])
-                else:
-                    raise RuntimeError(f"DliPlaceholder index {item.index} out of range (accumulator has {len(accumulator)} items)")
-            elif isinstance(item, (OliPlaceholder, UliPlaceholder)):
-                raise RuntimeError(
-                    f">md.dol encountered {type(item).__name__}. "
-                    f"Use >md.ul for >md.uli items or >md.ol for >md.oli items."
-                )
-            else:
-                resolved_items.append(str(item))
-    else:
-        # Old pattern: treat as pairs and format them
-        if len(items) % 2 != 0:
-            raise ValueError(
-                f">md.dol requires even number of items for label-value pairs, got {len(items)}. "
-                f"Hint: Each label needs a value. Did you forget an item or have an extra one?"
-            )
-        resolved_items = []
-        for i in range(0, len(items), 2):
-            label = str(items[i])
-            value = str(items[i + 1])
-            resolved_items.append(emitter.list_item_formatted(label, value))
-
-    # Check if we have a parent context on the stack (nesting support)
-    if isinstance(stack, list) and len(stack) > 0:
-        parent_ctx = stack[-1]
-        parent_depth = parent_ctx['depth']
-
-        if depth > parent_depth:
-            # We're a nested formatter - render only our items, add to parent context
-            if emitter.can_concat_lists():
-                # HTML: Use proper nested <ol> structure
-                nested_result = emitter.ordered_list(resolved_items, depth)
-            else:
-                # Markdown: Use manual formatting to preserve exact spacing
-                indent = "  " * depth
-                result_parts = []
-                counter = 1
-                for item in resolved_items:
-                    result_parts.append(f"{indent}{counter}. {item}\n")
-                    counter += 1
-                nested_result = ''.join(result_parts)
-
-            # Update parent context with nested text
-            parent_ctx['nested_text'] = parent_ctx.get('nested_text', '') + nested_result
-
-            # Don't pop stack, just update it
-            new_stack = stack
-            new_depth = parent_depth  # Return to parent depth
-
-            # Return empty string - text already added to parent context
-            result = ""
-        else:
-            # We're the outer formatter - pop ALL parent contexts at our depth and render everything
-            new_stack = []
-            contexts_to_render = []
-
-            # Pop all contexts at parent_depth
-            for ctx in stack:
-                if ctx['depth'] == parent_depth:
-                    contexts_to_render.append(ctx)
-                else:
-                    new_stack.append(ctx)
-
-            result_parts = []
-            if emitter.can_concat_lists():
-                # HTML: Build proper nested structure with nested lists inside <li> tags
-                all_items = []
-
-                # Process parent contexts
-                for ctx in contexts_to_render:
-                    parent_items = ctx['items']
-                    nested_text = ctx.get('nested_text', '')
-                    parent_accumulator = ctx.get('dli_accumulator', [])
-
-                    for item in parent_items:
-                        item_text = replace_placeholder(item, parent_accumulator)
-                        # Append nested content to the item
-                        if nested_text:
-                            all_items.append(item_text + nested_text)
-                            nested_text = ''  # Use it once
-                        else:
-                            all_items.append(item_text)
-
-                # Add current items
-                all_items.extend(resolved_items)
-
-                # Use emitter to format
-                result = emitter.ordered_list(all_items, parent_depth)
-            else:
-                # Markdown: Use manual formatting to preserve exact spacing
-                parent_indent = "  " * parent_depth
-                counter = 1
-                for ctx in contexts_to_render:
-                    parent_items = ctx['items']
-                    nested_text = ctx.get('nested_text', '')
-                    parent_accumulator = ctx.get('dli_accumulator', [])
-
-                    # Render parent items using OL format (replace placeholders if needed)
-                    for item in parent_items:
-                        item_text = replace_placeholder(item, parent_accumulator)
-                        result_parts.append(f"{parent_indent}{counter}. {item_text}\n")
-                        counter += 1
-
-                    # Insert nested text
-                    if nested_text:
-                        result_parts.append(nested_text)
-
-                # Render current items at same depth (continue counter)
-                for item in resolved_items:
-                    result_parts.append(f"{parent_indent}{counter}. {item}\n")
-                    counter += 1
-
-                result = ''.join(result_parts)
-
-            # Set new depth based on remaining stack
-            if new_stack:
-                # Still nested - add result to parent context and return empty string
-                new_stack[-1]['nested_text'] = new_stack[-1].get('nested_text', '') + result
-                result = ""  # Don't add to document yet
-                new_depth = new_stack[-1]['depth']
-            else:
-                # Top level - add to document
-                new_depth = 0
-                # Add final blank line only at depth 0
-                if new_depth == 0 and not emitter.can_concat_lists():
-                    result += "\n"
-    else:
-        # No nesting - use emitter for simple case
-        new_stack = []
-        new_depth = depth
-        result = emitter.ordered_list(resolved_items, 0)
-
-    # Push Void sentinel back first, then new stack, then new_depth, then result (LIFO order)
-    vm.al.append(Void)
-    vm.al.append(new_stack)
-    vm.al.append(new_depth)
-    vm.al.append(result)
+    format_list_with_nesting(
+        vm,
+        list_type='ordered',
+        expected_placeholder=DliPlaceholder,
+        accumulator_key='dli_accumulator',
+        operation_name='>md.dol',
+        supports_pair_pattern=True
+    )
 
 
 def register(vm):
