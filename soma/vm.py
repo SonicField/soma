@@ -303,6 +303,13 @@ class Store:
         # Debug instrumented control flow primitives
         self.root["debug"].children["chain"] = Cell(value=BuiltinBlock("debug.chain", builtin_debug_chain))
         self.root["debug"].children["choose"] = Cell(value=BuiltinBlock("debug.choose", builtin_debug_choose))
+        self.root["debug"].children["error"] = Cell(value=BuiltinBlock("debug.error", builtin_debug_error))
+
+        # Debug graph utilities
+        if "graph" not in self.root["debug"].children:
+            self.root["debug"].children["graph"] = Cell(value=Void)
+        self.root["debug"].children["graph"].children["dump"] = Cell(value=BuiltinBlock("debug.graph.dump", builtin_debug_graph_dump))
+        self.root["debug"].children["graph"].children["draw"] = Cell(value=BuiltinBlock("debug.graph.draw", builtin_debug_graph_draw))
 
         # String operations
         self.root["concat"] = Cell(value=BuiltinBlock("concat", builtin_concat))
@@ -1619,6 +1626,224 @@ def builtin_debug_choose(vm: VM):
 
     al_size_after = len(vm.al)
     print(f"  AL after: {al_size_after} items")
+
+
+def builtin_debug_error(vm: VM):
+    """
+    debug.error: Halt execution with an error message.
+
+    AL before: [message, ...]
+    AL after: HALT (raises RuntimeError)
+
+    This is a deliberate escape hatch for debugging - it halts the program
+    rather than trying to propagate error state. SOMA uses state-passing,
+    not exceptions, so this is explicitly a debug tool.
+    """
+    if len(vm.al) < 1:
+        raise RuntimeError("ASSERT FAILED: (no message provided)")
+
+    message = vm.al.pop()
+    if isinstance(message, str):
+        raise RuntimeError(f"ASSERT FAILED: {message}")
+    else:
+        raise RuntimeError(f"ASSERT FAILED: {message}")
+
+
+def builtin_debug_graph_dump(vm: VM):
+    """
+    debug.graph.dump: Dump a CellRef structure to stdout with cycle detection.
+
+    AL before: [cellref, ...]
+    AL after: [...] (cellref consumed)
+
+    Prints a text representation of the CellRef structure showing:
+    - Node IDs for identity tracking
+    - All fields and their values
+    - Cycle detection (references to already-visited nodes)
+    """
+    import sys
+
+    if len(vm.al) < 1:
+        raise RuntimeError("debug.graph.dump requires a value on AL")
+
+    value = vm.al.pop()
+
+    # Track visited cells by id
+    visited = {}  # id -> node_number
+    node_counter = [0]  # Use list to allow mutation in nested function
+
+    def format_value(val, indent=0):
+        """Format a value, handling CellRefs recursively."""
+        prefix = "  " * indent
+
+        if isinstance(val, NilSingleton):
+            return "Nil"
+        elif isinstance(val, VoidSingleton):
+            return "Void"
+        elif isinstance(val, TrueSingleton):
+            return "True"
+        elif isinstance(val, FalseSingleton):
+            return "False"
+        elif isinstance(val, int):
+            return str(val)
+        elif isinstance(val, str):
+            return f'({val})'
+        elif isinstance(val, Block):
+            return "<Block>"
+        elif isinstance(val, BuiltinBlock):
+            return f"<Builtin:{val.name}>"
+        elif isinstance(val, CellRef):
+            cell_id = id(val.cell)
+
+            # Check for cycle
+            if cell_id in visited:
+                return f"#{ visited[cell_id]} (cycle)"
+
+            # Assign node number
+            node_num = node_counter[0]
+            node_counter[0] += 1
+            visited[cell_id] = node_num
+
+            # Format the cell's contents
+            cell = val.cell
+            if not cell.children:
+                # Leaf cell with just a value
+                if cell.value is None:
+                    return f"#{node_num} {{}}"
+                else:
+                    inner = format_value(cell.value, indent)
+                    return f"#{node_num} {{ value: {inner} }}"
+            else:
+                # Cell with children
+                lines = [f"#{node_num} {{"]
+                for key, child_cell in sorted(cell.children.items()):
+                    child_val = child_cell.value
+                    formatted = format_value(child_val, indent + 1)
+                    if '\n' in formatted:
+                        lines.append(f"{prefix}  {key}: {formatted}")
+                    else:
+                        lines.append(f"{prefix}  {key}: {formatted}")
+                lines.append(f"{prefix}}}")
+                return '\n'.join(lines)
+        else:
+            return f"<{type(val).__name__}>"
+
+    result = format_value(value)
+    print(result)
+
+
+def builtin_debug_graph_draw(vm: VM):
+    """
+    debug.graph.draw: Draw a CellRef structure as ASCII tree.
+
+    AL before: [cellref, ...]
+    AL after: [...] (cellref consumed)
+
+    Prints a tree-style visualisation using box-drawing characters,
+    similar to the Unix 'tree' command.
+    """
+    if len(vm.al) < 1:
+        raise RuntimeError("debug.graph.draw requires a value on AL")
+
+    value = vm.al.pop()
+
+    # Track visited cells by id
+    visited = {}  # id -> node_number
+    node_counter = [0]
+
+    def draw_value(val, prefix="", is_last=True, is_root=True):
+        """Draw a value as a tree node."""
+        lines = []
+
+        # Connector characters
+        if is_root:
+            connector = ""
+            child_prefix = ""
+        else:
+            connector = "└── " if is_last else "├── "
+            child_prefix = "    " if is_last else "│   "
+
+        if isinstance(val, NilSingleton):
+            lines.append(f"{prefix}{connector}Nil")
+        elif isinstance(val, VoidSingleton):
+            lines.append(f"{prefix}{connector}Void")
+        elif isinstance(val, TrueSingleton):
+            lines.append(f"{prefix}{connector}True")
+        elif isinstance(val, FalseSingleton):
+            lines.append(f"{prefix}{connector}False")
+        elif isinstance(val, int):
+            lines.append(f"{prefix}{connector}{val}")
+        elif isinstance(val, str):
+            lines.append(f"{prefix}{connector}({val})")
+        elif isinstance(val, Block):
+            lines.append(f"{prefix}{connector}<Block>")
+        elif isinstance(val, BuiltinBlock):
+            lines.append(f"{prefix}{connector}<Builtin:{val.name}>")
+        elif isinstance(val, CellRef):
+            cell_id = id(val.cell)
+
+            # Check for cycle
+            if cell_id in visited:
+                lines.append(f"{prefix}{connector}#{visited[cell_id]} (cycle)")
+                return lines
+
+            # Assign node number
+            node_num = node_counter[0]
+            node_counter[0] += 1
+            visited[cell_id] = node_num
+
+            cell = val.cell
+            children = list(sorted(cell.children.items()))
+
+            lines.append(f"{prefix}{connector}#{node_num}")
+
+            new_prefix = prefix + child_prefix
+
+            # Draw children
+            for i, (key, child_cell) in enumerate(children):
+                is_last_child = (i == len(children) - 1)
+                child_val = child_cell.value
+
+                # For simple values, show on same line
+                if not isinstance(child_val, CellRef) or id(child_val.cell) in visited:
+                    child_connector = "└── " if is_last_child else "├── "
+                    if isinstance(child_val, CellRef) and id(child_val.cell) in visited:
+                        lines.append(f"{new_prefix}{child_connector}{key}: #{visited[id(child_val.cell)]} (cycle)")
+                    elif isinstance(child_val, NilSingleton):
+                        lines.append(f"{new_prefix}{child_connector}{key}: Nil")
+                    elif isinstance(child_val, VoidSingleton):
+                        lines.append(f"{new_prefix}{child_connector}{key}: Void")
+                    elif isinstance(child_val, TrueSingleton):
+                        lines.append(f"{new_prefix}{child_connector}{key}: True")
+                    elif isinstance(child_val, FalseSingleton):
+                        lines.append(f"{new_prefix}{child_connector}{key}: False")
+                    elif isinstance(child_val, int):
+                        lines.append(f"{new_prefix}{child_connector}{key}: {child_val}")
+                    elif isinstance(child_val, str):
+                        lines.append(f"{new_prefix}{child_connector}{key}: ({child_val})")
+                    elif isinstance(child_val, Block):
+                        lines.append(f"{new_prefix}{child_connector}{key}: <Block>")
+                    elif isinstance(child_val, BuiltinBlock):
+                        lines.append(f"{new_prefix}{child_connector}{key}: <Builtin:{child_val.name}>")
+                    else:
+                        lines.append(f"{new_prefix}{child_connector}{key}: <{type(child_val).__name__}>")
+                else:
+                    # Recursive CellRef
+                    child_connector = "└── " if is_last_child else "├── "
+                    lines.append(f"{new_prefix}{child_connector}{key}:")
+                    nested_prefix = new_prefix + ("    " if is_last_child else "│   ")
+                    nested_lines = draw_value(child_val, nested_prefix, True, False)
+                    lines.extend(nested_lines)
+
+            return lines
+        else:
+            lines.append(f"{prefix}{connector}<{type(val).__name__}>")
+
+        return lines
+
+    result_lines = draw_value(value)
+    for line in result_lines:
+        print(line)
 
 
 def builtin_read_line(vm: VM):

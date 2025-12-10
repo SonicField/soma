@@ -1,0 +1,92 @@
+) ============================================================================
+) Debug Tools Tests
+) Testing debug.assert, debug.graph.dump, debug.graph.draw
+) ============================================================================
+
+) ==================== debug.assert Tests ====================
+
+) TEST: Assert with True condition passes
+) EXPECT_AL: [True]
+{ True } (should not fail) >debug.assert
+True
+
+) TEST: Assert with computed True condition
+) EXPECT_AL: [True]
+5 !x
+{ x 0 >> } (x must be positive) >debug.assert
+True
+
+) TEST: Assert preserves AL
+) EXPECT_AL: [True]
+42 99 { True } (msg) >debug.assert
+99 >== >swap 42 >== >and
+
+) TEST: Assert with equality check
+) EXPECT_AL: [True]
+{ 2 2 >== } (2 should equal 2) >debug.assert
+True
+
+) ==================== debug.graph.dump Tests ====================
+) Note: These tests verify the function runs without error
+) Visual output is verified manually
+
+) TEST: dump Nil
+) EXPECT_AL: [True]
+Nil >debug.graph.dump
+True
+
+) TEST: dump simple CellRef
+) EXPECT_AL: [True]
+5 !_.val
+_. >debug.graph.dump
+True
+
+) TEST: dump list node
+) EXPECT_AL: [True]
+1 Nil >list.cons >debug.graph.dump
+True
+
+) TEST: dump nested list
+) EXPECT_AL: [True]
+Void 1 2 3 >list.from_al >debug.graph.dump
+True
+
+) ==================== debug.graph.draw Tests ====================
+
+) TEST: draw Nil
+) EXPECT_AL: [True]
+Nil >debug.graph.draw
+True
+
+) TEST: draw simple CellRef
+) EXPECT_AL: [True]
+5 !_.val
+_. >debug.graph.draw
+True
+
+) TEST: draw list node
+) EXPECT_AL: [True]
+1 Nil >list.cons >debug.graph.draw
+True
+
+) TEST: draw nested list
+) EXPECT_AL: [True]
+Void 1 2 3 >list.from_al >debug.graph.draw
+True
+
+) ==================== Cycle Detection Tests ====================
+
+) TEST: dump handles self-reference
+) EXPECT_AL: [True]
+() !cycle_test.placeholder
+cycle_test. !cycle_test.self
+cycle_test. >debug.graph.dump
+True
+
+) TEST: draw handles self-reference
+) EXPECT_AL: [True]
+() !cycle_test2.placeholder
+cycle_test2. !cycle_test2.self
+cycle_test2. >debug.graph.draw
+True
+

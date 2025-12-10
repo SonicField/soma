@@ -404,3 +404,23 @@
   >al.drain                           ) Build filtered list
 } !list.filter
 
+) ==================== Debug Utilities ====================
+
+) debug.assert: Assert a condition, halt if false
+) AL: [condition_block, message, ...] -> [...] or HALT
+) Executes condition_block; if result is False, halts with message
+) Usage: { x 0 >> } (x must be positive) >debug.assert
+{
+  !_.msg !_.cond
+  _.                                   ) Push context for choose branches
+  >_.cond                              ) Execute condition block
+  {
+    !_.                                ) Pop context (True branch - discard)
+  }
+  {
+    !_.                                ) Pop context
+    _.msg >debug.error                 ) Halt with error message
+  }
+  >choose >^
+} !debug.assert
+
