@@ -1,17 +1,7 @@
-) ============================================================================
-) SOMA v1.0 — Machine Model (CONDENSED DEMO)
-) ============================================================================
-)
-) This is a MINIMAL condensed version demonstrating the SOMA markdown DSL.
-) Full version with complete examples to be added in future iterations.
-)
-) Created: 2024-12-06
-) ============================================================================
-
 (python) >use (markdown) >use
 >md.start
 
-(03 — Machine Model) >md.h1
+(03 -- Machine Model) >md.h1
 
 (SOMA v1.0 Language Specification) >md.b >md.p
 (State-Oriented Machine Algebra) >md.b >md.p
@@ -20,106 +10,2404 @@
 
 (Overview) >md.h2
 
-(SOMA is a machine algebra defined by observable state transformations.)
-(It has three fundamental structures: AL, Store, and Register.)
->md.p
+(SOMA is not a calculus. It is a ) (machine algebra) >md.b ( defined entirely by observable state transformations. This chapter specifies the three fundamental state structures that comprise the SOMA execution model:) >md.t >md.p
 
-(1. The Accumulator List \28\AL\29\) >md.h2
+(The Accumulator List (AL\29\) >md.b ( -- a LIFO value conduit for dynamic state) >md.oli
+(The Store) >md.b ( -- a persistent hierarchical graph of identity-bearing Cells) >md.oli
+(The Register) >md.b ( -- a block-local hierarchical graph of identity-bearing Cells) >md.oli
+>md.ol
 
-(The AL is a shared LIFO stack for passing values between blocks.)
-(It is NOT a call stack - it's a value conduit.)
->md.p
+(Together with Blocks (executable state transformers\29\, these structures define the complete operational semantics of SOMA.) >md.p
 
-(Key properties:) >md.p
+(SOMA execution is ) (linear, explicit, and introspectable) >md.b (. There is no hidden call stack, no return path, no exception unwinding, and no shadowing. All state is visible. All mutation is observable.) >md.t >md.p
 
-(Shared by all blocks)
-(LIFO ordering)
-(No return addresses)
-(No stack frames)
+>md.hr
+
+(1. The Accumulator List (AL\29\) >md.h2
+
+(1.1 What the AL Is (and Is Not\29\) >md.h3
+
+(The AL is a ) (shared LIFO stack) >md.b ( serving as the primary dynamic execution context. It is a ) (value conduit) >md.b (, not a call stack:) >md.t >md.p
+
+(Shared) >md.b (: All blocks (parent, child, nested\29\ share the same AL) >md.uli
+(LIFO) >md.b (: Last In, First Out - values are pushed and popped from the top) >md.uli
+(It does not track return addresses) >md.uli
+(It does not manage stack frames) >md.uli
+(It does not unwind on errors) >md.uli
+(It is a ) (value conduit) >md.b ( for passing data between blocks, not a control structure) >md.uli
 >md.ul
+
+(1.2 AL Operations) >md.h3
+
+(Most tokens either:) >md.p
+
+(Push) >md.b ( a value onto the AL) >md.uli
+(Pop) >md.b ( one or more values from the AL) >md.uli
+(Transform) >md.b ( values already present) >md.uli
+>md.ul
+
+(Example:) >md.p
+
+(1 2 >+)
+(soma) >md.code
+
+(Step) (Token) (AL State) (Description)
+>md.table.header
+(0) ((start\29\) () >md.c (Empty AL)
+>md.table.row
+(1) (1) >md.c ([1]) >md.c (Push literal 1)
+>md.table.row
+(2) (2) >md.c ([2, 1]) >md.c (Push literal 2 (top is 2\29\)
+>md.table.row
+(3) (>+) >md.c ([3]) >md.c (Execute block at Store path "+", pops 2 and 1, pushes sum)
+>md.table.row
+>md.table
+
+(The AL is updated ) (in-place) >md.b (. No copying or implicit duplication occurs unless requested by a built-in (e.g. ) (>dup) >md.c (\29\.) >md.t >md.p
+
+(Note on Execution Prefix () (>) >md.c (\29\:) >md.b ( The ) (>) >md.c ( prefix reads the value at a path and executes it. This works with both Store paths (e.g. ) (>+) >md.c (, ) (>print) >md.c (\29\ and Register paths (e.g. ) (>_.action) >md.c (\29\. See Section 5.4 for details.) >md.t >md.p
+
+(1.3 AL Ordering Convention) >md.h3
+
+(In this document, we write AL states as:) >md.p
+
+(AL = [top, second, third, ...])
+Nil >md.code
+
+(where the ) (leftmost element is the top) >md.b ( of the stack.) >md.t >md.p
+
+(1.4 Empty AL) >md.h3
+
+(Reading from an empty AL is a ) (fatal interpreter error) >md.b (. SOMA does not define implicit defaults. Programs must ensure AL safety through correct sequencing.) >md.t >md.p
+
+(Example (fatal\29\:) >md.p
+
+(>drop)
+(soma) >md.code
+
+(AL is empty. Execution halts immediately.) >md.p
+
+(1.5 No Arity) >md.h3
+
+(Blocks do not declare arguments. They take whatever values they require from the AL and leave whatever values they produce.) >md.p
+
+(Example:) >md.p
+
+({ >dup >* } !square
+5 square >chain)
+(soma) >md.code
+
+(Step) (Token) (AL State) (Description)
+>md.table.header
+(0) ((start\29\) () >md.c (Empty)
+>md.table.row
+(1) (Block literal) ([{>dup >*}]) >md.c (Push block)
+>md.table.row
+(2) (!square) >md.c ([]) >md.c (Pop block, store at ) (square) >md.c >md.t
+>md.table.row
+(3) (5) >md.c ([5]) >md.c (Push 5)
+>md.table.row
+(4) (square) >md.c ([{>dup >*}, 5]) >md.c (Push block from Store)
+>md.table.row
+(5) (>chain) >md.c ((enters block\29\) (Pop block and execute it)
+>md.table.row
+(5.1) (>dup) >md.c ([5, 5]) >md.c (Duplicate top)
+>md.table.row
+(5.2) (>*) >md.c ([25]) >md.c (Multiply)
+>md.table.row
+(5.3) ((block ends\29\) ([25]) >md.c (Returns to chain, AL has Nil, stops)
+>md.table.row
+(6) ((end\29\) ([25]) >md.c (Final AL state)
+>md.table.row
+>md.table
+
+(The block consumed 1 value (implicitly\29\ and produced 1 value.) >md.p
+
+(1.6 AL as Control Context) >md.h3
+
+(The AL determines which Block executes next under ) (>choose) >md.c ( and ) (>chain) >md.c (.) >md.t >md.p
+
+(Example: Conditional execution) >md.p
+
+(True { "Yes" >print } { "No" >print } >choose)
+(soma) >md.code
+
+(Before ) (>choose) >md.c () (AL State)
+>md.table.header
+(Top -> Bottom) ([{...No...}, {...Yes...}, True]) >md.c
+>md.table.row
+>md.table
+
+(Execution:) >md.p
+
+(Pop the false-branch Block: ) ({...No...}) >md.c >md.oli
+(Pop the true-branch Block: ) ({...Yes...}) >md.c >md.oli
+(Pop the Boolean: ) (True) >md.c >md.oli
+(Since ) (True) >md.c (, execute ) ({...Yes...}) >md.c >md.oli
+(Result: prints "Yes") >md.oli
+>md.ol
+
+(After execution, AL contains only the results of the chosen Block.) >md.p
+
+(1.7 Example: AL Transformations) >md.h3
+
+(soma) (10 20 30 >swap >drop >dup) >md.code
+
+(Step) (Token) (AL State) (Description)
+>md.table.header
+(0) ((start\29\) >md.c ([]) >md.c (Empty)
+>md.table.row
+(1) (10) >md.c ([10]) >md.c (Push 10)
+>md.table.row
+(2) (20) >md.c ([20, 10]) >md.c (Push 20)
+>md.table.row
+(3) (30) >md.c ([30, 20, 10]) >md.c (Push 30)
+>md.table.row
+(4) (>swap) >md.c ([20, 30, 10]) >md.c (Swap top 2)
+>md.table.row
+(5) (>drop) >md.c ([30, 10]) >md.c (Drop top)
+>md.table.row
+(6) (>dup) >md.c ([30, 30, 10]) >md.c (Duplicate top)
+>md.table.row
+>md.table
+
+>md.hr
 
 (2. The Store) >md.h2
 
-(The Store is a persistent hierarchical graph of Cells.)
-(It provides global, shared state across all blocks.)
->md.p
+(2.1 What the Store Is) >md.h3
 
-(Cells and Payloads) >md.h3
+(The Store is a ) (persistent hierarchical graph of Cells) >md.b ( that holds program state. It is addressable via dot-separated paths and constitutes the ) (data memory) >md.b ( of the SOMA machine.) >md.t >md.p
 
-(Each Cell has two orthogonal components:) >md.p
+(The Store has a ) (single root) >md.b >md.uli
+(All top-level paths are relative to this root) >md.uli
+(The Store is ) (globally visible) >md.b >md.uli
+(There is ) (no shadowing) >md.b ( between top-level paths) >md.uli
+>md.ul
 
-(Value) (The data payload)
-(Subpaths) (Dictionary of child Cells)
->md.dul
+(2.2 Cells and Payloads) >md.h3
 
-(These are completely independent - setting a value doesn't affect subpaths.)
->md.p
+(Each named location in the Store refers to a ) (Cell) >md.b (. A Cell has two ) (orthogonal (independent\29\ components) >md.b (:) >md.t >md.p
 
-(Nil vs Void) >md.h3
+(Value) >md.b ( (payload\29\: The data stored at this Cell (Int, Block, Nil, Void, CellRef, String\29\) >md.t >md.oli
+(Subpaths) >md.b ( (children\29\: Dictionary mapping names to child Cells) >md.t >md.oli
+>md.ol
 
-(Concept) (Meaning)
+(These components are completely independent.) >md.b ( Setting or reading a Cell's value has NO effect on its subpaths.) >md.t >md.p
+
+(Cell Structure:) >md.b >md.p
+
+Nil (        +---------------------+
+        |      Cell       |
+        +---------------------+
+        | value: 42       |  <- Payload (any CellValue\29\
+        +---------------------+
+        | subpaths: {     |  <- Children (independent of value\29\
+        |   "x": Cell,    |
+        |   "y": Cell     |
+        | }               |
+        +---------------------+) >md.code
+
+(Key Properties:) >md.b >md.p
+
+(A Cell has a ) (persistent identity) >md.b ( independent of its value or subpaths) >md.uli
+(Writing a value ) (replaces the payload) >md.b ( but ) (preserves the Cell identity and subpaths) >md.b >md.uli
+(Adding child Cells ) (modifies subpaths) >md.b ( but ) (does not affect the payload) >md.b >md.uli
+(A Cell can have ) (both) >md.b ( a meaningful value ) (and) >md.b ( children simultaneously) >md.uli
+>md.ul
+
+(Example: Value and Subpaths Coexist) >md.b >md.p
+
+(soma) (Nil !a.b        ; Set a.b's VALUE to Nil
+23 !a.b.c       ; Create child 'c' in a.b's SUBPATHS
+a.b             ; Returns Nil (reads VALUE\29\
+a.b.c           ; Returns 23 (traverses SUBPATHS to c\29\) >md.code
+
+(Cell ) (a.b) >md.c ( now has:) >md.t >md.b >md.p
+
+(Value: ) (Nil) >md.c >md.uli
+(Subpaths: ) ({"c": Cell(value: 23, subpaths: {}\29\}) >md.c >md.uli
+>md.ul
+
+(This orthogonality enables powerful patterns like graph structures where nodes have both data and edges.) >md.p
+
+(2.2.1 Value vs Subpaths Orthogonality) >md.h3
+
+(The independence of value and subpaths is fundamental to understanding SOMA's Cell model. These two components operate on separate axes:) >md.p
+
+(Reading a Cell reads ONLY its value:) >md.b >md.p
+
+(42 !node
+node            ; Returns 42 (reads VALUE only, ignores subpaths\29\) (soma) >md.code
+
+(Path traversal uses ONLY subpaths:) >md.b >md.p
+
+(42 !a.b.c       ; a.b.c has value 42
+a.b.c           ; Traverses a -> b -> c through SUBPATHS, returns c's VALUE (42\29\) (soma) >md.code
+
+(Path resolution walks through the ) (subpaths dictionary) >md.b (, completely ignoring the values of intermediate Cells.) >md.t >md.p
+
+(Any value can have children:) >md.b >md.p
+
+(All of these are perfectly legal:) >md.p
+
+(\29\ Void with children (from auto-vivification\29\
+42 !a.b.c       ; 'a' has Void value but children {"b": ...}
+                ; 'a.b' has Void value but children {"c": ...}
+
+\29\ Nil with children
+Nil !parent
+23 !parent.child
+parent          ; Returns Nil (VALUE\29\
+parent.child    ; Returns 23 (traverses SUBPATHS\29\
+
+\29\ Int with children
+42 !node
+99 !node.sub
+node            ; Returns 42 (VALUE\29\
+node.sub        ; Returns 99 (traverses SUBPATHS\29\
+
+\29\ Block with children
+{ >print } !action
+(help text\29\ !action.description
+>action                      ; Executes the block (reads VALUE\29\
+action.description >print   ; Prints "help text" (traverses SUBPATHS\29\) (soma) >md.code
+
+(Why this matters:) >md.b >md.p
+
+(This orthogonality enables ) (graph structures as first-class citizens) >md.b ( without requiring explicit node types. A Cell can simultaneously:) >md.t >md.p
+
+(Hold a value (data at this node\29\)
+(Point to other Cells (edges in a graph\29\)
+>md.ul
+
+(Example: Linked list node) >md.p
+
+(\29\ Node with both value and next pointer
+1 !list.value
+list.next. !list.next        ; CellRef to next node
+
+\29\ The Cell at 'list' has:
+\29\   value: Void (never set\29\
+\29\   subpaths: {"value": Cell(1\29\, "next": Cell(CellRef\29\}) (soma) >md.code
+
+(Key Principle:) >md.b >md.p
+
+(Setting or reading a Cell's ) (value) >md.b ( never affects its ) (subpaths) >md.b (.)
+(Creating or removing ) (subpaths) >md.b ( never affects the ) (value) >md.b (.)
+>md.q
+
+(2.3 Nil vs Void - The Semantic Distinction) >md.h3
+
+(SOMA distinguishes between "never set" and "explicitly set to empty":) >md.p
+
+(Concept) (Meaning) (Can WRITE?) (Can READ?)
 >md.table.header
-(Void) (Never been set - auto-vivified)
+(Void) >md.b (Cell exists for structure but has ) (never been set) >md.b >md.t (Yes) >md.b ( (legal\29\) >md.t (Yes) >md.b ( (returns Void if Cell exists, RuntimeError if path undefined\29\) >md.t
 >md.table.row
-(Nil) (Explicitly set to empty)
+(Nil) >md.b (Cell has been ) (explicitly set to empty) >md.b >md.t (Yes) >md.b ( (legal\29\) >md.t (Yes) >md.b ( (returns Nil\29\) >md.t
 >md.table.row
 >md.table
+
+(The Key Insight:) >md.b ( Void represents "this was never initialized" while Nil represents "this was set to nothing.") >md.t >md.p
+
+(CRITICAL RULES:) >md.b >md.p
+
+Nil (Void !path     -> Legal (stores Void as payload\29\
+Void !path.    -> Legal (deletes Cell structurally\29\
+Nil !path      -> Legal (stores Nil as payload\29\
+
+undefined.path -> RuntimeError (path doesn't exist - STRICT semantics\29\) >md.code
+
+(Examples:) >md.b >md.p
+
+(soma) (Nil !a.b     ; Legal: explicitly set a.b to Nil
+a.b          ; AL = [Nil] - was set to empty) >md.code
+
+(soma) (Void !a.b    ; Legal: stores Void as payload
+a.b          ; AL = [Void] - Cell exists with Void value) >md.code
+
+(soma) (Void !a.b.   ; Legal: delete Cell a.b structurally
+a.b          ; RuntimeError - path no longer exists) >md.code
+
+(soma) (42 !a.b.c    ; Auto-vivifies a and a.b with Void payload
+a.b          ; AL = [Void] - auto-vivified Cell exists
+a.b.c        ; AL = [42] - was explicitly set
+
+undefined    ; RuntimeError - path never created) >md.code
+
+(2.4 Cell Creation and Auto-Vivification) >md.h3
+
+(A Cell is created automatically when a value is ) (written) >md.b ( to a path that did not previously exist. This is called ) (auto-vivification) >md.b (.) >md.t >md.p
+
+(CRITICAL: Auto-vivification ONLY happens on WRITES, not reads.) >md.b >md.p
+
+(Key principles:) >md.b >md.p
+
+(Writing to an undefined path creates intermediate Cells) >md.b ( (auto-vivification\29\) >md.oli
+(Reading an undefined path raises a RuntimeError) >md.b ( (strict semantics\29\) >md.oli
+(Auto-vivified intermediate Cells CAN be read) >md.b ( and return Void) >md.oli
+>md.ol
+
+(Auto-vivification semantics:) >md.b >md.p
+
+(When you write to a deep path like ) (42 !a.b.c) >md.c (, intermediate cells are created automatically:) >md.t >md.p
+
+(Their ) (value) >md.b ( is set to Void (representing "never explicitly set"\29\) >md.uli
+(Their ) (subpaths) >md.b ( are populated to allow path traversal) >md.uli
+(The two components (value and subpaths\29\ are orthogonal) >md.uli
+>md.ul
+
+(Example:) >md.p
+
+(soma) (42 !a.b.c) >md.code
+
+(Before:) >md.b >md.p
+
+Nil (Store = {}) >md.code
+
+(After:) >md.b >md.p
+
+Nil (Store = {
+  a: Cell(value: Void, subpaths: {"b": ...}\29\
+    +-- b: Cell(value: Void, subpaths: {"c": ...}\29\
+         +-- c: Cell(value: 42, subpaths: {}\29\
+}) >md.code
+
+(What happened:) >md.b >md.p
+
+(Cell ) (a) >md.c ( was auto-created with ) (Void) >md.b ( value and subpaths ) ({"b": ...}) >md.c >md.oli
+(Cell ) (a.b) >md.c ( was auto-created with ) (Void) >md.b ( value and subpaths ) ({"c": ...}) >md.c >md.oli
+(Cell ) (a.b.c) >md.c ( was explicitly set with value ) (42) >md.b ( and empty subpaths) >md.oli
+>md.ol
+
+(Reading auto-vivified cells vs undefined paths:) >md.b >md.p
+
+(soma) (42 !a.b.c
+a.b.c        ; AL = [42] - explicitly set (reads VALUE\29\ +
+a.b          ; AL = [Void] - auto-vivified, CAN be read +
+a            ; AL = [Void] - auto-vivified, CAN be read +) >md.code
+
+(Reading undefined paths (STRICT semantics\29\:) >md.b >md.p
+
+(soma) (undefined.path    ; RuntimeError - path does not exist X) >md.code
+
+(The key distinction:) >md.b >md.p
+
+(Auto-vivified Cells exist) >md.b ( (created during write\29\ -> reading them returns Void +) >md.uli
+(Undefined paths don't exist) >md.b ( -> reading them raises RuntimeError X) >md.uli
+>md.ul
+
+(Path traversal through auto-vivified Cells:) >md.b >md.p
+
+(Auto-vivified intermediate cells allow path traversal - you can traverse through cells with Void value to reach deeper values:) >md.p
+
+(soma) (42 !a.b.c       ; Auto-vivifies 'a' and 'a.b' with Void value
+a.b.c           ; Can traverse through a (Void\29\ and a.b (Void\29\ to reach c (42\29\
+                ; Path traversal uses SUBPATHS, ignores intermediate VALUES
+                ; Returns 42 +) >md.code
+
+(This is crucial for sparse structures - once you've written a deep path, all intermediate nodes exist and can be traversed.) >md.p
+
+(Auto-vivified Cells can still have children:) >md.b >md.p
+
+(Because value and subpaths are orthogonal, a Cell with Void value can still have children in its subpaths:) >md.p
+
+(soma) (42 !a.b.c       ; Auto-vivifies 'a' with Void value
+99 !a.x         ; Add child 'x' to a's SUBPATHS (a already exists from previous write\29\
+
+a               ; Returns Void (VALUE was never set, but Cell exists\29\ +
+a.b.c           ; Returns 42 (traverses SUBPATHS\29\ +
+a.x             ; Returns 99 (traverses SUBPATHS\29\ +) >md.code
+
+(Cell ) (a) >md.c ( now has:) >md.t >md.p
+
+(Value: ) (Void) >md.c ( (never explicitly set, from auto-vivification\29\) >md.uli
+(Subpaths: ) ({"b": Cell(...\29\, "x": Cell(99\29\}) >md.c >md.uli
+>md.ul
+
+(Summary of auto-vivification rules:) >md.b >md.p
+
+(Write creates path) >md.b ( -> auto-vivifies intermediate Cells with Void value) >md.oli
+(Read auto-vivified Cell) >md.b ( -> returns Void (Cell exists, value never set\29\) >md.oli
+(Read undefined path) >md.b ( -> RuntimeError (path doesn't exist\29\) >md.oli
+(Traverse through auto-vivified Cells) >md.b ( -> works (uses subpaths, not value\29\) >md.oli
+>md.ol
+
+(2.5 Paths and CellReferences) >md.h3
+
+(SOMA distinguishes between:) >md.p
+
+(Value access) >md.b (: ) (a.b) >md.c ( -> retrieves payload) >md.uli
+(Cell access) >md.b (: ) (a.b.) >md.c ( -> retrieves CellReference) >md.uli
+>md.ul
+
+(Example:) >md.p
+
+(soma) (99 !config.timeout
+config.timeout      ; Pushes 99 onto AL
+config.timeout.     ; Pushes CellRef onto AL) >md.code
+
+(A ) (trailing dot) >md.b ( denotes a reference to the Cell itself, not its payload.) >md.t >md.p
+
+(2.6 Aliasing) >md.h3
+
+(Two paths may refer to the ) (same Cell) >md.b (. This is structural aliasing.) >md.t >md.p
+
+(Example: Value aliasing (no sharing\29\) >md.p
+
+(soma) (23 !a.b
+a.b !a.c
+24 !a.b
+a.c >print   ; prints 23) >md.code
+
+(Step) (Store State) (Description)
+>md.table.header
+(1) (a.b = 23) >md.c (Store 23 in a.b)
+>md.table.row
+(2) (a.c = 23) >md.c (Copy value to a.c)
+>md.table.row
+(3) (a.b = 24) >md.c (Update a.b)
+>md.table.row
+(4) (a.c) >md.c ( still ) (23) >md.c >md.t (No aliasing occurred)
+>md.table.row
+>md.table
+
+(Example: Cell aliasing (sharing\29\) >md.p
+
+(soma) ((hello\29\ !a.b.c
+a.b. !x.y.
+(goodbye\29\ !d.b.c
+d.b. !a.b.
+a.b.c >print   ; prints "goodbye"
+x.y.c >print   ; prints "hello") >md.code
+
+(Step) (Description)
+>md.table.header
+(1) (Create Cell at ) (a.b.c) >md.c ( with payload "hello") >md.t
+>md.table.row
+(2) (Store ) (CellRef) >md.b ( to ) (a.b) >md.c ( at ) (x.y) >md.c >md.t
+>md.table.row
+(3) (Create Cell at ) (d.b.c) >md.c ( with payload "goodbye") >md.t
+>md.table.row
+(4) (Replace Cell at ) (a.b) >md.c ( with CellRef to ) (d.b) >md.c >md.t
+>md.table.row
+(5) (a.b.c) >md.c ( now resolves to "goodbye" (via ) (d.b.c) >md.c (\29\) >md.t
+>md.table.row
+(6) (x.y.c) >md.c ( still resolves to "hello" (original Cell preserved\29\) >md.t
+>md.table.row
+>md.table
+
+(Aliasing does not copy values. It ) (shares identity) >md.b (.) >md.t >md.p
+
+(2.7 Structural Mutation) >md.h3
+
+(Payload write:) >md.b >md.p
+
+(Val !a.b.c) (soma) >md.code
+
+(Sets the payload of Cell ) (a.b.c) >md.c ( to ) (Val) >md.c >md.uli
+(Preserves identity of existing Cells) >md.uli
+(Does not affect child Cells) >md.uli
+>md.ul
+
+(Cell replacement:) >md.b >md.p
+
+(Val !a.b.c.) (soma) >md.code
+
+(Replaces the entire Cell at ) (a.b.c) >md.c ( with a new Cell) >md.uli
+(New Cell's payload is ) (Val) >md.c >md.uli
+(All child Cells are ) (discarded) >md.b >md.uli
+>md.ul
+
+(Structural deletion \29\path deletion\29\:) >md.b >md.p
+
+(Void !a.b.c.) (soma) >md.code
+
+(Deletes the ) (path) >md.b ( ) (a.b.c) >md.c ( from the Store tree) >md.uli
+(Removes the edge from parent's subpaths dictionary) >md.uli
+(Does not delete the Cell) >md.b ( if other references \29\CellRefs or paths\29\ to it exist) >md.uli
+(If the Cell is still accessible via CellRefs, it persists \29\see Section 4.4\29\) >md.uli
+(If no other references exist, the Cell becomes unreachable and may be reclaimed) >md.uli
+>md.ul
+
+(Example: Path deletion with surviving CellRef) >md.b >md.p
+
+(42 !a.b
+a.b. !ref       \29\ Create CellRef to Cell
+Void !a.b.      \29\ Delete path a.b
+ref             \29\ Still works! Returns 42 - Cell persists via CellRef) (soma) >md.code
+
+(Example: Path deletion without CellRefs) >md.b >md.p
+
+(42 !a.b
+Void !a.b.      \29\ Delete path a.b
+a.b             \29\ RuntimeError - path no longer exists) (soma) >md.code
+
+(2.8 Example: Store Mutations) >md.h3
+
+(1 !counter.n
+counter.n 1 >+ !counter.n
+counter.n >print) (soma) >md.code
+
+(Step) (Token) (AL State) (Store State) (Description)
+>md.table.header
+(1) (1) >md.c ([1]) >md.c ({}) >md.c (Push 1)
+>md.table.row
+(2) (!counter.n) >md.c ([]) >md.c (counter.n = 1) >md.c (Store 1)
+>md.table.row
+(3) (counter.n) >md.c ([1]) >md.c (counter.n = 1) >md.c (Read value)
+>md.table.row
+(4) (1) >md.c ([1, 1]) >md.c (-) (Push 1)
+>md.table.row
+(5) (>+) >md.c ([2]) >md.c (-) (Add)
+>md.table.row
+(6) (!counter.n) >md.c ([]) >md.c (counter.n = 2) >md.c (Write back)
+>md.table.row
+(7) (counter.n) >md.c ([2]) >md.c (counter.n = 2) >md.c (Read)
+>md.table.row
+(8) (>print) >md.c ([]) >md.c (-) (Print 2)
+>md.table.row
+>md.table
+
+>md.hr
 
 (3. The Register) >md.h2
 
-(The Register is block-local, isolated storage.)
-(Each block gets a fresh Register that is destroyed when the block completes.)
->md.p
+(3.1 What the Register Is) >md.h3
 
-(Critical Principle) >md.b (: Inner blocks CANNOT see outer block Registers.)>md.t >md.p
+(A ) (Register) >md.b ( is a hierarchical graph identical in structure to the Store, but with ) (block-local scope and complete isolation) >md.b (.) >md.t >md.p
 
-(Store vs Register) >md.h3
+(CRITICAL ISOLATION PRINCIPLE:) >md.b >md.p
+
+(Each block execution creates a fresh, empty Register that is destroyed when the block completes.) >md.b
+>md.q
+
+(Key Properties:) >md.b >md.p
+
+(Isolated) (Each block gets its own Register, completely independent from all other blocks) >md.dli
+(Fresh) (Every block starts with an empty Register) >md.dli
+(Temporary) (Registers are destroyed when the block completes) >md.dli
+(No Sharing) (Inner blocks ) (cannot) >md.b ( see outer block's Register paths) >md.dli
+(No Nesting) (There is ) (no lexical scoping) >md.b ( between parent and child block Registers) >md.dli
+>md.dul
+
+(Note on Block Access:) >md.b ( To access the currently executing block, use the ) (>block) >md.c ( built-in \29\see Chapter 6 — Built-ins\29\. There are no automatic Register bindings.) >md.t >md.p
+
+(If you want to share data between blocks, you MUST:) >md.b >md.p
+
+(Use the ) (Store) >md.b ( \29\global, persistent state\29\) >md.uli
+(Pass values via the ) (AL) >md.b ( \29\stack-based communication\29\) >md.uli
+(Use ) (CellRefs) >md.b ( to share structure) >md.uli
+>md.ul
+
+(3.2 Register Lifecycle) >md.h3
+
+(When a Block begins execution:) >md.p
+
+(Create) >md.b ( a fresh, empty Register) >md.oli
+(Execute the block's code) >md.oli
+(Destroy) >md.b ( the Register when block completes) >md.oli
+>md.ol
+
+(Properties:) >md.b >md.p
+
+(Isolated) (No connection to parent/child block Registers) >md.dli
+(Temporary) (Destroyed when block completes) >md.dli
+(Local) (Only visible within the executing block) >md.dli
+(Fresh) (Always starts empty) >md.dli
+>md.dul
+
+(3.3 Store vs Register) >md.h3
 
 (Feature) (Store) (Register)
 >md.table.header
-(Scope) (Global) (Block-local)
+(Scope) >md.b (Global) (Block-local)
 >md.table.row
-(Lifetime) (Persistent) (Block execution only)
+(Lifetime) >md.b (Persistent) (Block execution)
 >md.table.row
-(Sharing) (All blocks) (Isolated per block)
+(Sharing) >md.b (All blocks can access) (Completely isolated per block) >md.b
+>md.table.row
+(Purpose) >md.b (Shared state) (Local computation)
+>md.table.row
+(Visibility) >md.b (Global across all blocks) (Only the executing block)
+>md.table.row
+(Nesting) >md.b (N/A \29\single global\29\) (No nesting - fresh per block) >md.b
+>md.table.row
+(Root) >md.b (Single, unnamed) (Single, named ) (_) >md.c >md.t
+>md.table.row
+(Syntax) >md.b (a.b) >md.c (_.a.b) >md.c
+>md.table.row
+(Write syntax) >md.b (!a.b) >md.c (!_.a.b) >md.c
+>md.table.row
+(Root value access) >md.b (N/A \29\unnamed\29\) (_) >md.c
+>md.table.row
+(Root CellRef access) >md.b (N/A \29\unnamed\29\) (_.) >md.c
 >md.table.row
 >md.table
 
-(4. Cells and CellReferences) >md.h2
+(3.4 When to Use Store vs Register vs AL) >md.h3
 
-(A Cell is the fundamental unit of storage with:) >md.p
+(Use Store when:) >md.b >md.p
 
-(Identity independent of value)
-(A payload of any type)
-(Child Cells for hierarchy)
+(Sharing data between unrelated blocks) >md.uli
+(Persisting configuration or state) >md.uli
+(Global variables or shared counters) >md.uli
+(Communication across the entire program) >md.uli
 >md.ul
 
-(A CellReference is an immutable value providing access to a Cell.)
-(CellRefs can be stored, passed, and outlive the paths that created them.)
->md.p
+(Use Register when:) >md.b >md.p
 
-(5. Machine State Summary) >md.h2
+(Temporary local computation \29\) (_.temp) >md.c (, ) (_.result) >md.c (\29\) >md.uli
+(Loop counters in recursive blocks) >md.uli
+(Local variables that don't need to escape) >md.uli
+>md.ul
+
+(Use AL when:) >md.b >md.p
+
+(Passing arguments to blocks) >md.uli
+(Returning values from blocks) >md.uli
+(Stack-based computation) >md.uli
+(Explicit data flow between blocks) >md.uli
+>md.ul
+
+(3.5 Register Root) >md.h3
+
+(The Register is a hierarchical graph with a ) (single root named ) >md.b (_) >md.c >md.b (. All Register paths begin with ) (_) >md.c ( followed by a dot and subsequent path components.) >md.t >md.p
+
+(Why ) (_) >md.c ( is the Root:) >md.b >md.t >md.p
+
+(The Store has an unnamed root that cannot be directly referenced. For symmetry, the Register has a ) (named root) >md.b ( ) (_) >md.c ( that can be referenced and manipulated:) >md.t >md.p
+
+(_                 ; Register root value
+_.                ; Register root CellRef
+_.x               ; Register path: root \5C\u2192 x \29\value\29\
+_.x.              ; Register path: root \5C\u2192 x \29\CellRef\29\
+_.x.y.z           ; Register path: root \5C\u2192 x \5C\u2192 y \5C\u2192 z \29\value\29\
+_.x.y.z.          ; Register path: root \5C\u2192 x \5C\u2192 y \5C\u2192 z \29\CellRef\29\) (soma) >md.code
+
+(This allows the entire Register graph to be captured, stored, or manipulated as a single entity.) >md.p
+
+(3.6 Register Path Syntax) >md.h3
+
+(Valid Register Syntax:) >md.b >md.p
+
+(_                 ; Register root value \29\payload at root\29\
+_.                ; Register root CellRef
+_.x               ; Register path to child cell \29\value\29\
+_.x.              ; Register path to child cell \29\CellRef\29\
+_.counter         ; Nested register path \29\value\29\
+_.counter.        ; Nested register path \29\CellRef\29\) (soma) >md.code
+
+(Invalid Register Syntax:) >md.b >md.p
+
+(_x                ; ILLEGAL: missing dot after _
+_counter          ; ILLEGAL: must be _.counter
+_x.y              ; ILLEGAL: must be _.x.y) (soma) >md.code
+
+(NORMATIVE RULE:) >md.b >md.p
+
+(All Register paths MUST use the form ) (_.path) >md.c ( where ) (_) >md.c ( is the root component. The syntax ) (_name) >md.c ( \29\without a dot\29\ is not a valid Register path and MUST be rejected by the lexer.) >md.t
+>md.q
+
+(3.7 Register Write Operations) >md.h3
+
+(Register writes follow the same syntax as Store writes, but target Register paths:) >md.p
+
+(42 !_.x           ; Store 42 in register path _.x
+!_.y              ; Pop AL and store in register path _.y
+Nil !_.z          ; Store Nil in register path _.z
+Void !_.w.        ; Delete register cell at _.w
+Void !_.w         ; FATAL ERROR: cannot store Void as payload)
+(soma) >md.code
+
+(3.8 Register Deletion Semantics) >md.h3
+
+(Register and Store have identical Cell structure and identical deletion semantics.) >md.b >md.p
+
+(Deletion works the same way in both hierarchical graphs. To delete a Register cell, use ) (Void !_.path.) >md.c ( (with trailing dot\29\, just like Store deletion ) (Void !path.) >md.c (:) >md.t >md.p
+
+(Example: Simple Register deletion) >md.b >md.p
+
+({
+  23 !_.temp
+  _.temp >print     \29\ Prints: 23
+
+  Void !_.temp.     \29\ Delete Register cell
+  _.temp            \29\ RuntimeError - path no longer exists
+})
+(soma) >md.code
+
+(Example: Register deletion with CellRef) >md.b >md.p
+
+({
+  42 !_.data
+  _.data. !_.ref    \29\ CellRef to Cell
+
+  Void !_.data.     \29\ Delete path _.data
+  _.ref             \29\ Still works! Cell persists via CellRef
+})
+(soma) >md.code
+
+(Example: Register cleanup pattern) >md.b >md.p
+
+({
+  \29\ Use Register cells as temporary workspace
+  1 !_.a
+  2 !_.b
+  _.a _.b >+        \29\ AL = [3]
+
+  \29\ Clean up workspace
+  Void !_.a.
+  Void !_.b.
+
+  \29\ Return result (AL = [3]\29\
+})
+(soma) >md.code
+
+(Cross-reference:) >md.b ( Register deletion follows the exact same rules as Store deletion (Section 2.7\29\. Both operate on Cell hierarchies with identical semantics:) >md.t >md.p
+
+(Void !path.) >md.c ( (Store\29\ deletes the path from Store tree) >md.uli
+(Void !_.path.) >md.c ( (Register\29\ deletes the path from Register tree) >md.uli
+(Both preserve Cells if other references (CellRefs\29\ exist) >md.uli
+(Both make the path return Void after deletion) >md.uli
+>md.ul
+
+(3.9 Register Isolation) >md.h3
+
+(CRITICAL: Registers are completely isolated per block.) >md.b >md.p
+
+(Inner blocks ) (cannot) >md.b ( see outer block's Register cells. Each block sees only its own Register.) >md.t >md.p
+
+(Example 1: Inner Block Has Its Own Register) >md.h4
+
+(>{1 !_.n >{2 !_.n} _.n >print}  \29\ Prints 1)
+(soma) >md.code
+
+(What happens:) >md.b >md.p
+
+(Outer block executes, gets Register1) >md.oli
+(1 !_.n) >md.c ( -> Store 1 in Register1 path ) (_.n) >md.c >md.oli
+(>{2 !_.n}) >md.c ( -> Execute inner block) >md.oli
+>md.nest
+(Inner block gets ) (fresh Register2) >md.b ( (empty\29\) >md.uli
+(2 !_.n) >md.c ( -> Store 2 in Register2 path ) (_.n) >md.c >md.uli
+(Inner block completes) >md.uli
+(Register2 is ) (destroyed) >md.b >md.uli
+>md.ul
+(Back in outer block with Register1) >md.oli
+(_.n >print) >md.c ( -> Register1 still has ) (_.n = 1) >md.c >md.oli
+(Prints 1) >md.b ( ) >md.oli
+>md.ol
+
+(Key insight:) >md.b ( Inner block's ) (_.n) >md.c ( was in a different Register. It didn't affect outer block's ) (_.n) >md.c (.) >md.t >md.p
+
+(Example 2: Inner Block Cannot See Outer Register) >md.h4
+
+(>{1 !_.n >{_.n >print}}  \29\ RuntimeError)
+(soma) >md.code
+
+(What happens:) >md.b >md.p
+
+(Outer block executes, gets Register1) >md.oli
+(1 !_.n) >md.c ( -> Store 1 in Register1 path ) (_.n) >md.c >md.oli
+(>{_.n >print}) >md.c ( -> Execute inner block) >md.oli
+>md.nest
+(Inner block gets ) (fresh Register2) >md.b ( (empty\29\) >md.uli
+(_.n) >md.c ( -> Try to read Register2 path ) (_.n) >md.c >md.uli
+(Register2 has no ) (_.n) >md.c ( -> path undefined) >md.uli
+(RuntimeError) >md.b (: Path doesn't exist) >md.uli
+>md.ul
+>md.ol
+
+(Key insight:) >md.b ( Inner blocks cannot access outer block's Register cells (strict semantics\29\.) >md.t >md.p
+
+(Example 3: Root Scope Is A Block) >md.h4
+
+(23 !_
+_ >print  \29\ Prints 23)
+(soma) >md.code
+
+(What happens:) >md.b >md.p
+
+(The root/top-level is itself a block) >md.uli
+(It has its own Register with root ) (_) >md.c >md.uli
+(23 !_) >md.c ( -> Store 23 at Register root) >md.uli
+(_ >print) >md.c ( -> Read Register root value (23\29\, print it) >md.uli
+(Prints 23) >md.b ( ) >md.uli
+>md.ul
+
+(3.10 The Correct Way to Share Data Between Blocks) >md.h3
+
+( WRONG - Try to use outer Register (fails\29\) >md.h4
+
+(>{1 !_.n >{_.n >print}}  \29\ RuntimeError)
+(soma) >md.code
+
+(Inner block can't see outer's ) (_.n) >md.c ( (strict semantics\29\.) >md.t >md.p
+
+( RIGHT - Pass via AL) >md.h4
+
+(>{1 !_.n _.n >{>print}}  \29\ Prints 1)
+(soma) >md.code
+
+(Execution:) >md.b >md.p
+
+(Outer block: ) (1 !_.n) >md.c ( stores 1) >md.oli
+(Outer block: ) (_.n) >md.c ( pushes 1 onto AL) >md.oli
+(Inner block executes with AL = [1]) >md.oli
+(Inner block: ) (>print) >md.c ( pops and prints 1) >md.oli
+>md.ol
+
+(Data passed explicitly via the AL.) >md.p
+
+) RIGHT - Use Store
+>md.h4
+
+(>{1 !data.n >{data.n >print}}  \29\ Prints 1)
+(soma) >md.code
+
+(Execution:) >md.b >md.p
+
+(Outer block: ) (1 !data.n) >md.c ( stores 1 in ) (Store) >md.b ( (global\29\) >md.oli
+(Inner block: ) (data.n) >md.c ( reads from ) (Store) >md.b >md.oli
+(Inner block: ) (>print) >md.c ( prints 1) >md.oli
+>md.ol
+
+(Data shared via the Store (persistent, global state\29\.) >md.p
+
+) RIGHT - Return via AL
+>md.h4
+
+(>{
+  >{5 !_.n _.n _.n >*} !_.square     \29\ Define helper that squares AL top
+  7 >_.square                         \29\ Call it with 7
+  >print                              \29\ Prints 49
+})
+(soma) >md.code
+
+(Execution:) >md.b >md.p
+
+(Define ) (_.square) >md.c ( block in outer Register) >md.oli
+(7) >md.c ( pushes 7 onto AL) >md.oli
+(>_.square) >md.c ( executes the block (which has its own fresh Register\29\) >md.oli
+>md.nest
+  (Pops 7 from AL -> stores in its own ) (_.n) >md.c >md.uli
+  (Computes ) (_.n * _.n = 49) >md.c >md.uli
+  (Leaves 49 on AL) >md.uli
+  >md.ul
+(Outer block continues with AL = [49]) >md.oli
+(>print) >md.c ( prints 49) >md.oli
+>md.ol
+
+(Blocks communicate via the AL (stack\29\.) >md.p
+
+(3.11 Examples Showing Isolation in Practice) >md.h3
+
+(Example: Nested Loop Counters) >md.h4
+
+(>{
+  0 !_.i                           \29\ Outer counter
+  {
+    0 !_.i                         \29\ Inner counter (different Register!\29\
+    _.i 5 ><
+      { _.i 1 >+ !_.i >block }     \29\ Inner loop uses its own _.i
+      { }
+    >choose >chain
+  } !_.inner_loop
+
+  _.i 3 ><
+    {
+      >_.inner_loop                \29\ Call inner loop
+      _.i 1 >+ !_.i                \29\ Increment outer _.i
+      >block
+    }
+    { }
+  >choose >chain
+})
+(soma) >md.code
+
+(Key points:) >md.b >md.p
+
+(Outer block has ) (_.i) >md.c ( for outer counter) >md.uli
+(_.inner_loop) >md.c ( block has its own ) (_.i) >md.c ( for inner counter) >md.uli
+(They don't interfere - different Registers) >md.uli
+(Each loop maintains its own counter independently) >md.uli
+>md.ul
+
+(Example: Helper Functions with Local State) >md.h4
+
+(>{
+  { !_.x _.x _.x >* } !_.square    \29\ Helper: square a number
+  { !_.x _.x 2 >* } !_.double      \29\ Helper: double a number
+
+  5 >_.square >print               \29\ 25
+  5 >_.double >print               \29\ 10
+})
+(soma) >md.code
+
+(Key points:) >md.b >md.p
+
+(Each helper function call gets fresh Register) >md.uli
+(_.square) >md.c ( and ) (_.double) >md.c ( each have their own ) (_.x) >md.c >md.uli
+(No interference even though both use ) (_.x) >md.c >md.uli
+(Completely isolated) >md.uli
+>md.ul
+
+(Example: Passing Context via Store) >md.h4
+
+(>{
+  (config\29\ !_.context              \29\ Outer has context in Register
+
+  _.context !global_context        \29\ Save to Store for sharing
+
+  >{
+    global_context >print          \29\ Inner reads from Store
+  }
+})
+(soma) >md.code
+
+(Key points:) >md.b >md.p
+
+(Outer block's Register context not visible to inner) >md.uli
+(Must explicitly save to Store to share) >md.uli
+(Inner block reads from Store (global\29\) >md.uli
+>md.ul
+
+(3.12 Common Patterns) >md.h3
+
+(Pattern 1: Accumulator via AL) >md.h4
+
+(>{
+  0                                \29\ Initial value on AL
+  { !_.acc _.acc 1 >+ } !_.inc    \29\ Increment AL top
+  >_.inc >_.inc >_.inc             \29\ Apply 3 times
+  >print                           \29\ Prints 3
+})
+(soma) >md.code
+
+(Pattern 2: Shared State via Store) >md.h4
+
+(0 !counter                         \29\ Global counter in Store
+
+{ counter 1 >+ !counter } !increment
+{ counter >print } !show
+
+>increment >increment >show        \29\ Prints 2)
+(soma) >md.code
+
+(Pattern 3: Local Computation in Register) >md.h4
+
+(>{
+  42 !_.value                      \29\ Local to this block
+  _.value _.value >* !_.squared    \29\ Local computation
+  _.squared >print                 \29\ Prints 1764
+}) (soma) >md.code
+
+(3.13 Register Locality and CellRef Escape) >md.h3
+
+(Registers are destroyed when their Block completes, but ) (Cells referenced by escaped CellRefs can persist) >md.b (.) >md.t >md.p
+
+(Key Principle:) >md.b ( Just like Store Cells (Section 4.4\29\, Register Cells persist as long as they're accessible via any CellRef, even after the Register is destroyed.) >md.t >md.p
+
+(Example: Register destroyed, but value lost (no CellRef\29\) >md.b >md.p
+
+(1 { _ 1 >+ !_ } >chain _  >print   ; ERROR: Register Not Set) (soma) >md.code
+
+(Step) (Description)
+>md.table.header
+(1) (Push 1 onto AL)
+>md.table.row
+(2) (Execute Block: pop 1, add 1, store in ) (_) >md.c ( (Register root\29\) >md.t
+>md.table.row
+(3) (Block ends, Register is ) (destroyed) >md.b >md.t
+>md.table.row
+(4) (_) >md.c ( refers to non-existent Register -> Void) >md.t
+>md.table.row
+(5) (>print) >md.c ( receives Void (or error if undefined\29\) >md.t
+>md.table.row
+>md.table
+
+(Example: CellRef escapes, Cell persists) >md.b >md.p
+
+({ (value\29\ !_.data _.data. } >chain !escaped_ref
+escaped_ref >print   ; Prints "value" - Cell persists!) (soma) >md.code
+
+(Step) (Description)
+>md.table.header
+(1) (Execute Block: store "value" in Register path ) (_.data) >md.c >md.t
+>md.table.row
+(2) (Create CellRef to Register Cell ) (_.data) >md.c >md.t
+>md.table.row
+(3) (Push CellRef onto AL)
+>md.table.row
+(4) (Block ends, Register destroyed, but ) (Cell persists) >md.b >md.t
+>md.table.row
+(5) (CellRef stored at ) (escaped_ref) >md.c ( in Store) >md.t
+>md.table.row
+(6) (Dereferencing ) (escaped_ref) >md.c ( accesses the Cell -> "value") >md.t
+>md.table.row
+>md.table
+
+(The Cell persists) >md.b ( because the CellRef provides access to it, even though the Register that originally contained it is gone.) >md.t >md.p
+
+(Example: Detached linked list) >md.b >md.p
+
+({
+  1 !_.head.value
+  _.head.next. !_.head.next
+  2 !_.head.next.value
+  Nil !_.head.next.next
+
+  _.head.       \29\ Return CellRef to list
+} >chain !list
+
+\29\ Block destroyed, Register destroyed, but list persists!
+list.value              \29\ 1
+list.next.value         \29\ 2
+list.next.next          \29\ Nil) (soma) >md.code
+
+(The linked list was built in the Register, but returned as a CellRef. The Register Cells persist even though the Register is gone, because the CellRef keeps them accessible.) >md.p
+
+(Example: "New" pattern (object creation\29\) >md.b >md.p
+
+({
+  (initial data\29\ !_.obj.data
+  0 !_.obj.counter
+  {
+    \29\ Note: This block needs the object CellRef on AL to work
+    !_.this                          \29\ Pop object from AL
+    _.this.counter 1 >+ !_.this.counter
+  } !_.obj.increment
+
+  _.obj.        \29\ Return handle to object
+} >chain !myObj
+
+myObj.data              \29\ "initial data"
+myObj.counter           \29\ 0
+myObj. >myObj.increment \29\ Pass object to its own increment method
+myObj.counter           \29\ 1) (soma) >md.code
+
+(Create a structure in the Register, return a CellRef - like ) (new) >md.c ( in other languages. The structure persists because the CellRef keeps it accessible.) >md.t >md.p
+
+(3.14 Capturing the Entire Register) >md.h3
+
+(Because ) (_) >md.c ( is the named root, the entire Register graph can be captured as a CellReference:) >md.t >md.p
+
+({
+  1 !_.x
+  2 !_.y
+  _.              ; Push CellRef to entire Register graph
+  !saved_context  ; Store it in the Store
+}) (soma) >md.code
+
+(After the Block completes and the Register is destroyed, the Cells persist because the CellRef keeps them accessible:) >md.p
+
+(saved_context.x >print      ; prints 1
+saved_context.y >print      ; prints 2) (soma) >md.code
+
+(Key insight:) >md.b ( Even though the Register is destroyed, the ) (Cells) >md.b ( in the graph persist because the CellRef at ) (saved_context) >md.c ( provides access to them (see Section 4.4 on Cell Lifetime\29\.) >md.t >md.p
+
+(3.15 Example: Register Usage) >md.h3
+
+({ !_.x !_.y _.x _.y >+ } !add_two
+3 5 add_two >chain) (soma) >md.code
+
+(Step) (Token) (AL State) (Register State) (Description)
+>md.table.header
+(0) ((Block starts\29\) >md.c ([5, 3]) ({}) (Fresh Register)
+>md.table.row
+(1) (!_.y) >md.c ([3]) (_.y = 5) (Pop 5, store in Register)
+>md.table.row
+(2) (!_.x) >md.c ([]) (_.x = 3, _.y = 5) (Pop 3, store)
+>md.table.row
+(3) (_.x) >md.c ([3]) (-) (Read from Register)
+>md.table.row
+(4) (_.y) >md.c ([5, 3]) (-) (Read from Register)
+>md.table.row
+(5) (>+) >md.c ([8]) (-) (Add)
+>md.table.row
+(6) ((Block ends\29\) >md.c ([8]) (destroyed) >md.i (Register discarded)
+>md.table.row
+>md.table
+
+>md.hr
+
+(4. Cells and CellReferences) >md.h2
+
+(4.1 Cell Identity) >md.h3
+
+(A ) (Cell) >md.b ( is the fundamental unit of storage. Cells have:) >md.t >md.p
+
+(Identity) >md.b ( -- independent of the values they contain) >md.t
+(Payload) >md.b ( -- any value except Void) >md.t
+(Child Cells) >md.b ( -- hierarchical structure) >md.t
+>md.ul
+
+(Cells cannot:) >md.p
+
+(Be accessed unless in a graph (Store or Register\29\)
+(Be mutated except via a path or CellReference)
+>md.ul
+
+(4.2 CellReferences Are Immutable Values) >md.h3
+
+(A ) (CellReference (CellRef\29\) >md.b ( is an immutable value that provides access to a Cell.) >md.t >md.p
+
+(CellRefs have value semantics:) >md.b >md.p
+
+(CellRefs are immutable values, like Int, String, or Block)
+(They provide direct access to Cells)
+(Whether they are "copied" or shared internally is unobservable and implementation-defined)
+(No identity comparison) >md.b ( -- you cannot distinguish between "same CellRef" vs "different CellRef to same Cell") >md.t
+(Multiple CellRefs can refer to the same Cell)
+>md.ul
+
+(CellRefs can:) >md.b >md.p
+
+(Be placed on the AL)
+(Be stored in the payload of another Cell)
+(Be passed between Blocks)
+(Persist independently of the paths that created them)
+>md.ul
+
+(Key Principle:) >md.b ( CellRefs are values, not references in the traditional pointer sense. They behave like all other SOMA values (Int, String, Block, Nil\29\.) >md.t >md.p
+
+(Example: Basic CellRef usage) >md.b >md.p
+
+((cat\29\ !a.b.c
+a.b.c. !ref
+ref { !_.ref. (dog\29\ !_.ref }
+a.b.c >print   ; prints "dog") (soma) >md.code
+
+(Step) (Description)
+>md.table.header
+(1) (Store "cat" at ) (a.b.c) >md.c >md.t
+>md.table.row
+(2) (Store ) (CellRef) >md.b ( to ) (a.b.c) >md.c ( at ) (ref) >md.c >md.t
+>md.table.row
+(3) (Execute Block: pop CellRef into Register, set its payload to "dog")
+>md.table.row
+(4) (a.b.c) >md.c ( now reads "dog") >md.t
+>md.table.row
+>md.table
+
+(Example: Multiple CellRefs to the same Cell) >md.b >md.p
+
+(42 !cell
+cell. !ref1
+cell. !ref2
+cell. !ref3
+
+99 !cell        \29\ Change Cell's value
+ref1            \29\ Returns 99 (all refs point to same Cell\29\
+ref2            \29\ Returns 99
+ref3            \29\ Returns 99) (soma) >md.code
+
+(All three CellRefs refer to the same Cell. When the Cell's value changes, all CellRefs reflect the updated value.) >md.p
+
+(Example: CellRefs are immutable values) >md.b >md.p
+
+(node. !ref1     \29\ ref1 is immutable value
+ref1 !ref2      \29\ ref2 gets same immutable value
+ref1 !ref3      \29\ ref3 gets same immutable value) (soma) >md.code
+
+(Whether the runtime copies or shares the internal representation of these CellRefs is unobservable. They behave identically as immutable values.) >md.p
+
+(4.3 CellReference Syntax) >md.h3
+
+(a.b      ; Value at a.b (may be Nil or Void\29\
+a.b.     ; CellRef for Cell a.b (may be Void if Cell absent\29\) (soma) >md.code
+
+(The trailing dot is ) (syntactically significant) >md.b (.) >md.t >md.p
+
+(4.4 Cell Lifetime and Persistence) >md.h3
+
+(Cells have independent existence from paths.) >md.b >md.p
+
+(A Cell persists as long as it is accessible through any route:) >md.p
+
+(Any path in the Store)
+(Any path in any active Register)
+(Any CellRef on the AL)
+(Any CellRef stored in another Cell's value)
+>md.ul
+
+(Key Principle:) >md.b ( Deleting a path removes the path from the tree, not the Cell itself.) >md.t >md.p
+
+(Path Deletion vs Cell Deletion) >md.h4
+
+(Path deletion removes the path:) >md.b >md.p
+
+(23 !a.b
+a.b. !ref       \29\ Create CellRef to the Cell
+Void !a.b.      \29\ Delete path a.b from Store tree
+ref             \29\ Still works! Returns 23) (soma) >md.code
+
+(What happened:) >md.b >md.p
+
+(>md.c) (23 !a.b) ( — Created Cell, made accessible via Store path ) (a.b) >md.c >md.dli
+(>md.c) (a.b. !ref) ( — Created immutable CellRef value pointing to that Cell) >md.dli
+(>md.c) (Void !a.b.) ( — Removed path ) (a.b) >md.c ( from Store tree (deleted tree edge\29\) >md.dli
+(>md.c) (ref) ( — Dereferenced CellRef, accessed Cell, returned value 23) >md.dli
+>md.dol
+
+(The Cell still exists) >md.b ( because the CellRef at path ) (ref) >md.c ( provides access to it.) >md.t >md.p
+
+(Cell Persistence Rules) >md.h4
+
+(A Cell persists as long as it is accessible. When all access routes are removed, the Cell becomes inaccessible and may be reclaimed (implementation-defined, like garbage collection\29\.) >md.p
+
+(Example 1: Path deleted, CellRef persists) >md.b >md.p
+
+(42 !a
+a. !ref
+Void !a.        \29\ Delete path a
+ref             \29\ Returns 42 - Cell persists via CellRef) (soma) >md.code
+
+(Example 2: Multiple paths to same Cell) >md.b >md.p
+
+(42 !node
+node. !alias1
+node. !alias2
+Void !node.     \29\ Delete original path
+alias1          \29\ Returns 42 - Cell accessible via alias1
+alias2          \29\ Returns 42 - Cell accessible via alias2) (soma) >md.code
+
+(Example 3: CellRef in AL) >md.b >md.p
+
+(42 !temp
+temp.           \29\ CellRef on AL
+Void !temp.     \29\ Delete path
+                \29\ AL = [CellRef to Cell]
+                \29\ Dereference AL top -> 42) (soma) >md.code
+
+(The CellRef on the AL keeps the Cell alive.) >md.p
+
+(Example 4: CellRef stored in another Cell) >md.b >md.p
+
+(42 !data
+data. !container.ref    \29\ Store CellRef as value in another Cell
+Void !data.             \29\ Delete original path
+container.ref           \29\ Returns CellRef (can still dereference\29\) (soma) >md.code
+
+(CellRefs Never "Dangle") >md.h4
+
+(In traditional languages, deleting memory can create dangling pointers:) >md.p
+
+(int *p = malloc(sizeof(int\29\\29\;
+*p = 42;
+free(p\29\;
+*p;         // DANGLING - undefined behavior) (c) >md.code
+
+(In SOMA, CellRefs never dangle:) >md.b >md.p
+
+(42 !cell
+cell. !ref
+Void !cell.     \29\ Delete path, but Cell persists
+ref             \29\ NOT dangling - Cell still exists!) (soma) >md.code
+
+(CellRefs in SOMA never "dangle" in the traditional sense because:) >md.p
+
+(Deleting a path doesn't delete the Cell)
+(Cells persist as long as accessible)
+(CellRefs provide direct access)
+>md.ul
+
+(Semantic Definition, Not Mechanism) >md.h4
+
+(This behavior is defined ) (semantically, not mechanistically) >md.b (:) >md.t >md.p
+
+(We don't prescribe heap allocation)
+(We don't prescribe garbage collection)
+(We don't prescribe reference counting)
+(We only define observable behavior)
+>md.ul
+
+(Implementations might use garbage collection, reference counting, or other techniques, but the observable semantics remain: ) (Cells persist as long as they're accessible.) >md.b >md.t >md.p
+
+>md.hr
+
+(5. Paths) >md.h2
+
+(5.1 Path Syntax) >md.h3
+
+(A ) (path) >md.b ( is a dot-separated sequence of identifiers:) >md.t >md.p
+
+(a
+config.user.name
+session.active.flag) Nil >md.code
+
+(Paths refer to locations within the Store or Register.) >md.p
+
+(5.2 Path Resolution) >md.h3
+
+(Value access) >md.b ( (no trailing dot\29\:) >md.t >md.p
+
+(a.b) (soma) >md.code
+
+(Resolution yields one of:) >md.p
+
+(A value (Int, String, Block, Nil, Void, CellRef\29\ if the Cell exists)
+(>md.b) (RuntimeError) ( if the path does not exist (strict semantics\29\) >md.uli
+>md.ul
+
+(CRITICAL: Auto-vivified vs Undefined) >md.b >md.p
+
+(>md.b) (Auto-vivified Cells exist) ( \5C\u2192 reading returns Void ✓)
+>md.nest
+(>md.b) (Undefined paths don't exist) ( \5C\u2192 reading raises RuntimeError ✗)
+>md.ul
+
+(42 !a.b.c       ; Auto-vivifies a and a.b
+a.b             ; Returns Void (Cell exists\29\ ✓
+undefined.path  ; RuntimeError (path doesn't exist\29\ ✗) (soma) >md.code
+
+(CellRef access) >md.b ( (trailing dot\29\:) >md.t >md.p
+
+(a.b.) (soma) >md.code
+
+(Resolution yields:) >md.p
+
+(A CellReference to the Cell at ) (a.b) >md.c ( if the Cell exists) >md.uli
+(>md.b) (RuntimeError) ( if the path does not exist (strict semantics\29\) >md.uli
+>md.ul
+
+(5.3 Path Behavior Summary) >md.h3
+
+(Path) (Meaning) (May Return)
+>md.table.header
+(>md.c) (a.b) (Payload at a.b) (Value, Nil, Void (if Cell exists\29\, or RuntimeError (if path undefined\29\) >md.table.row
+(>md.c) (a.b.) (CellRef for a.b) (CellRef (if Cell exists\29\, or RuntimeError (if path undefined\29\) >md.table.row
+(>md.c) (42 !a.b) (Write payload 42 into a.b) ((mutates Store\29\) >md.table.row
+(>md.c) (X !a.b.) (Replace Cell a.b with new Cell) ((mutates Store\29\) >md.table.row
+(>md.c) (Void !a.b.) (Delete Cell a.b) ((mutates Store\29\) >md.table.row
+(>md.c) (Void !a.b) (Store Void as payload) ((mutates Store\29\) >md.table.row
+>md.table
+
+(Note:) >md.b ( The same rules apply to Register paths. Simply replace ) (a.b) >md.c ( with ) (_.a.b) >md.c ( for Register operations:) >md.t >md.p
+
+(Path) (Meaning) (May Return)
+>md.table.header
+(>md.c) (_.a.b) (Payload at Register path _.a.b) (Value, Nil, Void (if Cell exists\29\, or RuntimeError (if path undefined\29\) >md.table.row
+(>md.c) (_.a.b.) (CellRef for Register path _.a.b) (CellRef (if Cell exists\29\, or RuntimeError (if path undefined\29\) >md.table.row
+(>md.c) (42 !_.a.b) (Write payload 42 into Register) ((mutates Register\29\) >md.table.row
+(>md.c) (X !_.a.b.) (Replace Cell _.a.b with new Cell) ((mutates Register\29\) >md.table.row
+(>md.c) (Void !_.a.b.) (Delete Cell _.a.b) ((mutates Register\29\) >md.table.row
+(>md.c) (Void !_.a.b) (Store Void as payload) ((mutates Register\29\) >md.table.row
+>md.table
+
+(5.4 Execution Prefix () (>) >md.c (\29\) >md.t >md.h3
+
+(The ) (>) >md.c ( prefix is used to ) (execute the value at a path) >md.b (. This is an atomic operation: read the value and execute it.) >md.t >md.p
+
+(Syntax:) >md.b >md.p
+
+(>path) >md.c ( — Execute the Block at Store path ) (path) >md.c >md.uli
+(>_.path) >md.c ( — Execute the Block at Register path ) (_.path) >md.c >md.uli
+>md.ul
+
+(Examples:) >md.b >md.p
+
+(>print          \29\ Execute block at Store path "print"
+>+              \29\ Execute block at Store path "+"
+>my_func        \29\ Execute block at Store path "my_func") (soma) >md.code
+
+(Execution from Register:) >md.b >md.p
+
+({
+  print !_.action           \29\ Store print block in Register
+  (Hello from register\29\     \29\ Push string
+  >_.action                 \29\ Execute block at Register path _.action
+}) (soma) >md.code
+
+(Output:) >md.b ( ) (Hello from register) >md.c >md.t >md.p
+
+(The ) (>) >md.c ( modifier works identically with both Store and Register paths. See Chapter 4 (Blocks and Execution\29\ for detailed execution semantics.) >md.t >md.p
+
+>md.hr
+
+(6. Nil vs Void — Complete Semantics) >md.h2
+
+(6.1 The Fundamental Distinction) >md.h3
+
+(Void and Nil are fundamentally different:) >md.b >md.p
+
+(Void) >md.b ( = "This cell has never been explicitly set" (absence, uninitialized\29\) >md.t >md.uli
+(Nil) >md.b ( = "This cell has been explicitly set to empty/nothing" (presence of emptiness\29\) >md.t >md.uli
+>md.ul
+
+(CRITICAL: Both Nil and Void can have children.) >md.b >md.p
+
+(The distinction between Nil and Void applies ) (only to the Cell's value) >md.b (. It has ) (nothing to do with subpaths) >md.b (. Because value and subpaths are orthogonal (Section 2.2.1\29\:) >md.t >md.p
+
+(A Cell with ) (Nil) >md.b ( value can have children) >md.t >md.uli
+(A Cell with ) (Void) >md.b ( value can have children) >md.t >md.uli
+(A Cell with ) (any) >md.b ( value can have children) >md.t >md.uli
+>md.ul
+
+(Example: Nil with children) >md.b >md.p
+
+(Nil !parent
+42 !parent.child
+parent           ; Returns Nil (VALUE\29\
+parent.child     ; Returns 42 (traverses SUBPATHS\29\)
+(soma) >md.code
+
+(Cell ) (parent) >md.c ( has:) >md.t >md.p
+
+(Value: ) (Nil) >md.c ( (explicitly set to empty\29\) >md.t >md.uli
+(Subpaths: ) ({"child": Cell(42\29\}) >md.c >md.t >md.uli
+>md.ul
+
+(Example: Void with children) >md.b >md.p
+
+(42 !a.b.c        ; Auto-vivifies 'a' and 'a.b' with Void values
+a.b              ; Returns Void (VALUE\29\
+a.b.c            ; Returns 42 (traverses SUBPATHS\29\)
+(soma) >md.code
+
+(Cell ) (a.b) >md.c ( has:) >md.t >md.p
+
+(Value: ) (Void) >md.c ( (never explicitly set, auto-vivified\29\) >md.t >md.uli
+(Subpaths: ) ({"c": Cell(42\29\}) >md.c >md.t >md.uli
+>md.ul
+
+(This distinction is analogous to:) >md.p
+
+(Domain) (Void) (Nil)
+>md.table.header
+(JavaScript) >md.b (undefined) >md.c (null) >md.c
+>md.table.row
+(Python) >md.b (Uninitialized variable) (None) >md.c
+>md.table.row
+(Databases) >md.b (Column never inserted) (NULL value explicitly inserted) >md.c
+>md.table.row
+(Logic) >md.b (Logical absurdity (\5C\\29\\29\) (Empty set (\5C\\29\\29\)
+>md.table.row
+(Type Theory) >md.b (Bottom type / uninhabited) (Unit type / Maybe Nothing)
+>md.table.row
+>md.table
+
+(6.2 Void — "Never Set") >md.h3
+
+(Void) >md.b ( represents the state of a Cell that exists for structural purposes but has never been given a value.) >md.t >md.p
+
+(Properties:) >md.b >md.p
+
+(Auto-vivified intermediate cells start with Void value)
+(Can be detected (hypothetically with ) (>isVoid) >md.c (\29\) >md.t
+(Reading auto-vivified Cells returns Void) >md.b ( (not an error - Cell exists\29\) >md.t
+(Reading undefined paths raises RuntimeError) >md.b ( (path doesn't exist\29\) >md.t
+(Can) >md.b ( be written as a value (stores Void as payload\29\) >md.t
+(Can) >md.b ( be used for structural deletion () (Void !path.) >md.c (\29\) >md.t
+(Can have children) >md.b ( (value and subpaths are orthogonal\29\) >md.t
+>md.ul
+
+(When do cells have Void value?) >md.b >md.p
+
+(When auto-vivified during path writes)
+(When explicitly written with ) (Void !path) >md.c >md.t
+>md.ol
+
+(CRITICAL: Void vs Undefined) >md.b >md.p
+
+(SOMA distinguishes between:) >md.p
+
+(Void value) >md.b ( -> Cell exists but has Void value (can be read\29\ ) >md.t >md.uli
+(Undefined path) >md.b ( -> Cell/path doesn't exist (reading raises RuntimeError\29\ ) >md.t >md.uli
+>md.ul
+
+(Examples:) >md.b >md.p
+
+(42 !a.b.c       ; Creates: a (Void\29\, a.b (Void\29\, a.b.c (42\29\
+
+a.b.c           ; Returns 42 (explicitly set\29\
+a.b             ; Returns Void (auto-vivified Cell exists\29\
+a               ; Returns Void (auto-vivified Cell exists\29\
+
+undefined.path  ; RuntimeError - path doesn't exist )
+(soma) >md.code
+
+(\29\ Writing Void as value is allowed
+Void !a.b       ; OK - stores Void as value
+a.b             ; Returns Void (Cell exists with Void value\29\ )
+(soma) >md.code
+
+(\29\ Reading auto-vivified Cells is legal
+42 !a.b.c
+a.b             ; Returns Void - Cell exists, was auto-vivified )
+(soma) >md.code
+
+(\29\ Void cells can have children
+42 !a.b.c       ; Auto-vivifies 'a' with Void value
+99 !a.x         ; Add sibling to 'a.b' in a's subpaths
+a               ; Returns Void (value never set, but Cell exists\29\
+a.b.c           ; Returns 42 (traverses subpaths\29\
+a.x             ; Returns 99 (traverses subpaths\29\ )
+(soma) >md.code
+
+(6.3 Nil — "Explicitly Set to Empty") >md.h3
+
+(Nil) >md.b ( is a literal value representing ) (intentional emptiness) >md.b (.) >md.t >md.p
+
+(Properties:) >md.b >md.p
+
+(Deliberately chosen value)
+(Represents intentional absence)
+(Reading returns Nil)
+(Can) >md.b ( be written as a value) >md.t
+(Can) >md.b ( be read back unchanged) >md.t
+(Distinct from "never initialized")
+(Can have children) >md.b ( (value and subpaths are orthogonal\29\) >md.t
+>md.ul
+
+(Examples:) >md.b >md.p
+
+(Nil !status
+status >print   ; prints "Nil")
+(soma) >md.code
+
+((default value\29\ !config.setting       ; Set explicitly
+Nil !optional.field                   ; Explicitly empty
+
+config.setting                         ; "default value"
+optional.field                         ; Nil (not Void\29\)
+(soma) >md.code
+
+(\29\ Nil cells can have children
+Nil !node
+42 !node.left
+99 !node.right
+node             ; Returns Nil (value is explicitly empty\29\
+node.left        ; Returns 42 (traverses subpaths\29\
+node.right       ; Returns 99 (traverses subpaths\29\)
+(soma) >md.code
+
+(6.4 The Void-Payload Invariant) >md.h3
+
+(NORMATIVE RULE:) >md.b >md.p
+
+(A SOMA Cell MUST NOT at any time contain Void as its value. If a Store or Register mutation would require placing Void into a Cell as its value, that operation MUST be treated as a fatal error.) >md.q
+
+(Fatal error:) >md.b >md.p
+
+(Void !a.b       ; FATAL ERROR - cannot write Void as value)
+(soma) >md.code
+
+(Legal (structural deletion\29\:) >md.b >md.p
+
+(Void !a.b.      ; Legal - delete the cell entirely)
+(soma) >md.code
+
+(Why this matters:) >md.b ( Void represents "never set" - you cannot intentionally set something to "never set". Only auto-vivification can create cells with Void value.) >md.t >md.p
+
+(Important: This applies ONLY to the value, not subpaths) >md.b >md.p
+
+(The Void-Payload Invariant restricts the ) (value) >md.b ( component only. A Cell's ) (subpaths) >md.b ( are independent and can exist regardless of whether the value is Void:) >md.t >md.p
+
+(42 !a.b.c       ; Auto-vivifies 'a' with Void value
+                ; 'a' has: value=Void, subpaths={"b": ...}
+                ; This is legal! )
+(soma) >md.code
+
+(6.5 Distinguishing Void from Nil) >md.h3
+
+(Hypothetical ) (>isVoid) >md.c ( operation:) >md.t >md.b >md.p
+
+(42 !a.b.c       ; Auto-vivifies a and a.b with Void
+
+a.b >isVoid     ; True - never explicitly set
+(Never set\29\ (Has been set\29\ >choose >print    ; Prints "Never set"
+
+Nil !a.b        ; Explicitly set to Nil
+
+a.b >isVoid     ; False - now has been set (to Nil\29\
+a.b             ; Returns Nil
+(Never set\29\ (Has been set\29\ >choose >print    ; Prints "Has been set")
+(soma) >md.code
+
+(The distinction in practice:) >md.b >md.p
+
+(\29\ Void vs Nil in optional fields
+(John\29\ !person.name
+Nil !person.middle_name         ; Explicitly no middle name
+42 !person.age
+
+person.middle_name              ; Nil - explicitly empty
+person.spouse                   ; RuntimeError - path never created )
+(soma) >md.code
+
+(6.6 Reading Void vs Nil) >md.h3
+
+(Reading existing Cells with Void or Nil values:) >md.b >md.p
+
+(42 !intermediate.node.leaf
+intermediate.node           ; Returns Void (auto-vivified Cell exists\29\
+
+Nil !empty.node
+empty.node                  ; Returns Nil (explicitly set\29\ )
+(soma) >md.code
+
+(Reading undefined paths (STRICT semantics\29\:) >md.b >md.p
+
+(undefined.path              ; RuntimeError - path doesn't exist )
+(soma) >md.code
+
+(The difference:) >md.b >md.p
+
+(Reading ) (auto-vivified Cell) >md.b ( -> returns Void (Cell exists, never explicitly set\29\ ) >md.t >md.uli
+(Reading ) (Cell with Nil value) >md.b ( -> returns Nil (Cell exists, explicitly set to empty\29\ ) >md.t >md.uli
+(Reading ) (undefined path) >md.b ( -> RuntimeError (path/Cell doesn't exist\29\ ) >md.t >md.uli
+>md.ul
+
+(6.7 Writing Void vs Nil) >md.h3
+
+(You CAN write Nil:) >md.b >md.p
+
+(Nil !path       ; Legal - set payload to Nil )
+(soma) >md.code
+
+(You CAN write Void:) >md.b >md.p
+
+(Void !path      ; Legal - set payload to Void )
+(soma) >md.code
+
+(You CAN use Void for structural deletion:) >md.b >md.p
+
+(Void !path.     ; Legal - delete the cell )
+(soma) >md.code
+
+(6.8 Comparison Table) >md.h3
+
+(Operation) (Nil) (Void)
+>md.table.header
+(Push onto AL) (Legal) (Legal)
+>md.table.row
+(Store as value) (Legal) (Legal)
+>md.table.row
+(Use in structural delete) (No effect) (Legal () (!path.) >md.c (\29\) >md.t
+>md.table.row
+(Read from undefined path) (RuntimeError) (RuntimeError)
+>md.table.row
+(Read from Cell with this value) (Returns Nil) (Returns Void)
+>md.table.row
+(Read from auto-vivified Cell) (Returns Void) (Returns Void)
+>md.table.row
+(Result of path traversal failure) (RuntimeError) (RuntimeError)
+>md.table.row
+(Can have children in subpaths) (Yes) (Yes)
+>md.table.row
+>md.table
+
+(6.9 Auto-Vivification Creates Void) >md.h3
+
+(When writing to a.b.c:) >md.b >md.p
+
+(If ) (a) >md.c ( doesn't exist:) >md.t >md.b >md.oli
+>md.ol
+>md.nest
+(Create cell ) (a) >md.c ( with ) (Void) >md.b ( value and empty subpaths) >md.uli
+(Add ) (a) >md.c ( to parent's subpaths) >md.uli
+>md.ul
+
+(If ) (a.b) >md.c ( doesn't exist:) >md.t >md.b >md.oli
+>md.ol
+>md.nest
+(Create cell ) (a.b) >md.c ( with ) (Void) >md.b ( value and empty subpaths) >md.uli
+(Add ) (b) >md.c ( to ) (a) >md.c ('s subpaths) >md.uli
+>md.ul
+
+(Set ) (a.b.c) >md.c (:) >md.t >md.b >md.oli
+>md.ol
+>md.nest
+(Create cell ) (a.b.c) >md.c ( with the provided value) >md.uli
+(Add ) (c) >md.c ( to ) (a.b) >md.c ('s subpaths) >md.uli
+>md.ul
+
+(Result:) >md.b >md.p
+
+(Store:
+  a -> Cell(value: Void, subpaths: {"b": ...}\29\
+    +-- b -> Cell(value: Void, subpaths: {"c": ...}\29\
+         +-- c -> Cell(value: 42, subpaths: {}\29\) Nil >md.code
+
+(Key insight:) >md.b ( Intermediate nodes are ) (structural scaffolding) >md.b ( with Void value until explicitly set. But they still have subpaths that allow path traversal.) >md.t >md.p
+
+(6.10 Implications for Sparse Data Structures) >md.h3
+
+(Sparse arrays:) >md.b >md.p
+
+(\29\ Only set the values you need
+1 !array.0
+1 !array.100
+1 !array.1000
+
+\29\ Auto-vivified intermediate indices can be read
+array.0         ; 1 - explicitly set ✓
+array.100       ; 1 - explicitly set ✓
+array.1000      ; 1 - explicitly set ✓
+
+\29\ Undefined indices raise error
+array.50        ; RuntimeError - path never created ❌) (soma) >md.code
+
+(Optional fields:) >md.b >md.p
+
+((John\29\ !person.name
+Nil !person.middle_name         ; Explicitly no middle name
+42 !person.age
+
+person.middle_name              ; Nil - explicitly empty ✓
+person.spouse                   ; RuntimeError - path never created ❌) (soma) >md.code
+
+(Nested structures:) >md.b >md.p
+
+((value\29\ !deep.nested.path.value
+
+deep                    ; Void - auto-vivified structural parent ✓
+deep.nested             ; Void - auto-vivified structural parent ✓
+deep.nested.path        ; Void - auto-vivified structural parent ✓
+deep.nested.path.value  ; "value" - explicitly set ✓
+
+deep.other.path         ; RuntimeError - path never created ❌) (soma) >md.code
+
+(6.11 Writing Void vs Auto-vivification) >md.h3
+
+(Writing Void is now legal:) >md.b >md.p
+
+(Void !a.b       ; Legal - stores Void as value) (soma) >md.code
+
+(Note:) >md.b ( You cannot distinguish between:) >md.t >md.p
+
+(Auto-vivified Void (path never written\29\)
+(Explicitly written Void (path written with Void value\29\)
+>md.ul
+
+(Both are simply Void:) >md.p
+
+(\29\ Auto-vivified
+never.written   ; Returns Void
+
+\29\ Explicitly written
+Void !explicit
+explicit        ; Returns Void
+
+\29\ These are indistinguishable
+never.written explicit >==  ; Returns True) (soma) >md.code
+
+(This is an acceptable tradeoff for simpler language semantics.) >md.p
+
+(Not an error: Reading Void) >md.b >md.p
+
+(42 !a.b.c
+a.b             ; Returns Void - this is fine!) (soma) >md.code
+
+(Reading Void is not an error. It just means "this cell exists structurally but has never had its value set.") >md.p
+
+(6.12 Path Traversal Through Void) >md.h3
+
+(CRITICAL: Reading vs Traversal - Different Semantics) >md.b >md.p
+
+(SOMA distinguishes between two operations:) >md.p
+
+(Reading a path) >md.b ( -> Returns the Cell's value OR raises RuntimeError if path doesn't exist) >md.oli
+(Traversing through a path) >md.b ( -> Uses subpaths to reach a deeper Cell) >md.oli
+>md.ol
+
+(Reading semantics (STRICT\29\:) >md.b >md.p
+
+(42 !a.b.c       ; Auto-vivifies 'a' and 'a.b' with Void value
+
+a.b.c           ; ✓ Returns 42 (Cell exists, was explicitly set\29\
+a.b             ; ✓ Returns Void (Cell exists, auto-vivified\29\
+a               ; ✓ Returns Void (Cell exists, auto-vivified\29\
+
+undefined.path  ; ❌ RuntimeError - path does not exist) (soma) >md.code
+
+(The key distinction:) >md.b >md.p
+
+(Auto-vivified Cells exist) >md.b ( (created during write\29\ -> reading them returns Void ✓) >md.uli
+(Undefined paths don't exist) >md.b ( -> reading them raises RuntimeError ❌) >md.uli
+>md.ul
+
+(Path traversal uses subpaths, not values:) >md.b >md.p
+
+(Because value and subpaths are orthogonal (Section 2.2.1\29\, path traversal walks through the ) (subpaths dictionary) >md.b ( and completely ignores intermediate Cell values.) >md.t >md.p
+
+(Traversal through auto-vivified Cells works:) >md.b >md.p
+
+(42 !a.b.c       ; Auto-vivifies 'a' and 'a.b' with Void value
+
+a.b.c           ; Traverses a's subpaths -> b's subpaths -> c
+                ; Returns c's VALUE (42\29\
+                ; Intermediate VALUES (Void\29\ are ignored during traversal ✓) (soma) >md.code
+
+(This is crucial for sparse structures - once you've written a deep path, all intermediate nodes exist (with Void value\29\ and can be traversed through.) >md.p
+
+(Path traversal through Nil also works:) >md.b >md.p
+
+(Nil !a.b        ; Explicitly set a.b's VALUE to Nil
+42 !a.b.c       ; Create child 'c' in a.b's SUBPATHS
+
+a.b             ; Returns Nil (reads VALUE\29\
+a.b.c           ; Returns 42 (traverses SUBPATHS, ignores a.b's VALUE\29\) (soma) >md.code
+
+(Why this works:) >md.b ( Path resolution uses only the ) (subpaths) >md.b ( component. The ) (value) >md.b ( component (whether Void, Nil, or any other value\29\ is completely ignored during path traversal. Only the final Cell's value is returned.) >md.t >md.p
+
+(Path traversal failures (STRICT\29\:) >md.b >md.p
+
+(If any component in the path doesn't exist in the subpaths dictionary, traversal fails:) >md.p
+
+(42 !a.b.c       ; Creates a, a.b, a.b.c
+
+a.b.c           ; ✓ Works - all components exist
+a.x.y           ; ❌ RuntimeError - 'x' doesn't exist in a's subpaths
+a.b.c.d         ; ❌ RuntimeError - 'c' has no subpath 'd') (soma) >md.code
+
+(The mechanism:) >md.b >md.p
+
+(Path: a.b.c
+Step 1: Start at root, lookup "a" in root's subpaths -> find Cell(a\29\
+Step 2: Lookup "b" in Cell(a\29\'s subpaths -> find Cell(b\29\  [ignores a's value]
+Step 3: Lookup "c" in Cell(b\29\'s subpaths -> find Cell(c\29\  [ignores b's value]
+Step 4: Return Cell(c\29\'s value -> 42
+
+If any lookup fails -> RuntimeError (path doesn't exist\29\) Nil >md.code
+
+>md.hr
+
+(7. Examples) >md.h2
+
+(7.1 AL Operations) >md.h3
+
+(Example: Stack manipulation) >md.b >md.p
+
+(1 2 3 >swap >drop >dup) (soma) >md.code
+
+(Step) (AL State) (Description)
+>md.table.header
+(0) ([]) (Empty)
+>md.table.row
+(1) ([1]) (Push 1)
+>md.table.row
+(2) ([2, 1]) (Push 2)
+>md.table.row
+(3) ([3, 2, 1]) (Push 3)
+>md.table.row
+(4) ([2, 3, 1]) (Swap top 2)
+>md.table.row
+(5) ([3, 1]) (Drop top)
+>md.table.row
+(6) ([3, 3, 1]) (Duplicate top)
+>md.table.row
+>md.table
+
+(7.2 Store Mutations) >md.h3
+
+(Example: Read-Modify-Write) >md.b >md.p
+
+(0 !counter.n
+counter.n 1 >+ !counter.n
+counter.n 1 >+ !counter.n
+counter.n >print) (soma) >md.code
+
+(Step) (Store State) (Description)
+>md.table.header
+(1) (counter.n = 0) (Initialize)
+>md.table.row
+(2) (counter.n = 1) (Increment)
+>md.table.row
+(3) (counter.n = 2) (Increment)
+>md.table.row
+(4) (Prints ) (2) >md.c >md.t (Read and print)
+>md.table.row
+>md.table
+
+(7.3 Aliasing) >md.h3
+
+(Example: Value copy (no aliasing\29\) >md.b >md.p
+
+(42 !a
+a !b
+99 !a
+b >print   ; prints 42) (soma) >md.code
+
+(Example: Cell aliasing (shared identity\29\) >md.b >md.p
+
+(42 !a
+a. !b.
+99 !b
+a >print   ; prints 99) (soma) >md.code
+
+(Description)
+>md.table.header
+(Store 42 at ) (a) >md.c >md.t
+>md.table.row
+(Store ) (CellRef) >md.b ( to ) (a) >md.c ( at ) (b) >md.c >md.t
+>md.table.row
+(Update ) (b) >md.c ( (which is aliased to ) (a) >md.c (\29\) >md.t
+>md.table.row
+(a) >md.c ( now reads 99) >md.t
+>md.table.row
+>md.table
+
+(7.4 Register Isolation) >md.h3
+
+(Example: Register does not escape) >md.b >md.p
+
+({ 100 !_.temp _.temp } !block
+>block >print         \29\ prints 100
+_.temp                \29\ RuntimeError: path doesn't exist (block's Register is destroyed\29\) (soma) >md.code
+
+(The Register is destroyed when the Block ends.) >md.p
+
+(Example: Execution from Register path) >md.b >md.p
+
+(>{
+  print !_.action           \29\ Store print block in Register
+  (Hello from register\29\     \29\ Push string
+  >_.action                 \29\ Execute what's at Register path _.action
+}) (soma) >md.code
+
+(Step) (Token) (AL State) (Register State) (Description)
+>md.table.header
+(0) ((Block starts\29\) ([]) >md.c ({}) >md.c (Fresh Register)
+>md.table.row
+(1) (print) >md.c ([print_block]) >md.c (-) (Push print block)
+>md.table.row
+(2) (!_.action) >md.c ([]) >md.c (_.action = print_block) >md.c (Store in Register)
+>md.table.row
+(3) ((Hello from register\29\) >md.c ([(Hello from register\29\]) >md.c (-) (Push string)
+>md.table.row
+(4) (>_.action) >md.c ([]) >md.c (-) (Execute block at _.action (prints string\29\)
+>md.table.row
+(5) ((Block ends\29\) ([]) >md.c (*destroyed*) >md.i (Register discarded)
+>md.table.row
+>md.table
+
+(Output: ) >md.b (Hello from register) >md.c >md.t >md.p
+
+(Example: Nested blocks with isolated Registers) >md.b >md.p
+
+(>{
+  1 !_.outer_val
+
+  >{
+    2 !_.inner_val
+    _.inner_val >print      \29\ Prints 2
+    _.outer_val >print      \29\ RuntimeError: _.outer_val undefined in inner Register
+  }
+
+  _.outer_val >print        \29\ Prints 1
+  _.inner_val >print        \29\ RuntimeError: _.inner_val undefined in outer Register
+}) (soma) >md.code
+
+(Key points:) >md.b >md.p
+
+(Outer block's ) (_.outer_val) >md.c ( is in Outer Register) >md.uli
+(Inner block's ) (_.inner_val) >md.c ( is in Inner Register (completely separate\29\) >md.uli
+(Inner block ) (cannot) >md.b ( access ) (_.outer_val) >md.c ( from outer block (undefined path\29\) >md.uli
+(Outer block ) (cannot) >md.b ( access ) (_.inner_val) >md.c ( from inner block (already destroyed\29\) >md.uli
+>md.ul
+
+(Example: Correct data sharing via Store) >md.b >md.p
+
+(>{
+  1 !shared.outer_val       \29\ Store in global Store
+
+  >{
+    2 !shared.inner_val     \29\ Store in global Store
+    shared.inner_val >print \29\ Prints 2
+    shared.outer_val >print \29\ Prints 1 (reads from Store\29\
+  }
+
+  shared.outer_val >print   \29\ Prints 1
+  shared.inner_val >print   \29\ Prints 2
+}) (soma) >md.code
+
+(Key points:) >md.b >md.p
+
+(Both blocks use Store paths (no ) (_) >md.c ( prefix\29\) >md.uli
+(Store is global - all blocks can access) >md.uli
+(Data persists across block boundaries) >md.uli
+>md.ul
+
+(7.5 Nil vs Void) >md.h3
+
+(Example: Both Nil and Void are storable) >md.b >md.p
+
+(Nil !status
+status >print   ; prints "Nil") (soma) >md.code
+
+(Void !x         ; Legal - stores Void as payload
+x >print        ; prints "Void") (soma) >md.code
+
+(Example: Auto-vivification creates Void) >md.b >md.p
+
+(42 !a.b.c
+a.b.c >print   ; prints "42" (explicitly set\29\
+a.b >print     ; prints "Void" (auto-vivified Cell exists\29\
+a >print       ; prints "Void" (auto-vivified Cell exists\29\) (soma) >md.code
+
+(Example: Void vs Nil distinction) >md.b >md.p
+
+(42 !data.x.y        ; Auto-vivifies data and data.x with Void
+Nil !config.opt     ; Explicitly set to Nil
+
+data.x              ; Returns Void (auto-vivified Cell exists\29\
+config.opt          ; Returns Nil (explicitly set to empty\29\) (soma) >md.code
+
+(Example: Reading undefined paths (STRICT\29\) >md.b >md.p
+
+(42 !a.b.c
+a.b.c           ; ✓ Returns 42 (explicitly set\29\
+a.b             ; ✓ Returns Void (auto-vivified Cell exists\29\
+
+undefined.path  ; ❌ RuntimeError - path never created) (soma) >md.code
+
+(Example: Void allows path traversal) >md.b >md.p
+
+(42 !a.b.c       ; a and a.b have Void payload
+a.b.c           ; Traverses through Void cells, returns 42) (soma) >md.code
+
+(Example: Void deletes Cells structurally) >md.b >md.p
+
+(42 !data.x
+Void !data.x.   ; Deletes Cell data.x
+data.x          ; RuntimeError - path no longer exists) (soma) >md.code
+
+(Example: Sparse array with strict semantics) >md.b >md.p
+
+(1 !array.0
+1 !array.100
+1 !array.1000
+
+array.0 >print      ; prints "1"
+array.50            ; RuntimeError - path never created
+array.100 >print    ; prints "1") (soma) >md.code
+
+(7.6 Combined Example: Linked List Node) >md.h3
+
+({ Nil !_.next Nil !_.value _.  } !list_new_node
+{ !_.value !_.node. _.value !_.node.value } !list_set
+{ !_.node. >list_new_node !_.node.next } !list_append
+{ !_.node. _.node.next } !list_forward
+{ !_.node. _.node.value } !list_get
+
+>list_new_node !head.
+(first\29\ head. list_set >chain
+head. list_append >chain !head.
+(second\29\ head. list_set >chain
+head. list_forward >chain list_get >chain >print   \29\ prints "second") (soma) >md.code
+
+(7.7 CellRef Persistence and Path Deletion) >md.h3
+
+(Example: Path deleted, Cell persists via CellRef) >md.b >md.p
+
+(42 !data
+data. !ref
+Void !data.     \29\ Delete path
+ref >print      \29\ Prints 42 - Cell persists via CellRef) (soma) >md.code
+
+(Example: Multiple CellRefs to same Cell) >md.b >md.p
+
+(100 !counter
+counter. !ref1
+counter. !ref2
+200 !counter    \29\ Update Cell value
+ref1 >print     \29\ Prints 200
+ref2 >print     \29\ Prints 200) (soma) >md.code
+
+(Example: Aliasing with path deletion) >md.b >md.p
+
+(Chain !kette            \29\ German name for Chain
+print !drucken          \29\ German name for print
+
+(Hallo Welt\29\ >drucken   \29\ Works! Prints "Hallo Welt"
+1 2 >+ !result { result >drucken } >kette  \29\ Prints 3) (soma) >md.code
+
+(Store a CellRef to a built-in at a different path - create aliases.) >md.p
+
+(Example: Detached data structure) >md.b >md.p
+
+({
+  \29\ Build a tree structure in Register
+  5 !_.root.value
+  3 !_.root.left.value
+  7 !_.root.right.value
+
+  _.root.       \29\ Return CellRef to root
+} >chain !tree
+
+\29\ Tree persists, accessible via CellRef (Register destroyed\29\
+tree.value              \29\ 5
+tree.left.value         \29\ 3
+tree.right.value        \29\ 7) (soma) >md.code
+
+>md.hr
+
+(8. Machine State Summary) >md.h2
 
 (The SOMA machine state consists of:) >md.p
 
-(AL) (LIFO value stack)
-(Store) (Global hierarchical graph)
-(Register) (Block-local hierarchical graph)
-(IP) (Instruction pointer)
->md.dul
+((AL, Store, Register, IP\29\) Nil >md.code
 
-(Each token transforms this state explicitly.)
-(There are no hidden stacks, returns, or exceptions.)
->md.p
+(Where:) >md.p
+
+(AL) >md.b ( — Finite sequence of values (LIFO\29\) >md.uli
+(Store) >md.b ( — Hierarchical graph of Cells (global\29\) >md.uli
+(Register) >md.b ( — Hierarchical graph of Cells (block-local, isolated\29\) >md.uli
+(IP) >md.b ( — Instruction pointer (next token to execute\29\) >md.uli
+>md.ul
+
+(Each token transforms the machine state:) >md.p
+
+((AL₁, Store₁, Register₁\29\ → (AL₂, Store₂, Register₂\29\) Nil >md.code
+
+(No hidden stacks, no return contexts, no exception handlers.) >md.p
 
 >md.hr
 
-(Note) >md.b (: This is a condensed demonstration version.)>md.t ( )
-(Full specification includes detailed examples, edge cases, and concurrency model.)
->md.t >md.p
+(9. Concurrency and Memory Model) >md.h2
+
+(9.1 Happens-Before Memory Model) >md.h3
+
+(SOMA is defined with a happens-before memory model, but the exact nature of that model is intentionally implementation-defined.) >md.b >md.p
+
+(This approach:) >md.p
+
+(Fits with machine algebra (systematic, mechanistic\29\)
+(Defines observable ordering relationships)
+(Is well-understood in concurrent systems)
+>md.ul
+
+(The specification leaves the exact memory model undefined because:) >md.p
+
+(It may be application-specific (single-threaded, multi-threaded, distributed\29\)
+(It may be hardware-specific (x86, ARM, GPU\29\)
+(An overly restrictive specification would limit implementations)
+>md.ul
+
+(9.2 What SOMA Specifies) >md.h3
+
+(9.2.1 Sequential Consistency Within a Thread) >md.h4
+
+(Within a single execution thread, operations occur in program order:) >md.p
+
+(1 !a        \29\ Step 1
+2 !b        \29\ Step 2 (happens-after Step 1\29\
+3 !c        \29\ Step 3 (happens-after Step 2\29\) (soma) >md.code
+
+(Guaranteed:) >md.b ( If a thread executes these statements, they occur in this order.) >md.t >md.p
+
+(9.2.2 Atomicity of Individual Operations) >md.h4
+
+(Each primitive operation is atomic:) >md.p
+
+(42 !path    \29\ Atomic: either completes or doesn't (no partial state\29\
+path        \29\ Atomic: reads complete value
+Void !path. \29\ Atomic: deletion completes or doesn't) (soma) >md.code
+
+(Guaranteed:) >md.b ( You never observe a "half-written" value.) >md.t >md.p
+
+(This applies to both Store and Register operations - all individual operations are atomic.) >md.p
+
+(9.2.3 Store Consistency) >md.h4
+
+(The Store has a consistent state at all times:) >md.p
+
+(\29\ Thread 1
+1 !a
+2 !b        \29\ Fatal error here
+3 !c        \29\ Never executes) (soma) >md.code
+
+(Guaranteed:) >md.b ( Store is in a valid state after the error. Cell ) >md.t (a) >md.c ( contains 1, ) >md.t (b) >md.c ( and ) >md.t (c) >md.c ( are unchanged.) >md.t >md.p
+
+(Not guaranteed:) >md.b ( Whether other threads see ) >md.t (a=1) >md.c ( before the error depends on the memory model.) >md.t >md.p
+
+(9.3 What SOMA Does NOT Specify) >md.h3
+
+(9.3.1 Cross-Thread Visibility Ordering) >md.h4
+
+(\29\ Thread 1
+42 !shared
+
+\29\ Thread 2
+shared      \29\ When does this see 42?) (soma) >md.code
+
+(Unspecified:) >md.b ( The happens-before relationship between threads depends on the implementation's memory model.) >md.t >md.p
+
+(9.3.2 Synchronization Primitives) >md.h4
+
+(SOMA does not define:) >md.p
+
+(Mutexes)
+(Semaphores)
+(Atomic compare-and-swap)
+(Memory barriers)
+>md.ul
+
+(Rationale:) >md.b ( These may be provided as built-ins or extensions, but are not part of the core language.) >md.t >md.p
+
+(9.3.3 Thread Creation/Management) >md.h4
+
+(SOMA does not specify:) >md.p
+
+(How threads are created)
+(How threads are synchronized)
+(Thread scheduling)
+>md.ul
+
+(Rationale:) >md.b ( This may be platform-specific or provided by runtime.) >md.t >md.p
+
+(9.4 Happens-Before Model (Abstract\29\) >md.h3
+
+(Definition:) >md.b ( SOMA execution can be described by a partial order of operations with a happens-before relation (⊏\29\.) >md.t >md.p
+
+(Properties:) >md.b >md.p
+
+(Program Order:) >md.b ( Within a thread, if operation A comes before operation B in program text, then A ⊏ B) >md.t >md.oli
+(Transitivity:) >md.b ( If A ⊏ B and B ⊏ C, then A ⊏ C) >md.t >md.oli
+(Synchronization:) >md.b ( The exact synchronization edges that establish happens-before between threads are implementation-defined) >md.t >md.oli
+>md.ol
+
+(What this means:) >md.b >md.p
+
+(Single-threaded: happens-before = program order (simple\29\)
+(Multi-threaded with locks: happens-before includes lock release → acquire)
+(Distributed: happens-before might include message send → receive)
+(Actor model: happens-before includes message send → message processing)
+>md.ul
+
+(9.5 Single-Threaded vs Multi-Threaded Execution) >md.h3
+
+(Single-Threaded Execution) >md.h4
+
+(In a single-threaded SOMA implementation:) >md.p
+
+(Happens-before is simply program order)
+(All operations are sequentially consistent)
+(No memory model concerns)
+>md.ul
+
+(Example:) >md.b >md.p
+
+(1 !a
+2 !b
+a b >+)
+(soma) >md.code
+
+(Execution:) >md.b ( Totally ordered, deterministic, simple.) >md.t >md.p
+
+(Multi-Threaded Execution) >md.h4
+
+(In multi-threaded implementations:) >md.p
+
+(Happens-before relationships must be defined by the implementation)
+(Cross-thread visibility depends on synchronization)
+(Memory model must be documented)
+>md.ul
+
+(Example: Unsynchronized access (behavior undefined\29\) >md.b >md.p
+
+(\29\ Thread 1
+42 !x
+
+\29\ Thread 2
+x >print) (soma) >md.code
+
+(Result:) >md.b ( Undefined - Thread 2 might see previous value, 42, or any intermediate state depending on memory model.) >md.t >md.p
+
+(Example: Synchronized via Store (implementation-defined\29\) >md.b >md.p
+
+(\29\ Thread 1
+>lock
+42 !shared
+>unlock
+
+\29\ Thread 2
+>lock
+shared >print
+>unlock) (soma) >md.code
+
+(Result:) >md.b ( Implementation must define happens-before for lock/unlock operations.) >md.t >md.p
+
+(9.6 Implementation Guidance) >md.h3
+
+(For Single-Threaded Implementations) >md.h4
+
+(Sequential consistency - program order equals execution order. No additional concerns.) >md.p
+
+(For Multi-Threaded Implementations) >md.h4
+
+(Choose a memory model:) >md.b >md.p
+
+(Sequential consistency (simplest, may be slower\29\)
+(TSO (Total Store Order - like x86\29\)
+(Relaxed (like ARM, requires careful synchronization\29\)
+>md.ul
+
+(Document it:) >md.b ( Specify the happens-before edges for your synchronization primitives.) >md.t >md.p
+
+(For Distributed Implementations) >md.h4
+
+(Choose a consistency model:) >md.b >md.p
+
+(Causal consistency)
+(Eventual consistency)
+(Strong consistency)
+>md.ul
+
+(Document it:) >md.b ( Specify the happens-before edges for your message passing.) >md.t >md.p
+
+(9.7 Error Recovery and Valid State) >md.h3
+
+(When a fatal error occurs: ) ("The Store remains in its last valid state.") >md.b >md.t >md.p
+
+(What this means:) >md.b >md.p
+
+(1 !a            \29\ Completes successfully
+2 !b            \29\ Fatal error here
+3 !c            \29\ Never executes) (soma) >md.code
+
+(After the error:) >md.b >md.p
+
+(a) >md.c ( contains 1 (operation completed\29\) >md.uli
+(Store is in a ) (valid) >md.b ( state (no corrupted data structures\29\) >md.uli
+(Individual operations are atomic (no partial writes\29\)
+>md.ul
+
+(Guaranteed:) >md.b ( The Store is in a valid state (no corruption\29\.) >md.t >md.p
+
+(Not guaranteed:) >md.b ( Exactly which operations completed in multi-threaded scenarios (depends on memory model\29\.) >md.t >md.p
+
+(Conservative interpretation for portable code:) >md.b ( After an error, only operations that completed ) (before) >md.i ( the error are guaranteed to be visible. Cross-thread visibility is unspecified.) >md.t >md.p
+
+(9.8 Key Principles Summary) >md.h3
+
+(SOMA uses a happens-before memory model) ( (systematic, mechanistic\29\) >md.dli
+(Exact details are implementation-defined) ( (application/hardware specific\29\) >md.dli
+(Single-threaded execution is straightforward) ( (program order\29\) >md.dli
+(Multi-threaded requires implementation-specific synchronization) () >md.dli
+(Individual operations are atomic) ( (no partial writes\29\) >md.dli
+(Store remains valid after errors) ( (no corruption\29\) >md.dli
+>md.dol
 
 >md.hr
 
-(End of Machine Model) >md.p
+(Unclear or Contradictory Statements) >md.h2
+
+(During analysis of the specification, the following issues were identified:) >md.p
+
+(CellRef vs Block in ) (>chain) >md.c ( examples) >md.b (: Several examples use ) (square.) >md.c ( or ) (toggle.) >md.c ( (CellRefs\29\ where ) (>chain) >md.c ( expects a Block value. These should use ) (square) >md.c ( (payload\29\ instead.) >md.oli
+(~~2. ) (Register destruction semantics for escaped CellRefs) >md.b (: RESOLVED - Section 3.13 and Section 4.4 now clarify that Cells (whether in Store or Register\29\ persist as long as they're accessible via any CellRef, even after the Register is destroyed. The CellRef keeps the Cell alive.~~) >md.oli
+(~~3. ) (Path resolution through Nil payloads) >md.b (: RESOLVED - Section 6.12 now clarifies that path traversal works through ANY value (including Nil and Void\29\ because path resolution uses only the subpaths component. Value and subpaths are orthogonal (Section 2.2.1\29\.~~) >md.oli
+>md.ol
+
+(These issues do not affect the fundamental machine model but require clarification for full implementability.) >md.p
+
+>md.hr
+
+(End of Chapter 03 — Machine Model) >md.b >md.p
 
 >md.print

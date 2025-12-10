@@ -7,6 +7,7 @@
 The Python reference implementation provides an extension that enables SOMA programs to call Python code. Following SOMA's philosophy of minimal primitives, this extension adds **zero global builtins** - instead, it provides namespaced operations under `use.python.*` that are loaded via the core `>use` mechanism.
 
 **Architecture:**
+
 - **Core language:** Only adds `>use` to global namespace (the universal extension loader)
 - **Python extension:** Provides `use.python.*` builtins (FFI, file loading, etc.)
 - **SOMA wrappers:** Extension includes SOMA code that creates friendly macros in the Store
@@ -26,6 +27,7 @@ The Python reference implementation provides an extension that enables SOMA prog
 ```
 
 After `(python) >use`, you have access to:
+
 - **Builtins:** `>use.python.call`, `>use.python.load`, etc. (primitive operations)
 - **Store macros:** `use.python.isException`, `use.python.safe`, etc. (created by setup code)
 
@@ -34,12 +36,14 @@ After `(python) >use`, you have access to:
 ### `>use.python.call` - FFI Primitive
 
 **AL Contract:**
+
 - **Consumes:** Callable name (string), then arguments until Void terminator
 - **Produces:** Two values:
   1. Return value from Python callable (or Void if exception occurred)
   2. Exception object (or Void if successful)
 
 **Behavior:**
+
 1. Pop callable name from AL (must be a string)
 2. Pop values from AL until encountering Void
 3. Reverse the collected arguments (so they're in the order pushed)
@@ -49,17 +53,16 @@ After `(python) >use`, you have access to:
 
 **Example:**
 
-```soma
-(python) >use
+```(python) >use
 
 ) Call Python: int("42")
 Void (42) (int) >use.python.call
 !_.exc !_.ret
 
-) Call Python: pow(2, 10)
+) Call Python: pow(2, 10 )
 Void (2) (10) (pow) >use.python.call
 !_.exc !_.ret
-) _.ret should be 1024
+) _.ret should be 1024 ) (soma
 ```
 
 **Argument Order:** Arguments are pushed in natural order (first arg first) and reversed internally to match Python's positional parameters.
@@ -77,10 +80,12 @@ Void (not_a_number) (int) >use.python.call
 ### `>use.python.load` - Load SOMA Files
 
 **AL Contract:**
+
 - **Consumes:** File path (string)
 - **Produces:** Nothing (executes the loaded code)
 
 **Behavior:**
+
 1. Pop file path from AL
 2. Read SOMA code from filesystem using Python's file I/O
 3. Execute the code in the current VM context
@@ -102,13 +107,14 @@ Void (not_a_number) (int) >use.python.call
 ### `>use.python.import` - Import Python Modules
 
 **AL Contract:**
+
 - **Consumes:** Module name (string)
 - **Produces:** Success boolean
 
 **Behavior:**
-1. Pop module name from AL
-2. Import the Python module (making it available for `>use.python.call`)
-3. Push True if successful, False if failed
+
+1. Pop module name from ALImport the Python module (making it available for `>use.python.call`)
+2. Push True if successful, False if failed
 
 **Example:**
 
@@ -129,7 +135,7 @@ Void 3.14 (numpy.sin) >use.python.call
 
 Rather than adding builtins for exception handling, type checking, etc., the Python extension uses a two-layer approach:
 
-### Layer 1: Python Helpers (`soma.py`)
+### **Layer 1: Python Helpers (**`soma.py`)
 
 ```python
 # soma.py - Python helpers for SOMA FFI
@@ -212,6 +218,7 @@ When `(python) >use` is executed, the extension automatically runs this SOMA cod
 ```
 
 **Benefits:**
+
 - Clean namespace: `use.python.*` clearly indicates FFI usage
 - Self-documenting API
 - No global namespace pollution (only `>use` is global)
@@ -365,7 +372,7 @@ _.exc >isVoid
     !_.exc2 !_.sin
 
     _.exc2 >isVoid
-      { (sin(45°) = ) _.sin >toString >concat >print }
+      { (sin(45 deg) = ) _.sin >toString >concat >print }
       { (Error in sin: ) _.exc2 >use.python.format >concat >print }
     >ifelse
   }
@@ -385,7 +392,7 @@ Or using the safe wrapper:
   { >drop (Conversion failed) >print }
   {
     (math.sin) >use.python.safe
-    (sin(45°) = ) >swap >toString >concat >print
+    (sin(45 deg) = ) >swap >toString >concat >print
   }
 >ifelse
 ```
@@ -395,35 +402,40 @@ Or using the safe wrapper:
 ### Namespace Isolation
 
 **Global namespace:**
-- `>use` ← only addition
+
+- `>use` <- only addition
 
 **Extension builtins:**
-- `>use.python.call` ← FFI primitive
-- `>use.python.load` ← load SOMA files
-- `>use.python.import` ← import Python modules
+
+- `>use.python.call` <- FFI primitive
+- `>use.python.load` <- load SOMA files
+- `>use.python.import` <- import Python modules
 
 **Store macros (created by extension):**
-- `use.python.isException` ← SOMA block
-- `use.python.safe` ← SOMA block
-- `use.python.typeof` ← SOMA block
+
+- `use.python.isException` <- SOMA block
+- `use.python.safe` <- SOMA block
+- `use.python.typeof` <- SOMA block
 
 No pollution. Clear boundaries. Easy to audit what's available.
 
 ### Traditional Macro Systems vs SOMA
 
 **Lisp/Scheme:**
+
 - Separate macro expansion phase at compile-time
 - Special syntax and rules for macros vs functions
 - Hygiene issues require special handling
 
 **C Preprocessor:**
+
 - Textual substitution only
 - No access to runtime values
 - Debugging is opaque
 
 **SOMA Approach:**
-- No phase separation - everything is runtime
-- Uniform syntax - `>foo` works for builtins, stdlib, user code
+
+- No phase separation - everything is runtimeUniform syntax - `>foo` works for builtins, stdlib, user code
 - First-class blocks are both data and code
 - Debugging is just stepping through block execution
 
@@ -439,19 +451,21 @@ With just `>use` in the core and the Python extension's primitives, you can buil
 6. **Library ecosystem** via `>use.python.load`
 
 None of these require new global builtins. They're emergent properties of:
+
 - First-class blocks
 - Minimal FFI primitive
 - Extension-provided SOMA setup code
 
 ### Comparison to Other Languages
 
-**Python's `ctypes`:** Requires explicit type declarations, struct definitions, calling conventions.
+**Python's **`ctypes`: Requires explicit type declarations, struct definitions, calling conventions.
 
 **Haskell's FFI:** Requires `Foreign` imports, marshaling code, `IO` monad wrapping.
 
 **SOMA's Python extension:** Load extension, call Python, check exception. Build abstractions with blocks.
 
 The simplicity comes from SOMA's design:
+
 - No type system to satisfy
 - No purity to maintain (mutation is explicit)
 - Blocks are values (easy to compose)
@@ -608,31 +622,35 @@ def get_soma_setup():
 
 ### Type Conversions
 
-**Python → SOMA:**
-- `None` → `Void`
-- `bool` → SOMA boolean (`True`/`False`)
-- `int` → SOMA integer
-- `str` → SOMA string
-- Other → Opaque `Thing` (can be passed back to Python)
+**Python -> SOMA:**
 
-**SOMA → Python:**
-- `Void` → `None`
-- Boolean → `bool`
-- Integer → `int`
-- String → `str`
-- Block → Error (blocks can't be marshaled to Python)
+- `None` -> `Void`
+- `bool` -> SOMA boolean (`True`/`False`)
+- `int` -> SOMA integer
+- `str` -> SOMA string
+- Other -> Opaque `Thing` (can be passed back to Python)
+
+**SOMA -> Python:**
+
+- `Void` -> `None`
+- Boolean -> `bool`
+- Integer -> `int`
+- String -> `str`
+- Block -> Error (blocks can't be marshaled to Python)
 
 ## Best Practices
 
 ### 1. Always Load Extension First
 
 **Good:**
+
 ```soma
 (python) >use
 Void (42) (int) >use.python.call
 ```
 
 **Bad:**
+
 ```soma
 ) This will fail - extension not loaded!
 Void (42) (int) >use.python.call
@@ -641,11 +659,13 @@ Void (42) (int) >use.python.call
 ### 2. Use Provided Macros
 
 **Good:**
+
 ```soma
 exception_obj >use.python.isException
 ```
 
 **Bad:**
+
 ```soma
 ) Reinventing the wheel
 Void exception_obj (soma.isException) >use.python.call
@@ -655,6 +675,7 @@ Void exception_obj (soma.isException) >use.python.call
 ### 3. Check Exceptions
 
 **Good:**
+
 ```soma
 Void (arg) (func) >use.python.call
 !_.exc !_.ret
@@ -662,6 +683,7 @@ _.exc >use.python.isException { ) handle } { ) use result } >ifelse
 ```
 
 **Bad:**
+
 ```soma
 Void (arg) (func) >use.python.call
 >drop  ) Ignore exception - dangerous!
@@ -753,10 +775,10 @@ vm.run("2 3 >+")  # Only FFI builtins available
 
 Possible additions to the Python extension:
 
-1. **`>use.python.eval`** - Evaluate Python expressions dynamically
-2. **`>use.python.getattr`** - Access object attributes
-3. **`>use.python.setattr`** - Modify object attributes
-4. **`>use.python.dir`** - List object attributes
+1. `>use.python.eval` - Evaluate Python expressions dynamically
+2. `>use.python.getattr` - Access object attributes
+3. `>use.python.setattr` - Modify object attributes
+4. `>use.python.dir` - List object attributes
 5. **Keyword arguments** - Convention for passing kwargs
 6. **List/dict builders** - Construct Python collections from AL
 7. **Async support** - Integration with `asyncio`
@@ -766,19 +788,24 @@ All can be added as new `use.python.*` builtins without touching the core VM.
 ## Comparison: Implementation vs Feature Extensions
 
 **Implementation extensions** (provide `.load` by convention):
-- `(python) >use` → `>use.python.load` for loading SOMA files via Python
-- `(js) >use` → `>use.js.load` for loading via JavaScript fetch/require
-- `(native) >use` → `>use.native.load` for loading via C fread
+
+- `(python) >use` -> `>use.python.load` for loading SOMA files via Python
+- `(js) >use` -> `>use.js.load` for loading via JavaScript fetch/require
+- `(native) >use` -> `>use.native.load` for loading via C fread
 
 **Feature extensions** (provide domain operations):
-- `(posix) >use` → `>use.posix.open`, `>use.posix.read`, etc.
-- `(http) >use` → `>use.http.get`, `>use.http.post`, etc.
-- `(db) >use` → `>use.db.query`, `>use.db.execute`, etc.
+
+- `(posix) >use` -> `>use.posix.open`, `>use.posix.read`, etc.
+- `(http) >use` -> `>use.http.get`, `>use.http.post`, etc.
+- `(db) >use` -> `>use.db.query`, `>use.db.execute`, etc.
 
 This separation keeps responsibilities clear:
+
 - Implementation extensions bridge SOMA to the platform
 - Feature extensions provide capabilities regardless of platform
 
 ---
 
-*Category: Extension | Implementation: Python Reference | Version: 1.1 | Date: 25 Nov 2025*
+_Category: Extension | Implementation: Python Reference | Version: 1.1 | Date: 25 Nov 2025_
+
+

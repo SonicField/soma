@@ -289,9 +289,13 @@
 ) Definition unordered list - renders accumulated >md.dli items as unordered list
 ) Example: (Name) (Alice) >md.dli (Age) (30) >md.dli >md.dul
 {
-  md.state.dli.items md.state.emitter
+  md.state.depth md.state.stack md.state.dli.items md.state.emitter
   >use.md.drain.dul
-  !_.list_text
+  !_.list_text !_.new_depth !_.new_stack
+
+  ) Update state with new depth and stack
+  _.new_depth !md.state.depth
+  _.new_stack !md.state.stack
 
   ) Clear accumulator after use
   Void (soma.extensions.soma_markdown.list_new) >use.python.call
@@ -310,9 +314,13 @@
 ) Definition ordered list - renders accumulated >md.dli items as ordered list
 ) Example: (Step 1) (Clone) >md.dli (Step 2) (Build) >md.dli >md.dol
 {
-  md.state.dli.items md.state.emitter
+  md.state.depth md.state.stack md.state.dli.items md.state.emitter
   >use.md.drain.dol
-  !_.list_text
+  !_.list_text !_.new_depth !_.new_stack
+
+  ) Update state with new depth and stack
+  _.new_depth !md.state.depth
+  _.new_stack !md.state.stack
 
   ) Clear accumulator after use
   Void (soma.extensions.soma_markdown.list_new) >use.python.call

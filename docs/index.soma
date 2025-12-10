@@ -8,13 +8,13 @@
 
 (TL;DR) >md.h2
 
-(SOMA is a computational model that treats programs as explicit state-transforming machines. Unlike functional languages that begin with a calculus and simulate mutation through abstractions, SOMA starts with the machine itself: mutable state, visible memory, and observable execution. There are no hidden stacks, no return semantics, no exceptions. Instead, computation flows through three structures—the Accumulator List \28\a stack-like value conduit\29\, the Store \28\a hierarchical graph of named cells\29\, and the Register \28\execution-local storage\29\—transformed by blocks that are values, not functions.) >md.p
+(SOMA is a computational model that treats programs as explicit state-transforming machines. Unlike functional languages that begin with a calculus and simulate mutation through abstractions, SOMA starts with the machine itself: mutable state, visible memory, and observable execution. There are no hidden stacks, no return semantics, no exceptions. Instead, computation flows through three structures—the Accumulator List (a stack-like value conduit\29\, the Store (a hierarchical graph of named cells\29\, and the Register (execution-local storage\29\—transformed by blocks that are values, not functions.) >md.p
 
 (Core Philosophy:) >md.p
 
 (- Blocks are first-class values — code is data, execution is explicit via `>`) >md.p
 
-(- `>choose` selects, doesn't execute — selector-based branching \28\choose + `>^` to execute\29\) >md.p
+(- `>choose` selects, doesn't execute — selector-based branching (choose + `>^` to execute\29\) >md.p
 
 (- `>chain` enables tail-call optimization — loops and recursion without stack growth) >md.p
 
@@ -38,19 +38,19 @@
 
 (✅ Complete Reference Implementation:) >md.p
 
-(- Lexer \28\`soma/lexer.py`\29\ - Full tokenization with unicode escape sequences) >md.p
+(- Lexer (`soma/lexer.py`\29\ - Full tokenization with unicode escape sequences) >md.p
 
-(- Parser \28\`soma/parser.py`\29\ - AST generation with path validation) >md.p
+(- Parser (`soma/parser.py`\29\ - AST generation with path validation) >md.p
 
-(- VM/Runtime \28\`soma/vm.py`\29\ - Complete virtual machine with AL, Store, and Register) >md.p
+(- VM/Runtime (`soma/vm.py`\29\ - Complete virtual machine with AL, Store, and Register) >md.p
 
-(- Standard Library \28\`soma/stdlib.soma`\29\ - Derived operations built on FFI primitives) >md.p
+(- Standard Library (`soma/stdlib.soma`\29\ - Derived operations built on FFI primitives) >md.p
 
-(- Test Framework \28\`tests/run_soma_tests.py`\29\ - Automated test runner with EXPECT_AL/EXPECT_OUTPUT) >md.p
+(- Test Framework (`tests/run_soma_tests.py`\29\ - Automated test runner with EXPECT_AL/EXPECT_OUTPUT) >md.p
 
-(- Examples \28\`examples/`\29\ - Working programs demonstrating SOMA concepts) >md.p
+(- Examples (`examples/`\29\ - Working programs demonstrating SOMA concepts) >md.p
 
-(  - `examples/sin_calculator/` - Taylor series sin\28\x\29\ computation with scaled integer arithmetic) >md.p
+(  - `examples/sin_calculator/` - Taylor series sin(x\29\ computation with scaled integer arithmetic) >md.p
 
 (Run SOMA:) >md.p
 
@@ -58,54 +58,56 @@
 
 (Core Language) >md.h3
 
-(- [Philosophy]\28\core/philosophy.md\29\ - SOMA's design principles and relationship to other computational models) >md.p
+(- [Philosophy](core/philosophy.md\29\ - SOMA's design principles and relationship to other computational models) >md.p
 
-(- [Lexical Analysis and Parsing]\28\core/lexer.md\29\ - Tokens, AST nodes, path parsing, and validation) >md.p
+(- [Lexical Analysis and Parsing](core/lexer.md\29\ - Tokens, AST nodes, path parsing, and validation) >md.p
 
-(- [Machine Model]\28\core/machine-model.md\29\ - The Accumulator List, Store, Registers, and Values) >md.p
+(- [Machine Model](core/machine-model.md\29\ - The Accumulator List, Store, Registers, and Values) >md.p
 
-(- [Blocks and Execution]\28\core/blocks-execution.md\29\ - First-class blocks and the execution model) >md.p
+(- [Blocks and Execution](core/blocks-execution.md\29\ - First-class blocks and the execution model) >md.p
 
-(- [Control Flow]\28\core/control-flow.md\29\ - `>choose`, `>chain`, and algebraic flow control) >md.p
+(- [Control Flow](core/control-flow.md\29\ - `>choose`, `>chain`, and algebraic flow control) >md.p
 
-(- [Built-ins]\28\core/builtins.md\29\ - Core operations and their AL contracts) >md.p
+(- [Built-ins](core/builtins.md\29\ - Core operations and their AL contracts) >md.p
 
-(- [Standard Library]\28\core/stdlib.md\29\ - Derived operations built from FFI primitives) >md.p
+(- [Standard Library](core/stdlib.md\29\ - Derived operations built from FFI primitives) >md.p
 
 (Programming) >md.h3
 
-(- [Comparisons]\28\programming/comparisons.md\29\ - SOMA vs Forth, Haskell, Lambda Calculus, and others) >md.p
+(- [Comparisons](programming/comparisons.md\29\ - SOMA vs Forth, Haskell, Lambda Calculus, and others) >md.p
 
-(- [Examples]\28\programming/examples.md\29\ - Working SOMA programs demonstrating key concepts) >md.p
+(- [Examples](programming/examples.md\29\ - Working SOMA programs demonstrating key concepts) >md.p
 
-(- [Programming Idioms]\28\programming/idioms.md\29\ - Idiomatic patterns, best practices, and common anti-patterns) >md.p
+(- [Programming Idioms](programming/idioms.md\29\ - Idiomatic patterns, best practices, and common anti-patterns) >md.p
 
-(- [Errors and Semantics]\28\programming/errors-semantics.md\29\ - Fatal errors, abstract machine, and formal grammar) >md.p
+(- [Errors and Semantics](programming/errors-semantics.md\29\ - Fatal errors, abstract machine, and formal grammar) >md.p
 
 (Extensions) >md.h3
 
-(- [Extensions Overview]\28\extensions/extensions.md\29\ - Extension system and `>use` builtin) >md.p
+(- [Extensions Overview](extensions/extensions.md\29\ - Extension system and `>use` builtin) >md.p
 
-(- [Python Interface]\28\extensions/python-interface.md\29\ - Python FFI integration) >md.p
+(- [Python Interface](extensions/python-interface.md\29\ - Python FFI integration) >md.p
 
-(- [Load Extension]\28\extensions/load.md\29\ - File loading capabilities) >md.p
+(- [Load Extension](extensions/load.md\29\ - File loading capabilities) >md.p
 
 (Debugging) >md.h3
 
-(- [Debugging]\28\debugging/debugging.md\29\ - Debug tools, philosophy, and troubleshooting techniques) >md.p
+(- [Debugging](debugging/debugging.md\29\ - Debug tools, philosophy, and troubleshooting techniques) >md.p
 
-(- [Debug Ideas]\28\debugging/debug-ideas.md\29\ - Proposals for future debug features) >md.p
+(- [Debug Ideas](debugging/debug-ideas.md\29\ - Proposals for future debug features) >md.p
 
 (Markdown Extension) >md.h3
 
-(- [Markdown Overview]\28\markdown/index.md\29\ - SOMA markdown generation system) >md.p
+(- [Markdown Overview](markdown/index.md\29\ - SOMA markdown generation system) >md.p
 
-(- [Markdown Skill]\28\markdown/SKILL.md\29\ - AI assistant reference for markdown extension) >md.p
+(- [Markdown Skill](markdown/SKILL.md\29\ - AI assistant reference for markdown extension) >md.p
 
 (Concepts) >md.h3
 
-(- [Engineering Standards]\28\concepts/engineering-standards.md\29\ - Verification-first development methodology) >md.p
+(- [Engineering Standards](concepts/engineering-standards.md\29\ - Verification-first development methodology) >md.p
 
 (---) >md.p
 
 (*Category: Informational | Version: 1.1 | Date: 20 Nov 2025*) >md.p
+
+>md.print

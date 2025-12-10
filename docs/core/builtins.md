@@ -1,4 +1,4 @@
-# 06. Built-in Words
+# # 06. Built-in Words
 
 **Built-ins are just Blocks stored at Store paths.** When you write `>print`, `>dup`, or `>+`, you're not invoking special syntax—you're executing the Block stored at that path in the Store. There is no special "built-in" mechanism in SOMA. The `>` prefix means "read the value at this path and execute it," which works identically for built-in operations and user-defined blocks.
 
@@ -6,16 +6,18 @@ This means built-ins could theoretically be overridden by storing a different Bl
 
 ---
 
-## Arithmetic Operations
+## ## Arithmetic Operations
 
 Arithmetic built-ins operate on integer values. Arithmetic on non-integer values is a fatal error.
 
-### >+
+### ### >+
+
 **Signature:** `(Int, Int) -> Int`
 
 Pops two integers `(b, a)` from the AL and pushes `(a + b)`.
 
 **Example:**
+
 ```soma
 5 3 >+    ; AL: [8]
 ```
@@ -24,12 +26,14 @@ Pops two integers `(b, a)` from the AL and pushes `(a + b)`.
 
 ---
 
-### >-
+### ### >-
+
 **Signature:** `(Int, Int) -> Int`
 
 Pops two integers `(b, a)` from the AL and pushes `(a - b)`.
 
 **Example:**
+
 ```soma
 10 3 >-   ; AL: [7]
 ```
@@ -38,12 +42,14 @@ Pops two integers `(b, a)` from the AL and pushes `(a - b)`.
 
 ---
 
-### >*
+### ### >*
+
 **Signature:** `(Int, Int) -> Int`
 
 Pops two integers `(b, a)` from the AL and pushes `(a * b)`.
 
 **Example:**
+
 ```soma
 4 5 >*    ; AL: [20]
 ```
@@ -52,12 +58,14 @@ Pops two integers `(b, a)` from the AL and pushes `(a * b)`.
 
 ---
 
-### >/
+### ### >/
+
 **Signature:** `(Int, Int) -> Int`
 
 Pops two integers `(b, a)` from the AL and pushes `(a / b)` using integer division.
 
 **Example:**
+
 ```soma
 10 3 >/   ; AL: [3]
 ```
@@ -66,16 +74,18 @@ Pops two integers `(b, a)` from the AL and pushes `(a / b)` using integer divisi
 
 ---
 
-## Comparison Operations
+## ## Comparison Operations
 
 Comparison operators pop two values and push a Boolean result. String and integer comparisons are defined. Cross-type comparison is a fatal error.
 
-### >==
+### ### >==
+
 **Signature:** `(Value, Value) -> Bool`
 
 Pops two values `(b, a)` from the AL and pushes `True` if `a == b`, otherwise `False`.
 
 **Example:**
+
 ```soma
 5 5 >==       ; AL: [True]
 "cat" "dog" >==   ; AL: [False]
@@ -85,12 +95,14 @@ Pops two values `(b, a)` from the AL and pushes `True` if `a == b`, otherwise `F
 
 ---
 
-### ><
+### ### ><
+
 **Signature:** `(Value, Value) -> Bool`
 
 Pops two values `(b, a)` from the AL and pushes `True` if `a < b`, otherwise `False`.
 
 **Example:**
+
 ```soma
 3 5 ><        ; AL: [True]
 10 2 ><       ; AL: [False]
@@ -100,12 +112,14 @@ Pops two values `(b, a)` from the AL and pushes `True` if `a < b`, otherwise `Fa
 
 ---
 
-### >>
+### ### >>
+
 **Signature:** `(Value, Value) -> Bool`
 
 Pops two values `(b, a)` from the AL and pushes `True` if `a > b`, otherwise `False`.
 
 **Example:**
+
 ```soma
 10 5 >>       ; AL: [True]
 3 7 >>        ; AL: [False]
@@ -115,16 +129,18 @@ Pops two values `(b, a)` from the AL and pushes `True` if `a > b`, otherwise `Fa
 
 ---
 
-## Stack Operations
+## ## Stack Operations
 
 Stack operations manipulate the AL structure without performing computation.
 
-### >dup
+### ### >dup
+
 **Signature:** `(Value) -> (Value, Value)`
 
 Duplicates the top value on the AL.
 
 **Example:**
+
 ```soma
 7 >dup        ; AL: [7, 7]
 ```
@@ -133,12 +149,14 @@ Duplicates the top value on the AL.
 
 ---
 
-### >drop
+### ### >drop
+
 **Signature:** `(Value) -> ()`
 
 Removes the top value from the AL.
 
 **Example:**
+
 ```soma
 1 2 3 >drop   ; AL: [1, 2]
 ```
@@ -147,12 +165,14 @@ Removes the top value from the AL.
 
 ---
 
-### >swap
+### ### >swap
+
 **Signature:** `(Value, Value) -> (Value, Value)`
 
 Swaps the top two values on the AL.
 
 **Example:**
+
 ```soma
 1 2 >swap     ; AL: [2, 1]
 ```
@@ -161,12 +181,14 @@ Swaps the top two values on the AL.
 
 ---
 
-### >over
+### ### >over
+
 **Signature:** `(Value, Value) -> (Value, Value, Value)`
 
 Duplicates the second value and pushes it on top.
 
 **Example:**
+
 ```soma
 1 2 >over     ; AL: [1, 2, 1]
 ```
@@ -180,11 +202,13 @@ Duplicates the second value and pushes it on top.
 Debug built-ins are used for development and introspection.
 
 ### >print
-**Signature:** `(Value) -> ()`
+
+**Signature: **`(Value) -> ()`
 
 Pops the top value from the AL and displays it to standard output.
 
 **Example:**
+
 ```soma
 "Hello" >print   ; Output: Hello
 42 >print        ; Output: 42
@@ -195,11 +219,13 @@ Pops the top value from the AL and displays it to standard output.
 ---
 
 ### >dump
-**Signature:** `() -> ()`
+
+**Signature: **`() -> ()`
 
 Displays the current AL and Store state for debugging. Does not modify AL or Store.
 
 **Example:**
+
 ```soma
 1 2 3 >dump   ; Displays machine state
 ```
@@ -213,11 +239,13 @@ Displays the current AL and Store state for debugging. Does not modify AL or Sto
 These operations provide runtime introspection of values and cells.
 
 ### >type
-**Signature:** `(Value) -> Str`
+
+**Signature: **`(Value) -> Str`
 
 Pops a value and pushes a string representing its type.
 
 **Example:**
+
 ```soma
 42 >type      ; AL: ["Int"]
 "hello" >type ; AL: ["Str"]
@@ -229,11 +257,13 @@ True >type    ; AL: ["Bool"]
 ---
 
 ### >id
-**Signature:** `(CellRef | Thing) -> Int`
+
+**Signature: **`(CellRef | Thing) -> Int`
 
 Pops a CellRef or Thing and pushes an integer identity value.
 
 **Example:**
+
 ```soma
 a.b. >id      ; AL: [<unique identity integer>]
 ```
@@ -247,17 +277,22 @@ a.b. >id      ; AL: [<unique identity integer>]
 Control flow in SOMA is explicit and built from minimal primitives. These operations enable conditionals and loops.
 
 ### >choose
-**Signature:** `(Bool, Value, Value) -> Value`
 
-Pops three values `(false_val, true_val, condition)` from the AL and pushes the selected value based on the condition. **Does NOT execute the selected value.**
+**Signature: **`(Bool, Value, Value) -> Value`
+
+Pops three values 
+
+(false_val, true_val, condition
 
 **Behavior:**
+
 - If `condition` is `True`, pushes `true_val`
 - If `condition` is `False`, pushes `false_val`
-- The selected value is pushed to AL as-is (not executed)
+- The selected value is pushed to AL as-is )not executed)
 - To execute the result, use `>^` or `>chain` after `>choose`
 
 **Examples:**
+
 ```soma
 ; Select a value
 True 10 20 >choose      ; AL: [10]
@@ -281,29 +316,32 @@ counter 10 ><
 ---
 
 ### >chain
-**Signature:** `(Value) -> ()`
 
-Pops a value from the AL. If it's a Block, executes it and repeats (pops again). If it's not a Block, stops.
+**Signature: **`(Value) -> ()`
+
+Pops a value from the AL. If it's a Block, executes it and repeats )pops again). If it's not a Block, stops.
 
 **Behavior:**
+
 - Pops top value from AL
-- If value is a Block: executes it, then repeats (pops from AL again)
+- If value is a Block: executes it, then repeats )pops from AL again)
 - If value is NOT a Block: stops execution
 - Enables loops, recursion, and state machines
-- Perfect for tail-call optimization (no stack growth)
+- Perfect for tail-call optimization )no stack growth)
 
 **Examples:**
+
 ```soma
 ; Execute a block once
 { 5 3 >+ } >chain       ; AL: [8]
 
-; Infinite loop (block returns itself)
+; Infinite loop )block returns itself)
 {
   (tick) >print
   >block                ; Push self back to AL
 } >chain                ; Prints "tick" forever
 
-; Conditional loop (using >choose)
+; Conditional loop )using >choose)
 0 !counter
 {
   counter >toString >print
@@ -322,23 +360,26 @@ loop >chain             ; Prints 0..9, then stops
 state-a >chain          ; Prints "A", "B", "C", stops
 ```
 
-**Errors:** None (stops cleanly on non-Block values).
+**Errors:** None )stops cleanly on non-Block values).
 
 ---
 
 ### >block
-**Signature:** `() -> Block`
+
+**Signature: **`() -> Block`
 
 Pushes the currently executing block onto the AL.
 
 **Behavior:**
-- Always succeeds (execution always occurs within a block context)
-- At top-level: returns the outermost block (the implicit "program" block)
-- In nested blocks: returns the current block (not the parent block)
+
+- Always succeeds )execution always occurs within a block context)
+- At top-level: returns the outermost block )the implicit "program" block)
+- In nested blocks: returns the current block )not the parent block)
 - Enables self-reference for loops and recursion
 - Can be aliased like any built-in, enabling internationalization
 
 **Examples:**
+
 ```soma
 ; Get current block for recursion
 0 !counter
@@ -367,11 +408,13 @@ block !ブロック          ; Japanese
 ## No-Op
 
 ### >noop
-**Signature:** `() -> ()`
+
+**Signature: **`() -> ()`
 
 Performs no operation. The AL is unchanged.
 
 **Example:**
+
 ```soma
 >noop         ; AL unchanged
 ```
@@ -384,27 +427,27 @@ Performs no operation. The AL is unchanged.
 
 The following table summarizes all core built-in operations:
 
-| Built-in | Pops | Pushes | Action                        |
-|----------|------|--------|-------------------------------|
-| `>dup`   | 1    | 2      | Duplicate top value           |
-| `>drop`  | 1    | 0      | Drop top value                |
-| `>swap`  | 2    | 2      | Swap top two values           |
-| `>over`  | 2    | 3      | Duplicate 2nd value           |
-| `>+`     | 2    | 1      | Integer addition              |
-| `>-`     | 2    | 1      | Integer subtraction           |
-| `>*`     | 2    | 1      | Integer multiplication        |
-| `>/`     | 2    | 1      | Integer division              |
-| `>==`    | 2    | 1      | Equality test                 |
-| `><`     | 2    | 1      | Less-than test                |
-| `>>`     | 2    | 1      | Greater-than test             |
-| `>choose`| 3    | 1      | Select value based on condition (doesn't execute) |
-| `>chain` | 1    | 0      | Execute blocks repeatedly until non-Block |
-| `>block` | 0    | 1      | Push current executing block  |
-| `>print` | 1    | 0      | Print value to stdout         |
-| `>dump`  | 0    | 0      | Dump machine state            |
-| `>type`  | 1    | 1      | Get type name as string       |
-| `>id`    | 1    | 1      | Get identity of CellRef/Thing |
-| `>noop`  | 0    | 0      | No operation                  |
+| Built-in  | Pops | Pushes | Action                                            |
+|-----------|------|--------|---------------------------------------------------|
+| `>dup`    | 1    | 2      | Duplicate top value                               |
+| `>drop`   | 1    | 0      | Drop top value                                    |
+| `>swap`   | 2    | 2      | Swap top two values                               |
+| `>over`   | 2    | 3      | Duplicate 2nd value                               |
+| `>+`      | 2    | 1      | Integer addition                                  |
+| `>-`      | 2    | 1      | Integer subtraction                               |
+| `>*`      | 2    | 1      | Integer multiplication                            |
+| `>/`      | 2    | 1      | Integer division                                  |
+| `>==`     | 2    | 1      | Equality test                                     |
+| `><`      | 2    | 1      | Less-than test                                    |
+| `>>`      | 2    | 1      | Greater-than test                                 |
+| `>choose` | 3    | 1      | Select value based on condition )doesn't execute) |
+| `>chain`  | 1    | 0      | Execute blocks repeatedly until non-Block         |
+| `>block`  | 0    | 1      | Push current executing block                      |
+| `>print`  | 1    | 0      | Print value to stdout                             |
+| `>dump`   | 0    | 0      | Dump machine state                                |
+| `>type`   | 1    | 1      | Get type name as string                           |
+| `>id`     | 1    | 1      | Get identity of CellRef/Thing                     |
+| `>noop`   | 0    | 0      | No operation                                      |
 
 ---
 
@@ -412,9 +455,9 @@ The following table summarizes all core built-in operations:
 
 Each built-in has a fixed AL contract:
 
-- **AL underflow:** Attempting to pop from an empty AL is a fatal error
-- **Type mismatch:** Providing the wrong type to a built-in is a fatal error
-- **Arity violation:** Having insufficient values on the AL for an operation is a fatal error
+- ****AL underflow****: Attempting to pop from an empty AL is a fatal error
+- ****Type mismatch****: Providing the wrong type to a built-in is a fatal error
+- ****Arity violation****: Having insufficient values on the AL for an operation is a fatal error
 
 SOMA does not attempt recovery from violations. Program correctness is the programmer's responsibility.
 
@@ -422,7 +465,9 @@ SOMA does not attempt recovery from violations. Program correctness is the progr
 
 ## Notes
 
-- While built-ins could theoretically be overridden (they're just Store paths), doing so is strongly discouraged
-- All built-in operations are synchronous and deterministic (except those involving external I/O)
+- While built-ins could theoretically be overridden )they're just Store paths), doing so is strongly discouraged
+- All built-in operations are synchronous and deterministic )except those involving external I/O)
 - Built-ins operate directly on the AL and do not access the Store unless explicitly documented
-- More specialized built-ins may be defined in extensions (e.g., for Things, concurrency, or I/O)
+- More specialized built-ins may be defined in extensions )e.g., for Things, concurrency, or I/O)
+
+

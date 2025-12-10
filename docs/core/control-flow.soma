@@ -1,261 +1,1624 @@
 (python) >use (markdown) >use
 >md.start
 
+) section_00.md
 (Control Flow: The Emergent Macro System) >md.h1
 
-(SOMA takes a radical approach to control flow. Unlike traditional languages with built-in keywords like if, while, or for, SOMA defines only two control primitives: >choose and >chain. From these, all traditional control structures emerge as user-defined patterns.) >md.p
+(Status) (Normative) >md.dli
+(Version) (SOMA v1.0) >md.dli
+(Section) (05) >md.dli
+>md.dul
 
-(The Two Primitives) >md.h2
+>md.hr
 
-(>choose - Conditional Selection) >md.h3
+) section_01.md
+(Overview) >md.h2
 
-(>choose is SOMA's only branching primitive. It is a SELECTOR, not an executor.) >md.p
+(SOMA takes a radical approach to control flow. Unlike traditional languages that provide built-in keywords like ) (if) >md.c (, ) (while) >md.c (, ) (for) >md.c (, or ) (switch) >md.c (, SOMA defines ) (only two control primitives) >md.b (:) >md.t >md.p
 
-(AL Contract \28\pre-execution\29\ - Stack State:) >md.h4
+(>choose) >md.c (Select between two blocks based on a boolean) >md.dli
+(>chain) >md.c (Execute blocks until no block remains on the AL) >md.dli
+>md.dul
 
-(Top  C - false branch value)
-(B - true branch value)
-(A - boolean condition)
+(From these two primitives, something remarkable emerges: control structures that look and behave exactly like built-in language features, but are actually ) (user-defined patterns) >md.b (. This is SOMA's emergent macro system — a mechanism similar to Lisp's ) (defmacro) >md.c (, but arising naturally from the language's semantics without requiring a separate macro facility.) >md.t >md.p
+
+(This section demonstrates how ) (if) >md.c (, ) (ifelse) >md.c (, ) (while) >md.c (, ) (do) >md.c (, and finite state machines all emerge from ) (>choose) >md.c ( and ) (>chain) >md.c (. Understanding this mechanism is key to grasping SOMA's power as a language that reveals rather than obscures computation.) >md.t >md.p
+
+>md.hr
+
+) section_02.md
+(1. The Two Primitives) >md.h2
+
+) section_03.md
+(1.1 ) (>choose) >md.c ( — Conditional Selection) >md.t >md.h3
+
+(>choose) >md.c ( is SOMA's only branching primitive. ) (CRITICAL:\29\) >md.b ( It is a ) (SELECTOR) >md.b (, not an executor.) >md.t >md.p
+
+(AL Contract (pre-execution\29\:\29\) >md.b >md.p
+
+(Top → C (false branch value\29\
+      B (true branch value\29\
+      A (boolean condition\29\) Nil >md.code
+
+(Program syntax:\29\) >md.b >md.p
+
+(A B C >choose) (soma) >md.code
+
+(Semantics:\29\) >md.b >md.p
+
+(Pop three values from the AL: ) (C) >md.c (, ) (B) >md.c (, ) (A) >md.c ( (in that order\29\) >md.t >md.oli
+(A) >md.c ( must be a Boolean, or fatal error) >md.oli
+(If ) (A == True) >md.c (:\29\ ) (push value ) >md.b (B) >md.c ( onto AL) >md.b >md.t >md.oli
+(If ) (A == False) >md.c (:\29\ ) (push value ) >md.b (C) >md.c ( onto AL) >md.b >md.t >md.oli
+(>choose) >md.c ( does NOT execute blocks) >md.b ( — it only selects one value) >md.oli
+(The unchosen value is discarded) >md.oli
+>md.ol
+
+(Example:\29\) >md.b >md.p
+
+(True
+  { "Path taken" >print }
+  { "Path not taken" >print }
+>choose) (soma) >md.code
+
+(Result: AL contains the ) (block) >md.b ( ) ({ "Path taken" >print }) >md.c ( (NOT executed\29\) >md.t >md.p
+
+(To execute the selected block, use ) (>^) >md.c (:\29\) >md.t >md.p
+
+(True
+  { "Path taken" >print }
+  { "Path not taken" >print }
+>choose >^) (soma) >md.code
+
+(Output: ) (Path taken) >md.c >md.t >md.p
+
+(Key distinction:\29\) >md.b ( ) (>choose) >md.c ( is a ) (selector) >md.b ( (picks a value\29\, while ) (>^) >md.c ( is an ) (executor) >md.b ( (runs a block from AL\29\. This separation is fundamental to SOMA's semantics.) >md.t >md.p
+
+>md.hr
+
+) section_04.md
+(1.2 ) (>chain) >md.c ( — Block Continuation Loop) >md.t >md.h3
+
+(>chain) >md.c ( is SOMA's only looping primitive. It repeatedly executes blocks until the AL top is no longer a block.) >md.t >md.p
+
+(Semantics:) >md.b >md.p
+
+(Pop the top value from the AL) >md.oli
+(If it is ) (not) >md.b ( a Block: push it back and stop () >md.oli (>chain) >md.c ( terminates\29\) >md.oli
+(If it ) (is) >md.b ( a Block: execute it) >md.oli
+(After execution, examine the new AL top) >md.oli
+(If the new top is a Block, repeat from step 3) >md.oli
+(Otherwise, stop) >md.oli
+>md.ol
+
+(Key insight:) >md.b ( ) (>chain) >md.c ( does not recurse and does not grow a call stack. It is a ) (flat iteration) >md.b ( over a sequence of blocks left on the AL by each previous block.) >md.t >md.p
+
+(Example 1: Single block execution) >md.b >md.p
+
+({ 5 5 >* } >chain) (soma) >md.code
+
+(Result: AL contains ) ([25]) >md.c (. The block executes once, leaves ) (25) >md.c ( on the AL, and ) (>chain) >md.c ( terminates because ) (25) >md.c ( is not a block.) >md.t >md.p
+
+(Example 2: Self-perpetuating block) >md.b >md.p
+
+({ "tick" >print >block } >chain) (soma) >md.code
+
+(This prints ) (tick) >md.c ( forever. Why?) >md.t >md.p
+
+(The block executes, prints ) (tick) >md.c (, then pushes ) (>block) >md.c ( (the currently executing block\29\ onto the AL) >md.t >md.uli
+(>chain) >md.c ( sees a block on top and executes it again) >md.uli
+(This repeats infinitely) >md.uli
 >md.ul
 
-(Semantics:) >md.h4
+(IMPORTANT ERRATA CORRECTION:) >md.b >md.p
 
-(Pop three values from AL: C, B, A)
-(If A == True: push value B onto AL)
-(If A == False: push value C onto AL)
-(>choose does NOT execute blocks - it only selects one value)
-(The unchosen value is discarded)
+(The original specification contained examples that incorrectly used ) (CellRefs) >md.b ( (trailing-dot paths\29\ with ) (>chain) >md.c (. For example:) >md.t >md.p
+
+(7 square. >chain >print  ; WRONG!) (soma) >md.code
+
+(Under SOMA semantics:) >md.p
+
+(square.) >md.c ( resolves to a ) (CellRef) >md.b ( (not the block itself\29\) >md.t >md.uli
+(>chain) >md.c ( sees a non-Block value and immediately terminates) >md.uli
+(This is a silent logic error) >md.uli
+>md.ul
+
+(Correct form:) >md.b >md.p
+
+(7 square >chain >print  ; CORRECT) (soma) >md.code
+
+(This retrieves the ) (block value) >md.b ( stored at ) (square) >md.c (, not a reference to the cell. All examples in this document use the corrected form.) >md.t >md.p
+
+>md.hr
+
+) section_05.md
+(2. The ) (^) >md.c ( Operator: User-Defined Execution) >md.t >md.h2
+
+(This is the KEY to understanding SOMA's macro-like behavior.) >md.b >md.p
+
+) section_06.md
+(2.1 The Problem: Executing AL Top) >md.h3
+
+(In languages like Forth and Lisp, there are built-in primitives for executing a value on the stack:) >md.p
+
+(Forth) >md.b (: ) (EXECUTE) >md.c ( — pops the execution token and runs it) >md.t ( ) >md.dli
+(Lisp) >md.b (: ) ((funcall fn args)) >md.c ( — calls the function object) >md.t ( ) >md.dli
+>md.dul
+
+(These are ) (language primitives) >md.b ( — you can't implement them yourself.) >md.t >md.p
+
+(SOMA has ) (no built-in execute-from-AL operation) >md.b (. But you can define it:) >md.t >md.p
+
+({ !_ >_ } !^        \29\ Create "execute top of AL" operator) (soma) >md.code
+
+(Now ) (>^) >md.c ( behaves exactly like Forth's ) (EXECUTE) >md.c (:\29\) >md.t >md.p
+
+((Cats\29\ print >^     \29\ Prints 'Cats') (soma) >md.code
+
+) section_07.md
+(2.2 How ) (^\29\) >md.c ( Works: Step-by-Step Execution Trace) >md.t >md.h3
+
+(Let's trace the execution of ) ((Cats\29\ print >^\29\) >md.c ( in detail:\29\) >md.t >md.p
+
+(Initial state:\29\) >md.b >md.p
+
+(AL: []) Nil >md.code
+
+(Step 1: ) ((Cats)) >md.c ( — Push string onto AL) >md.t >md.b >md.p
+
+(AL: ["Cats"]) Nil >md.code
+
+(Step 2: ) (print) >md.c ( — Push print block onto AL) >md.t >md.b >md.p
+
+(AL: ["Cats", print_block]) Nil >md.code
+
+(Note: ) (print) >md.c ( without ) (>) >md.c ( pushes the ) (block value) >md.b ( at Store path "print" onto the AL.) >md.t >md.p
+
+(Step 3: ) (>^) >md.c ( — Execute the block stored at Store path "^"\29\) >md.t >md.b >md.p
+
+(The block stored at ) (^\29\) >md.c ( is: ) ({ !_ >_ }) >md.c >md.t >md.p
+
+(When this block executes:\29\) >md.p
+
+(3a. Block starts with fresh Register) >md.b >md.p
+
+(AL: ["Cats", print_block]
+Register: {}) Nil >md.code
+
+(3b. ) (!_) >md.c ( — Pop AL top, store at Register root) >md.t >md.b >md.p
+
+(AL: ["Cats"]
+Register: {_: print_block}) Nil >md.code
+
+(The ) (!_) >md.c ( operation pops ) (print_block) >md.c ( from the AL and stores it at the Register root path ) (_) >md.c (.) >md.t >md.p
+
+(3c. ) (>_) >md.c ( — Read Register root and execute it) >md.t >md.b >md.p
+
+(AL: ["Cats"]
+Register: {_: print_block}) Nil >md.code
+
+(The ) (>_) >md.c ( operation reads the value at Register path ) (_) >md.c ( (which is ) (print_block) >md.c (\29\ and ) (executes) >md.b ( it.) >md.t >md.p
+
+(3d. ) (print_block) >md.c ( executes — Pops "Cats" and prints it) >md.t >md.b >md.p
+
+(AL: []
+Output: Cats) Nil >md.code
+
+(Final state:\29\) >md.b >md.p
+
+(AL: []
+Output: Cats) Nil >md.code
+
+) section_08.md
+(2.3 Why This Is Powerful) >md.h3
+
+(The ) (^) >md.c ( operator is ) (user-defined) >md.b ( using only SOMA primitives:) >md.t >md.p
+
+(!_) >md.c ( (store at Register root\29\) >md.t >md.uli
+(>_) >md.c ( (execute from Register root\29\) >md.t >md.uli
+>md.ul
+
+(This demonstrates that ) (execution itself is not a primitive) >md.b ( in SOMA — it's emergent from the ) (>path) >md.c ( semantics.) >md.t >md.p
+
+) section_09.md
+(2.4 Comparison to Other Languages) >md.h3
+
+(Language) (Execute Operator) (Implementation)
+>md.table.header
+(Forth) >md.b (EXECUTE) >md.c (Built-in primitive)
+>md.table.row
+(Lisp) >md.b (funcall) >md.c (, ) (apply) >md.c >md.t (Built-in primitive)
+>md.table.row
+(SOMA) >md.b ({ !_ >_ } !^) >md.c (User-defined!) >md.b
+>md.table.row
+>md.table
+
+(This is exactly like Forth's ) (EXECUTE) >md.c ( or Lisp's ) (FUNCALL) >md.c (, but ) (you defined it yourself) >md.b ( using only paths and blocks.) >md.t >md.p
+
+) section_10.md
+(2.5 Examples Using ) (^) >md.c >md.t >md.h3
+
+(Execute different operations based on data:) >md.b >md.p
+
+((Hello\29\ print >^        \29\ Prints: Hello
+42 inc >^               \29\ Increments: AL = [43]
+5 { 10 >+ } >^          \29\ Adds 10: AL = [15]) (soma) >md.code
+
+(Store operations in variables:) >md.b >md.p
+
+(print !_.operation
+(World\29\ _.operation >^  \29\ Prints: World) (soma) >md.code
+
+(Build execution tables (see Section 5\29\:) >md.b >md.p
+
+(print !commands.show
+inc !commands.next
+(show\29\ commands >^      \29\ Executes 'print') (soma) >md.code
+
+>md.hr
+
+) section_11.md
+(3. Building Emergent Control Structures) >md.h2
+
+(The power of ) (>choose) >md.c ( and ) (>chain) >md.c ( lies not in what they do individually, but in ) (what emerges when you combine them) >md.b (. Let's build traditional control structures from scratch.) >md.t >md.p
+
+) section_12.md
+(3.1 IF (Single Branch\29\) >md.h3
+
+(Traditional syntax:) >md.b >md.p
+
+(if (condition\29\ {
+  body
+}) Nil >md.code
+
+(SOMA pattern:) >md.b >md.p
+
+(condition
+  { body }
+  { }
+>choose >^) (soma) >md.code
+
+(How it works:) >md.b >md.p
+
+(>choose) >md.c ( selects the body block if ) (True) >md.c (, or empty block if ) (False) >md.c >md.t >md.uli
+(>^) >md.c ( executes the selected block) >md.uli
+(This is ) (if without else) >md.b >md.t >md.uli
+>md.ul
+
+(Example:) >md.b >md.p
+
+(x 10 >>
+  { "x is greater than 10" >print }
+  { }
+>choose >^) (soma) >md.code
+
+(Note:) >md.b ( Without ) (>^) >md.c (, the selected block would just sit on the AL without executing. The ) (>^) >md.c ( operator is what actually runs it.) >md.t >md.p
+
+>md.hr
+
+) section_13.md
+(3.2 IF/ELSE (Two Branches\29\) >md.h3
+
+(Traditional syntax:) >md.b >md.p
+
+(if (condition\29\ {
+  true_body
+} else {
+  false_body
+}) Nil >md.code
+
+(SOMA pattern (using ) (>ifelse) >md.c ( from stdlib\29\:) >md.t >md.b >md.p
+
+(condition
+  { true_body }
+  { false_body }
+>ifelse) (soma) >md.code
+
+(How it works:) >md.b >md.p
+
+(>ifelse) >md.c ( is defined in stdlib as ) ({ >choose >^ }) >md.c >md.t >md.uli
+(It combines selection () (>choose) >md.c (\29\ and execution () (>^) >md.c (\29\) >md.t >md.uli
+(One branch always executes) >md.uli
+>md.ul
+
+(Raw pattern (without stdlib\29\:) >md.b >md.p
+
+(condition
+  { true_body }
+  { false_body }
+>choose >^) (soma) >md.code
+
+(Example:) >md.b >md.p
+
+(user.authenticated
+  { dashboard_page >render }
+  { login_page >render }
+>ifelse) (soma) >md.code
+
+(Key insight:) >md.b ( The ) (>ifelse) >md.c ( helper demonstrates SOMA's macro-like behavior — it looks like a built-in control structure but is actually just ) ({ >choose >^ }) >md.c ( defined in user code.) >md.t >md.p
+
+>md.hr
+
+) section_14.md
+(3.3 WHILE Loop) >md.h3
+
+(Traditional syntax:) >md.b >md.p
+
+(while (condition\29\ {
+  body
+}) Nil >md.code
+
+(SOMA pattern (using Store for loop variable\29\:) >md.b >md.p
+
+({
+  condition
+  {
+    body
+    >block
+  }
+  { }
+  >choose >^
+} >chain) (soma) >md.code
+
+(How it works:) >md.b >md.p
+
+(Let's trace execution step by step:) >md.p
+
+(The outer block is pushed onto the AL) >md.oli
+(>chain) >md.c ( pops and executes it) >md.oli
+(Inside the block:) >md.oli
+>md.nest
+(condition) >md.c ( is evaluated (pushes a boolean\29\) >md.uli
+(Two blocks are pushed (true branch and false branch\29\) >md.uli
+(>choose) >md.c ( selects one block based on condition) >md.uli
+(>^) >md.c ( executes the selected block) >md.uli
+>md.ul
+(If ) (condition) >md.c ( is ) (True) >md.c (:) >md.t >md.oli
+>md.nest
+(The true branch executes) >md.uli
+(body) >md.c ( runs) >md.uli
+(>block) >md.c ( pushes the outer block back onto the AL) >md.uli
+(Block ends) >md.uli
+(>chain) >md.c ( sees a block on top and repeats) >md.uli
+>md.ul
+(If ) (condition) >md.c ( is ) (False) >md.c (:) >md.t >md.oli
+>md.nest
+(The false branch (empty ) ({}) >md.c (\29\ executes) >md.t >md.uli
+(Nothing is left on the AL) >md.uli
+(Block ends) >md.uli
+(>chain) >md.c ( sees no block and terminates) >md.uli
+>md.ul
 >md.ol
 
-(Example:) >md.p
+(Complete example: Count to 5) >md.b >md.p
 
-(True) >md.c
-(  { \34\Path taken\34\ >print }) >md.c
-(  { \34\Path not taken\34\ >print }) >md.c
-(>choose) >md.c
-Nil >md.code
+(0 !counter
 
-(To execute the selected block, use the caret operator:) >md.p
+{
+  counter 5 ><
+  {
+    counter >print
+    counter 1 >+ !counter
+    >block
+  }
+  { }
+  >choose >^
+} >chain) (soma) >md.code
 
-(True) >md.c
-(  { \34\Path taken\34\ >print }) >md.c
-(  { \34\Path not taken\34\ >print }) >md.c
-(>choose >^) >md.c
-Nil >md.code
+(Output:) >md.p
 
-(Output:) >md.c
-(Path taken) >md.c
+(0
+1
+2
+3
+4) Nil >md.code
+
+(CRITICAL: Why ) (>^) >md.c ( is needed:) >md.t >md.b >md.p
+
+(>choose) >md.c ( only ) (selects) >md.b ( which block to use (true branch or false branch\29\) >md.t >md.uli
+(It doesn't ) (execute) >md.b ( the selected block) >md.t >md.uli
+(>^) >md.c ( pops the selected block from AL and executes it) >md.uli
+(Without ) (>^) >md.c (, the block would just sit on the AL and ) (>chain) >md.c ( would try to execute it, but the pattern wouldn't work correctly) >md.t >md.uli
+>md.ul
+
+(Note:) >md.b ( This example uses ) (counter) >md.c ( (Store path\29\ rather than ) (_.counter) >md.c ( (Register path\29\ because nested block executions have ) (isolated Registers) >md.b (. The inner blocks cannot access the outer block's Register. The Store is globally accessible to all blocks.) >md.t >md.p
+
+(This is a ) (while loop) >md.b ( built from ) (>choose) >md.c ( and ) (>chain) >md.c (. No special syntax. No hidden control structures. Just blocks and state.) >md.t >md.p
+
+>md.hr
+
+) section_15.md
+(3.4 DO Loop (Body-First Loop\29\) >md.h3
+
+(Traditional syntax:) >md.b >md.p
+
+(do {
+  body
+} while (condition\29\;) Nil >md.code
+
+(SOMA pattern:) >md.b >md.p
+
+({
+  body
+  condition
+  { >block }
+  { }
+  >choose >^
+} >chain) (soma) >md.code
+
+(How it works:) >md.b >md.p
+
+(The body executes ) (first) >md.b >md.t >md.uli
+(Then the condition is checked) >md.uli
+(>choose) >md.c ( selects ) (>block) >md.c ( (continue\29\ or ) ({}) >md.c ( (stop\29\) >md.t >md.uli
+(>^) >md.c ( executes the selected block) >md.uli
+(If true, ) (>block) >md.c ( causes the loop to continue) >md.t >md.uli
+(If false, nothing is pushed and the loop terminates) >md.uli
+>md.ul
+
+(Example: Read until sentinel) >md.b >md.p
+
+({
+  user_input >read !input
+  input "quit" >== >not
+  { >block }
+  { }
+  >choose >^
+} >chain) (soma) >md.code
+
+(This reads input until the user types "quit". The body (read operation\29\ always executes at least once.) >md.p
+
+(Note:) >md.b ( The ) (input) >md.c ( variable is stored in the Store (not ) (_.input) >md.c (\29\ so that nested block executions can access it.) >md.t >md.p
+
+>md.hr
+
+) section_16.md
+(3.5 Infinite Loop) >md.h3
+
+(Traditional syntax:) >md.b >md.p
+
+(while (true\29\ {
+  body
+}) Nil >md.code
+
+(SOMA pattern:) >md.b >md.p
+
+({ body >block } >chain) (soma) >md.code
+
+(How it works:) >md.b >md.p
+
+(The block always pushes itself onto the AL via ) (>block) >md.c >md.t >md.uli
+(>chain) >md.c ( always sees a block and continues forever) >md.uli
+>md.ul
+
+(Example: Server loop) >md.b >md.p
+
+({
+  connection >accept
+  request >handle
+  response >send
+  >block
+} >chain) (soma) >md.code
+
+(This is the simplest possible infinite loop in SOMA. One block. One continuation. No condition needed.) >md.p
+
+>md.hr
+
+(3.6 Tail-Call Optimization with >chain) >md.h3
+
+(Key insight:) >md.b ( ) (>chain) >md.c ( is perfect for tail-call optimization because it repeatedly executes blocks from the AL ) (without growing the call stack) >md.b (. Each iteration is flat — the previous block's execution completes before the next begins.) >md.t >md.p
+
+(Pattern: Accumulator-Based Recursion) >md.h4
+
+(Traditional recursion builds up a call stack. In SOMA, we use an ) (accumulator pattern) >md.b ( with ) (>chain) >md.c ( to achieve the same result with constant stack space.) >md.t >md.p
+
+(Example 1: Factorial with Accumulator) >md.b >md.p
+
+(5 !fact.n
+1 !fact.acc
+
+{
+  fact.n 0 >=<
+    fact.acc                    \29\ Base case: return accumulator
+    {                           \29\ Recursive case: update and continue
+      fact.n 1 >- !fact.n
+      fact.acc fact.n 1 >+ >* !fact.acc
+      fact-step                 \29\ Return self for tail-call
+    }
+  >choose
+} !fact-step
+
+fact-step >chain                \29\ AL: [120]) (soma) >md.code
+
+(How it works:) >md.b >md.p
+
+(Initialize ) (fact.n = 5) >md.c (, ) (fact.acc = 1) >md.c >md.oli
+(Block checks: is ) (n <= 0) >md.c (?) >md.oli
+(If no \29\5 > 0\29\: update ) (n = 4) >md.c (, ) (acc = 1 * 5 = 5) >md.c (, push ) (fact-step) >md.c ( block) >md.oli
+(>choose) >md.c ( selects the recursive block \29\which contains ) (fact-step) >md.c (\29\) >md.oli
+(Block execution completes, leaving ) (fact-step) >md.c ( on AL) >md.oli
+(>chain) >md.c ( sees a block and executes it again) >md.oli
+(Repeat until ) (n <= 0) >md.c (, then push ) (acc) >md.c ( \29\120\29\ to AL) >md.oli
+(>chain) >md.c ( sees a number \29\not a block\29\ and stops) >md.oli
 >md.ol
 
-(>chain - Block Continuation Loop) >md.h3
+(Key differences from traditional recursion:) >md.b >md.p
 
-(>chain is SOMA's only looping primitive. It repeatedly executes blocks until the AL top is no longer a block.) >md.p
+(No call stack growth — ) (>chain) >md.c ( is a flat loop) >md.uli
+(State stored in Store \29\) (fact.n) >md.c (, ) (fact.acc) >md.c (\29\, not in function parameters) >md.uli
+(Each iteration completely replaces the previous one) >md.uli
+>md.ul
 
-(Key insight: >chain does not recurse and does not grow a call stack. It is a flat iteration over a sequence of blocks.) >md.p
+(Example 2: Fibonacci with Tail-Call Optimization) >md.b >md.p
 
-(Example 1: Single block execution) >md.h4
+(0 !fib.a
+1 !fib.b
+7 !fib.count
 
-({ 5 5 >* }) >md.c
-(>chain) >md.c
-Nil >md.code
+{
+  fib.a >toString >print
 
-(Result: AL contains [25]. The block executes once, leaves 25 on AL, and >chain terminates.) >md.p
+  fib.count 1 >=<
+    Nil                         \29\ Base: stop \29\chain terminates\29\
+    {                           \29\ Recursive: compute next
+      fib.count 1 >- !fib.count
+      fib.a fib.b >+ !fib.next
+      fib.b !fib.a
+      fib.next !fib.b
+      fib-step                  \29\ Return self for tail-call
+    }
+  >choose
+} !fib-step
 
-(Building Emergent Control Structures) >md.h2
+fib-step >chain) (soma) >md.code
 
-(IF - Single Branch) >md.h3
+(Output:) >md.b >md.p
 
-(SOMA pattern:) >md.p
+(0
+1
+1
+2
+3
+5
+8) Nil >md.code
 
-(condition) >md.c
-(  { body }) >md.c
-(  { }) >md.c
-(>choose >^) >md.c
-Nil >md.code
+(How it works:) >md.b >md.p
 
-(Example:) >md.p
-
-(x 10 >>) >md.c
-(  { \34\x is greater than 10\34\ >print }) >md.c
-(  { }) >md.c
-(>choose >^) >md.c
-Nil >md.code
-
-(IF/ELSE - Two Branches) >md.h3
-
-(SOMA pattern using >ifelse from stdlib:) >md.p
-
-(condition) >md.c
-(  { true_body }) >md.c
-(  { false_body }) >md.c
-(>ifelse) >md.c
-Nil >md.code
-
-(The >ifelse helper is defined as { >choose >^ } which combines selection and execution.) >md.p
-
-(WHILE Loop) >md.h3
-
-(SOMA pattern:) >md.p
-
-({) >md.c
-(  condition) >md.c
-(  { body >block }) >md.c
-(  { }) >md.c
-(  >choose >^) >md.c
-(}) >md.c
-(>chain) >md.c
-Nil >md.code
-
-(Complete example: Count to 5:) >md.p
-
-(0 !counter) >md.c
-({) >md.c
-(  counter 5 ><) >md.c
-(  { counter >print) >md.c
-(    counter 1 >+ !counter) >md.c
-(    >block }) >md.c
-(  { }) >md.c
-(  >choose >^) >md.c
-(}) >md.c
-(>chain) >md.c
-Nil >md.code
-
-(Output:) >md.h4
-
-(0) (1) (2) (3) (4) >md.ol
-
-(DO Loop - Body-First Loop) >md.h3
-
-(SOMA pattern:) >md.p
-
-({) >md.c
-(  body) >md.c
-(  condition) >md.c
-(  { >block }) >md.c
-(  { }) >md.c
-(  >choose >^) >md.c
-(}) >md.c
-(>chain) >md.c
-Nil >md.code
-
-(The body executes first, then the condition is checked. If true, >block causes the loop to continue.) >md.p
-
-(Infinite Loop) >md.h3
-
-(SOMA pattern:) >md.p
-
-({ body >block }) >md.c
-(>chain) >md.c
-Nil >md.code
-
-(The block always pushes itself onto the AL via >block, so >chain always sees a block and continues forever.) >md.p
-
-(The Caret Operator: User-Defined Execution) >md.h2
-
-(The problem: Forth and Lisp have built-in execute primitives. SOMA has none. But you can define it:) >md.p
-
-({ !_ >_ }) >md.c
-(!^) >md.c
-Nil >md.code
-
-(This creates the >^ operator that behaves exactly like Forth's EXECUTE:) >md.p
-
-((Cats)) >md.c
-(print) >md.c
-(>^) >md.c
-Nil >md.code
-
-(This proves execution itself is not a primitive in SOMA - it's user-defined using only ! and >.) >md.p
-
-(Why This Matters) >md.h3
-
-(In traditional languages, control structures are syntax. In SOMA, they are values \28\blocks\29\. You can define new ones using only >choose and >chain.) >md.p
-
-(The boundary between language and library disappears. This is SOMA's emergent macro system.) >md.p
-
-(Dispatch Tables Using >path) >md.h2
-
-(One of SOMA's most powerful patterns: storing operations at paths and executing them dynamically.) >md.p
-
-(Basic example:) >md.p
-
-({ \28\add\29\ >print }) >md.c
-(!handlers.add) >md.c
-({ \28\sub\29\ >print }) >md.c
-(!handlers.sub) >md.c
-Nil >md.code
-
-(Dynamic dispatch:) >md.p
-
-(Build a path and execute the operation dynamically) >md.p
-
-(In real usage, this would read from user input and execute the corresponding handler.) >md.p
-
-(Higher-Order Blocks) >md.h2
-
-(Execute a Block Twice) >md.h3
-
-({ !_.f >_.f >_.f }) >md.c
-(!twice) >md.c
-Nil >md.code
-
-({ \28\Hello\29\ >print }) >md.c
-(>twice) >md.c
-Nil >md.code
-
-(Output:) >md.h4
-
-(Hello)
-(Hello)
+(Print current Fibonacci number \29\) (fib.a) >md.c (\29\) >md.oli
+(Check if count has reached 1) >md.oli
+(If no: compute next Fibonacci number, update state, push ) (fib-step) >md.c >md.oli
+(>choose) >md.c ( selects the block \29\which ends with ) (fib-step) >md.c (\29\) >md.oli
+(Block completes, leaving ) (fib-step) >md.c ( on AL) >md.oli
+(>chain) >md.c ( executes it again) >md.oli
+(When count reaches 1, ) (>choose) >md.c ( selects ) (Nil) >md.c >md.oli
+(>chain) >md.c ( sees non-block value and terminates) >md.oli
 >md.ol
 
-(Finite State Machine) >md.h3
+(Example 3: Countdown Pattern) >md.b >md.p
+
+(3 !count
+
+{
+  count >toString >print
+  count 1 >- !count
+
+  count 0 >=<
+    { \29\Liftoff\29\ >print }
+    countdown
+  >choose >^
+} !countdown
+
+countdown >chain) (soma) >md.code
+
+(Output:) >md.b >md.p
+
+(3
+2
+1
+Liftoff) Nil >md.code
+
+(Note the ) (>^) >md.c ( usage:) >md.b >md.p
+
+(When count reaches 0, ) (>choose) >md.c ( selects the liftoff block) >md.uli
+(>^) >md.c ( ) (executes) >md.b ( it \29\prints "Liftoff"\29\) >md.uli
+(Result is nothing on AL, so ) (>chain) >md.c ( stops) >md.uli
+(When count > 0, ) (>choose) >md.c ( selects ) (countdown) >md.c ( \29\the block value\29\) >md.uli
+(>^) >md.c ( ) (executes) >md.b ( it, which runs the whole countdown block again) >md.uli
+(The recursive call is a tail-call because it's the last thing executed) >md.uli
+>md.ul
+
+(Tail-Call Pattern Summary) >md.h4
+
+(General pattern:) >md.b >md.p
+
+({
+  \29\ Do work
+  work_step
+
+  \29\ Check condition
+  done_condition
+    final_result          \29\ Base case: value to return
+    {                     \29\ Recursive case:
+      \29\ Update state
+      state_update
+      self_block_name     \29\ Tail-call: return self
+    }
+  >choose
+} !self_block_name
+
+self_block_name >chain) (soma) >md.code
+
+(When to use:) >md.b >md.p
+
+(Recursion that would normally build deep call stacks)
+(Loops with complex state transitions)
+(State machines \29\see next section\29\)
+(Any algorithm that can be expressed as "do work, then decide whether to continue")
+>md.ul
+
+(Benefits:) >md.b >md.p
+
+(Constant stack space \29\no stack overflow\29\)
+(Clear state evolution \29\all state in Store\29\)
+(Natural expression of recursive algorithms)
+(Same performance as iterative loops)
+>md.ul
+
+>md.hr
+
+(3.7 Internationalization: Aliasing >block) >md.h3
+
+(One of the key advantages of ) (>block) >md.c ( over the deprecated ) (_.self) >md.c ( magic binding is that ) (>block can be aliased) >md.b (. This enables fully international code where programmers can use their native language for all built-ins.) >md.t >md.p
+
+(Example: German programmer) >md.b >md.p
+
+(\29\ Alias built-ins to German
+Chain !Kette
+block !Block
+
+\29\ Infinite loop in pure German
+{ "tick" >print >block } >Kette) (soma) >md.code
+
+(Example: Swedish programmer) >md.b >md.p
+
+(\29\ Alias built-ins to Swedish
+Chain !Kedja
+block !blockera
+
+\29\ Infinite loop in pure Swedish
+{ "tick" >print >blockera } >Kedja) (soma) >md.code
+
+(Why this matters:) >md.b >md.p
+
+(The old ) (_.self) >md.c ( approach was English-centric and couldn't be aliased:) >md.p
+
+(\29\ OLD WAY - forced to use English "self"
+Chain !Kette
+{ "tick" >print _.self } >Kette    \29\ Must use English word "self") (soma) >md.code
+
+(With ) (>block) >md.c (, ) (every part of the control flow is aliasable) >md.b (:) >md.t >md.p
+
+(\29\ NEW WAY - fully international
+Chain !Kette
+Choose !Wählen
+block !Block
+Equal !Gleich
+
+\29\ Pure German control flow
+bedingung
+  { "wahr" >print >block }
+  { "falsch" >print }
+>Wählen >^                       \29\ Note: >^ needed to execute selected block) (soma) >md.code
+
+(This demonstrates that SOMA has ) (no English-centric special cases) >md.b (. All built-ins, including block self-reference, can be renamed to match the programmer's language and coding style.) >md.t >md.p
+
+(Important:) >md.b ( Note the ) (>^) >md.c ( at the end — this is needed because ) (>Wählen) >md.c ( \29\choose\29\ only ) (selects) >md.b ( a block, it doesn't execute it. The ) (>^) >md.c ( executes the selected block.) >md.t >md.p
+
+>md.hr
+
+(4. The Macro-Like Behavior) >md.h2
+
+(4.1 What Makes This "Macro-Like"?) >md.h3
+
+(In Lisp, you can define new control structures using ) (defmacro) >md.c (:) >md.t >md.p
+
+(\29\defmacro while \29\condition &body body\29\
+  `\29\loop
+     \29\unless ,condition \29\return\29\\29\
+     ,@body\29\\29\) (lisp) >md.code
+
+(After defining this macro, ) (while) >md.c ( looks exactly like a built-in language feature. Users can't tell the difference.) >md.t >md.p
+
+(SOMA achieves the same effect ) (without macros) >md.b (:) >md.t >md.p
+
+({ condition { body >block } { } >choose } !while) (soma) >md.code
+
+(Now you can use ) (while) >md.c ( like this:) >md.t >md.p
+
+({ loop_counter 10 >< } { loop_body } while >chain) (soma) >md.code
+
+(To the user, ) (while) >md.c ( behaves like a built-in control structure. But it's not. It's just a ) (stored block) >md.b (.) >md.t >md.p
+
+(Note:) >md.b ( The condition and body blocks would access shared state via the Store \29\e.g., ) (loop_counter) >md.c (\29\, not via Register paths, due to Register isolation between blocks.) >md.t >md.p
+
+(4.2 Why This Matters) >md.h3
+
+(In traditional languages:) >md.b >md.p
+
+(Control structures are ) (syntax) >md.b >md.uli
+(You cannot define new ones without macros or metaprogramming) >md.uli
+(The boundary between "language" and "library" is rigid) >md.uli
+>md.ul
+
+(In SOMA:) >md.b >md.p
+
+(Control structures are ) (values) >md.b ( \29\blocks\29\) >md.uli
+(You can define new ones using only ) (>choose) >md.c ( and ) (>chain) >md.c >md.uli
+(The boundary between "language" and "library" disappears) >md.uli
+>md.ul
+
+(This is ) (emergent abstraction) >md.b (. SOMA doesn't provide ) (if) >md.c ( or ) (while) >md.c ( because it doesn't need to. They emerge naturally from the semantics.) >md.t >md.p
+
+(4.3 Comparison to Lisp's defmacro) >md.h3
+
+(Feature) (Lisp defmacro) (SOMA Blocks)
+>md.table.header
+(Define new control flow) (✓) (✓)
+>md.table.row
+(No runtime overhead) (✓) (✓)
+>md.table.row
+(First-class) (✗ \29\macros are compile-time\29\) (✓ \29\blocks are values\29\)
+>md.table.row
+(Requires special syntax) (✓ \29\defmacro, backtick\29\) (✗ \29\just blocks\29\)
+>md.table.row
+(Can pass as values) (✗) (✓)
+>md.table.row
+(Hygiene issues) (✓ \29\gensym, etc.\29\) (✗ \29\Register isolation\29\)
+>md.table.row
+>md.table
+
+(SOMA's approach is ) (simpler) >md.b ( and ) (more uniform) >md.b (. There is no distinction between "code" and "data" because blocks are both.) >md.t >md.p
+
+(Note on hygiene:) >md.b ( SOMA avoids variable capture issues because each block execution has its own isolated Register. Nested blocks cannot accidentally access outer block Register paths, eliminating a whole class of hygiene problems.) >md.t >md.p
+
+>md.hr
+
+(5. Dispatch Tables Using >path) >md.h2
+
+(5.1 The Pattern) >md.h3
+
+(One of the most powerful patterns in SOMA is ) (dispatch tables) >md.b ( — storing operations at paths and executing them dynamically.) >md.t >md.p
+
+(Basic example:) >md.b >md.p
+
+({ \29\add\29\ >print } !handlers.add
+{ \29\sub\29\ >print } !handlers.sub
+{ \29\mul\29\ >print } !handlers.mul
+
+\29\ Dispatch based on operation name
+\29\add\29\ !_.op
+\29\handlers.\29\ _.op >concat >Store.get >^) (soma) >md.code
+
+(What happens:) >md.b >md.p
+
+((add)) >md.c ( stored in ) (_.op) >md.c >md.oli
+((handlers.)) >md.c ( and ) (_.op) >md.c ( concatenated → ) ((handlers.add)) >md.c >md.oli
+(>Store.get) >md.c ( retrieves the block at that path) >md.oli
+(>^) >md.c ( executes it) >md.oli
+(Output: ) (add) >md.c >md.oli
+>md.ol
+
+(5.2 More Elegant Dispatch) >md.h3
+
+(A cleaner approach uses direct execution:) >md.p
+
+({ \29\Addition\29\ >print } !commands.add
+{ \29\Subtraction\29\ >print } !commands.sub
+
+\29\ Execute command directly
+>commands.add           \29\ Prints: Addition) (soma) >md.code
+
+(But for ) (dynamic dispatch) >md.b (, you need to compute the path:) >md.t >md.p
+
+(\29\ Build path from user input
+user_input !_.cmd
+\29\commands.\29\ _.cmd >concat !_.path
+
+\29\ Execute dynamically
+_.path >Store.get >^) (soma) >md.code
+
+(5.3 Complete Dispatch Example: Calculator) >md.h3
+
+(\29\ Define operations
+{ !_.b !_.a _.a _.b >+ } !ops.add
+{ !_.b !_.a _.a _.b >- } !ops.sub
+{ !_.b !_.a _.a _.b >* } !ops.mul
+
+\29\ Dispatcher block
+{
+  !_.op !_.b !_.a           \29\ Store inputs
+  \29\ops.\29\ _.op >concat       \29\ Build path: "ops.add"
+  >Store.get                \29\ Get the block
+  _.a _.b                   \29\ Push arguments
+  >^                        \29\ Execute!
+} !dispatch
+
+\29\ Usage
+10 5 \29\add\29\ >dispatch        \29\ AL = [15]
+10 5 \29\mul\29\ >dispatch        \29\ AL = [50]) (soma) >md.code
+
+(This looks like a language feature) >md.b ( \29\dynamic dispatch\29\, but it's just user-defined blocks using ) (>path) >md.c ( and ) (^) >md.c (.) >md.t >md.p
+
+>md.hr
+
+(6. Higher-Order Blocks) >md.h2
+
+(6.1 Execute a Block Twice) >md.h3
+
+({ !_.f >_.f >_.f } !twice
+{ \29\Hello\29\ >print } >twice) (soma) >md.code
+
+(Output:) >md.b >md.p
+
+(Hello
+Hello) Nil >md.code
+
+(How it works:) >md.b >md.p
+
+({ \29\Hello\29\ >print }) >md.c ( pushed onto AL) >md.oli
+(>twice) >md.c ( executes the ) (twice) >md.c ( block) >md.oli
+(The ) (twice) >md.c ( block executes:) >md.oli
+>md.nest
+(!_.f) >md.c ( stores the print block in ) (twice) >md.c ('s Register) >md.oli
+(>_.f) >md.c ( executes it \29\prints "Hello"\29\) >md.oli
+(>_.f) >md.c ( executes it again \29\prints "Hello"\29\) >md.oli
+>md.ol
+(Each execution of the print block gets its own fresh Register) >md.oli
+>md.ol
+
+(Note:) >md.b ( The print block ) ({ \29\Hello\29\ >print }) >md.c ( executes twice, and each execution has its own isolated Register \29\though this simple block doesn't use Register paths\29\.) >md.t >md.p
+
+(6.2 Execute If Condition Is True) >md.h3
+
+({ !if_exec_block !if_exec_cond
+  if_exec_cond { if_exec_block >^ } { } >choose >^
+} !if_exec
+
+True { \29\Condition met\29\ >print } >if_exec     \29\ Prints: Condition met
+False { \29\Won't print\29\ >print } >if_exec      \29\ Prints nothing) (soma) >md.code
+
+(This is conditional execution of AL-passed blocks) >md.b ( — a higher-order control structure.) >md.t >md.p
+
+(How it works:) >md.b >md.p
+
+(Arguments on AL: ) (False) >md.c (, ) ({ \29\Won't print\29\ >print }) >md.c >md.oli
+(>if_exec) >md.c ( executes the ) (if_exec) >md.c ( block) >md.oli
+(Block stores condition in ) (if_exec_cond) >md.c (, block in ) (if_exec_block) >md.c >md.oli
+(Reads ) (if_exec_cond) >md.c ( \29\False\29\, pushes two blocks) >md.oli
+(>choose) >md.c ( selects empty block ) ({}) >md.c >md.oli
+(>^) >md.c ( executes the empty block \29\does nothing\29\) >md.oli
+>md.ol
+
+(Note on Register isolation and why we use Store:) >md.b >md.p
+
+(Original attempt: ) ({ !_.block !_.cond _.cond { >_.block } {} >choose >^ }) >md.c >md.uli
+(This would fail because inner block ) ({ >_.block }) >md.c ( cannot access outer block's Register path ) (_.block) >md.c >md.uli
+(Corrected version stores in Store \29\) (if_exec_block) >md.c (, ) (if_exec_cond) >md.c (\29\, making them accessible to nested executions) >md.uli
+(Uses ) (>^) >md.c ( to execute the block from the AL after it's pushed by the inner block) >md.uli
+>md.ul
+
+(6.3 Execute With Argument) >md.h3
+
+({ !_.arg !_.func _.arg >_.func } !call_with
+
+42 { !_.x _.x _.x >* } >call_with    \29\ AL = [1764]  \29\42 squared\29\) (soma) >md.code
+
+(How it works:) >md.b >md.p
+
+(42) >md.c ( pushed onto AL) >md.oli
+({ !_.x _.x _.x >* }) >md.c ( \29\squaring block\29\ pushed onto AL) >md.oli
+(>call_with) >md.c ( executes the ) (call_with) >md.c ( block:) >md.oli
+>md.nest
+(!_.func) >md.c ( stores squaring block in ) (call_with) >md.c ('s Register) >md.oli
+(!_.arg) >md.c ( stores ) (42) >md.c ( in ) (call_with) >md.c ('s Register) >md.oli
+(_.arg) >md.c ( pushes ) (42) >md.c ( onto AL) >md.oli
+(>_.func) >md.c ( executes the squaring block with ) (42) >md.c ( on AL) >md.oli
+>md.ol
+(The squaring block executes with its ) (own fresh Register) >md.b (:) >md.oli
+>md.nest
+(!_.x) >md.c ( stores ) (42) >md.c ( in the squaring block's Register \29\isolated from ) (call_with) >md.c ('s Register\29\) >md.oli
+(_.x _.x >*) >md.c ( reads from its own Register and computes ) (42 * 42 = 1764) >md.c >md.oli
+(Leaves ) (1764) >md.c ( on AL) >md.oli
+>md.ol
+(Result: ) (42 * 42 = 1764) >md.c >md.oli
+>md.ol
+
+(Key point:) >md.b ( Each block execution \29\) (call_with) >md.c ( and the squaring block\29\ has its own isolated Register. They communicate via the AL, not via shared Register paths.) >md.t >md.p
+
+(6.4 Map: Apply Block to Each Element) >md.h3
+
+({
+  !_.f !_.count             \29\ Store function and count in outer block's Register
+  {
+    _.count 0 >>            \29\ ERROR: Inner block can't see outer's _.count!
+    {
+      >_.f                  \29\ ERROR: Inner block can't see outer's _.f!
+      _.count 1 >- !_.count \29\ ERROR: Inner block can't access outer's _.count!
+      >block
+    }
+    { }
+    >choose
+  } >chain
+} !map) (soma) >md.code
+
+(CRITICAL: Register Isolation Issue) >md.b >md.p
+
+(The above example ) (violates Register isolation) >md.b ( — the inner blocks try to access the outer block's Register paths ) (_.f) >md.c ( and ) (_.count) >md.c (, which is ) (not allowed) >md.b (.) >md.t >md.p
+
+(Corrected version using Store:) >md.b >md.p
+
+({
+  !map_f !map_count         \29\ Store in Store \29\global\29\, not Register
+  {
+    map_count 0 >>          \29\ Read from Store
+    {
+      >map_f                \29\ Execute from Store
+      map_count 1 >- !map_count  \29\ Update Store counter
+      >block
+    }
+    { }
+    >choose
+  } >chain
+} !map
+
+\29\ Usage: Increment three numbers
+1 2 3                       \29\ Push three values
+{ 10 >+ } 3 >map            \29\ Add 10 to each) (soma) >md.code
+
+(Result:) >md.b ( AL = ) ([11, 12, 13]) >md.c >md.t >md.p
+
+(How it works with Register isolation:) >md.b >md.p
+
+(The outer ) (map) >md.c ( block stores ) ({ 10 >+ }) >md.c ( at Store path ) (map_f) >md.c ( \29\not ) (_.f) >md.c (\29\) >md.oli
+(The outer block stores ) (3) >md.c ( at Store path ) (map_count) >md.c ( \29\not ) (_.count) >md.c (\29\) >md.oli
+(The outer block then executes the inner loop block) >md.oli
+(The inner loop block has its own fresh Register) >md.b ( \29\isolated from outer\29\) >md.oli
+(The inner blocks read from ) (Store) >md.b ( \29\) (map_f) >md.c (, ) (map_count) >md.c (\29\, which is globally accessible) >md.oli
+(Each iteration executes ) (>map_f) >md.c ( \29\pops value, adds 10, pushes result\29\) >md.oli
+(Decrements the Store counter until it reaches 0) >md.oli
+(The loop uses ) (>block) >md.c ( to reference itself for recursion) >md.oli
+>md.ol
+
+(Key insight:) >md.b ( Nested blocks must share data via ) (Store) >md.b ( \29\global state\29\ or ) (AL) >md.b ( \29\explicit passing\29\, not via Register paths.) >md.t >md.p
+
+>md.hr
+
+(7. These Look Like Language Features, But They're Not) >md.h2
+
+(7.1 The Illusion of Built-ins) >md.h3
+
+(All of these ) (look) >md.b ( like built-in language features:) >md.t >md.p
+
+(>^                          \29\ Execute AL top
+>twice                      \29\ Execute block twice
+>if_exec                    \29\ Conditional execution
+>call_with                  \29\ Apply function to argument
+>map                        \29\ Map over collection
+>dispatch                   \29\ Dynamic dispatch) (soma) >md.code
+
+(But ) (none of them are primitives) >md.b (. They're all user-defined using:) >md.t >md.p
+
+(!) >md.c ( (store at path))
+(>) >md.c ( (execute from path))
+(>choose) >md.c ( (branching))
+(>chain) >md.c ( (looping))
+>md.ul
+
+(7.2 Why This Is Revolutionary) >md.h3
+
+(Traditional approach:) >md.b (Traditional approach:) (Language provides built-ins: ) (if) >md.c (, ) (while) >md.c (, ) (for) >md.c (, ) (map) >md.c (, ) (filter) >md.c (, ) (reduce) >md.c >md.t >md.p
+
+(These are ) (syntax) >md.b ( — you can't extend them) >md.t
+(Adding new control flow requires language changes)
+>md.ul
+
+(SOMA approach:) >md.b (SOMA approach:) (Language provides primitives: ) (>choose) >md.c (, ) (>chain) >md.c (, ) (!) >md.c (, ) (>) >md.c >md.t >md.p
+
+(Everything else is ) (user-defined) >md.b
+(Adding new control flow is just defining a new block)
+>md.ul
+
+(7.3 The Power of ) (>path) >md.c ( Semantics) >md.t >md.h3
+
+(The ) (>) >md.c ( prefix is the key to all of this:) >md.t >md.p
+
+(print           \29\ Pushes the print block onto AL (it's a value\29\
+>print          \29\ Executes the print block (it's an operation\29\) (soma) >md.code
+
+(Blocks are values) >md.b ( until you explicitly execute them with ) (>) >md.c (:) >md.t >md.p
+
+({ 1 2 >+ }      \29\ This is a value (a block\29\
+>{ 1 2 >+ }     \29\ This executes: AL becomes [3]) (soma) >md.code
+
+(This makes execution first-class:) >md.b >md.p
+
+(my_block !_.action          \29\ Store block in variable
+>_.action                   \29\ Execute it later) (soma) >md.code
+
+(And from this, ) (everything emerges) >md.b (:) >md.t >md.p
+
+(Function calls () (>my_func) >md.c (\29\))
+(Dynamic dispatch () (>^) >md.c (\29\))
+(Higher-order functions () (>map) >md.c (, ) (>twice) >md.c (\29\))
+(Control structures () (>while) >md.c (, ) (>if_exec) >md.c (\29\))
+>md.ul
+
+>md.hr
+
+(8. Advanced Patterns) >md.h2
+
+(8.1 Finite State Machine) >md.h3
 
 (State machines are a natural fit for SOMA. Each state is a block that transitions to the next state.) >md.p
 
-({ \34\RED\34\ >print green }) >md.c
-(!red) >md.c
-({ \34\GREEN\34\ >print yellow }) >md.c
-(!green) >md.c
-({ \34\YELLOW\34\ >print red }) >md.c
-(!yellow) >md.c
-(red >chain) >md.c
-Nil >md.code
+(Example: Traffic light) >md.b >md.p
 
-(Each state is a block. Transitions are explicit - push the next block. No hidden interpreter needed.) >md.p
+({ "RED" >print green } !red
+{ "GREEN" >print yellow } !green
+{ "YELLOW" >print red } !yellow
 
-(Key Insights) >md.h2
+red >chain) (soma) >md.code
 
-(Control Flow Is Data) >md.h3
+(Execution trace:) >md.p
 
-(In SOMA, control flow decisions are made by values on the AL:) >md.p
+(red) >md.c ( block executes → prints "RED", pushes ) (green) >md.c ( (the green block\29\))
+(>chain) >md.c ( sees a block, executes it)
+(green) >md.c ( block executes → prints "GREEN", pushes ) (yellow) >md.c
+(>chain) >md.c ( sees a block, executes it)
+(yellow) >md.c ( block executes → prints "YELLOW", pushes ) (red) >md.c
+(Loop continues forever)
+>md.ol
+
+(Key insight:) >md.b ( Each state is a block. Transitions are explicit (push the next block\29\. No hidden state machine interpreter needed.) >md.t >md.p
+
+>md.hr
+
+(8.2 Conditional State Machine) >md.h3
+
+(Example: Two-state toggle with condition) >md.b >md.p
+
+({
+  sensor.reading 100 >>
+  {
+    "ALARM ON" >print
+    False !alarm.state
+    alarm_off
+  }
+  {
+    "Normal" >print
+    >block
+  }
+  >choose >^
+} !alarm_on
+
+{
+  sensor.reading 50 ><
+  {
+    "ALARM OFF" >print
+    True !alarm.state
+    alarm_on
+  }
+  {
+    "Normal" >print
+    >block
+  }
+  >choose >^
+} !alarm_off
+
+True !alarm.state
+alarm_off >chain) (soma) >md.code
+
+(This is a ) (conditional state machine) >md.b (:) >md.t >md.p
+
+(alarm_off) >md.c ( state monitors for low readings)
+(When sensor drops below 50, ) (>choose) >md.c ( selects the block containing ) (alarm_on) >md.c (, ) (>^) >md.c ( executes it)
+(That block transitions to the ) (alarm_on) >md.c ( state)
+(alarm_on) >md.c ( state monitors for high readings)
+(When sensor exceeds 100, ) (>choose) >md.c ( selects the block containing ) (alarm_off) >md.c (, ) (>^) >md.c ( executes it)
+(That block transitions back to ) (alarm_off) >md.c
+>md.ul
+
+(Key difference from simple state machine:) >md.b >md.p
+
+(Uses ) (>choose >^) >md.c ( to conditionally select and execute the next state)
+(Can stay in same state () (>block) >md.c ( keeps looping\29\ or transition to different state)
+>md.ul
+
+>md.hr
+
+(8.3 Nested Loops) >md.h3
+
+(Traditional syntax:) >md.b >md.p
+
+(for i in 0..3 {
+  for j in 0..3 {
+    print(i, j\29\
+  }
+}) Nil >md.code
+
+(SOMA pattern:) >md.b >md.p
+
+(0 !outer_i
+{
+  outer_i 3 ><
+  {
+    0 !inner_j
+    {
+      inner_j 3 ><
+      {
+        outer_i inner_j >print
+        inner_j 1 >+ !inner_j
+        >block
+      }
+      { }
+      >choose >^
+    } >chain
+
+    outer_i 1 >+ !outer_i
+    >block
+  }
+  { }
+  >choose >^
+} >chain) (soma) >md.code
+
+(CRITICAL: Register Isolation) >md.b >md.p
+
+(This example demonstrates a common pitfall. Note that:) >md.p
+
+(The outer loop counter ) (outer_i) >md.c ( is stored in the ) (Store) >md.b ( (no ) (_.  ) >md.c ( prefix\29\))
+(The inner loop counter ) (inner_j) >md.c ( is stored in the ) (Store) >md.b ( (no ) (_.) >md.c ( prefix\29\))
+>md.ul
+
+(Why not use Register paths () (_.i) >md.c (, ) (_.j) >md.c (\29\?) >md.t >md.p
+
+(Each nested block execution gets its ) (own independent Register) >md.b (. If we tried:) >md.t >md.p
+
+(0 !_.i           \29\ Outer block's Register
+{
+  _.i 3 ><       \29\ Read from outer block's Register
+  {
+    0 !_.j       \29\ Inner block's Register (DIFFERENT from outer!\29\
+    {
+      _.j 3 ><   \29\ Read from innermost block's Register
+      {
+        _.i _.j >print   \29\ ERROR: This inner block can't see outer's _.i!) (soma) >md.code
+
+(The innermost block cannot access the outer block's ) (_.i) >md.c ( because ) (each block has its own isolated Register) >md.b (.) >md.t >md.p
+
+(Solutions for nested loops:) >md.b >md.p
+
+(Use Store) >md.b ( (shown above\29\ — Store is global and accessible to all blocks) >md.dli
+(Pass via AL) >md.b ( — Pass outer counter values explicitly through the AL) >md.dli
+(Use CellRefs) >md.b ( — Share structure references between blocks) >md.dli
+>md.dul
+
+(This demonstrates that ) (loops can be nested) >md.b ( without any special syntax, but ) (nested blocks must communicate via Store or AL) >md.b (, not via Register paths.) >md.t >md.p
+
+>md.hr
+
+(9. Why Blocks Are The Macro Mechanism) >md.h2
+
+(9.1 Blocks Are First-Class) >md.h3
+
+(In SOMA, blocks can:) >md.p
+
+(Be stored in the Store (like variables\29\)
+(Be passed on the AL (like arguments\29\)
+(Be returned from other blocks (like return values\29\)
+(Refer to themselves () (>block) >md.c ( built-in\29\))
+(Form recursive structures)
+>md.ul
+
+(This makes blocks ) (more powerful) >md.b ( than macros in most languages, because macros are typically compile-time only.) >md.t >md.p
+
+(9.2 Blocks Are Composable) >md.h3
+
+(You can build complex control flow by ) (composing blocks) >md.b (:) >md.t >md.p
+
+({ condition_a { body_a >block } { } >choose } !loop_a
+{ condition_b { body_b >block } { } >choose } !loop_b
+
+condition_top
+  { loop_a >chain }
+  { loop_b >chain }
+>choose) (soma) >md.code
+
+(This selects between two different loop behaviors based on ) (condition_top) >md.c (. Try doing that with traditional ) (while) >md.c ( statements!) >md.t >md.p
+
+(Note:) >md.b ( The loop definitions reference ) (condition_a) >md.c (, ) (body_a) >md.c (, ) (condition_b) >md.c (, and ) (body_b) >md.c ( which would be Store paths (not Register paths\29\, making them accessible to the nested loop blocks. Each loop's body block uses ) (>block) >md.c ( to refer to its own enclosing loop block.) >md.t >md.p
+
+(9.3 No Hidden Machinery) >md.h3
+
+(Traditional macro systems require:) >md.p
+
+(A separate macro expansion phase)
+(Hygiene rules to prevent variable capture)
+(Special syntax for quoting and unquoting)
+(Distinction between "macro time" and "runtime")
+>md.ul
+
+(SOMA has none of this. Blocks are just values. ) (>choose) >md.c ( and ) (>chain) >md.c ( are just operations on values. The emergent behavior is a ) (consequence of the semantics) >md.b (, not a special feature.) >md.t >md.p
+
+>md.hr
+
+(10. Examples: Building a Control Flow Library) >md.h2
+
+(Let's build a small library of reusable control structures:) >md.p
+
+(10.1 Define Common Patterns) >md.h3
+
+({ >swap { } >choose >^ } !if) ([IF - single branch]
+) (soma) >md.code
+
+({ !while_body !while_cond
+  {
+    while_cond                \29\ Read condition from Store
+    { while_body >block }     \29\ Read body from Store, continue loop
+    { }
+    >choose >^                \29\ Select and execute
+  }
+} !while) ([WHILE - loop with precondition]
+) (soma) >md.code
+
+({ !do_body !do_cond
+  {
+    do_body                   \29\ Execute body from Store
+    do_cond                   \29\ Read condition from Store
+    { >block }
+    { }
+    >choose >^                \29\ Select and execute
+  }
+} !do) ([DO - loop with postcondition]
+) (soma) >md.code
+
+({ !repeat_body !repeat_count
+  {
+    repeat_count 0 >>         \29\ Read count from Store
+    {
+      repeat_body             \29\ Execute body from Store
+      repeat_count 1 >- !repeat_count  \29\ Update Store counter
+      >block
+    }
+    { }
+    >choose >^                \29\ Select and execute
+  }
+} !repeat) ([REPEAT - fixed count loop]
+) (soma) >md.code
+
+(Note on Register isolation:) >md.b (Note on Register isolation:) (These control structure definitions store their parameters in the ) (Store) >md.b ( (e.g., ) (while_cond) >md.c (, ) (while_body) >md.c (\29\ rather than in Register paths () (_. cond) >md.c (, ) (_.body) >md.c (\29\. This is necessary because:) >md.t >md.p
+
+(The outer block that defines the control structure has its own Register)
+(The inner loop blocks have ) (separate, isolated Registers) >md.b
+(Inner blocks cannot access the outer block's Register)
+(Store paths are globally accessible to all blocks)
+>md.ul
+
+(Note on ) (>choose >^) >md.c ( pattern:) >md.t >md.b
+
+(All these control structures use the pattern ) (>choose >^) >md.c (:) >md.t >md.p
+
+(>choose) >md.c ( ) (selects) >md.b ( which block to use (continue or stop\29\))
+(>^) >md.c ( ) (executes) >md.b ( the selected block)
+(This is the fundamental execution pattern in SOMA control flow)
+>md.ul
+
+(10.2 Use The Library) >md.h3
+
+(Using ) (if) >md.c (:) >md.t >md.b >md.p
+
+(x 0 >>
+  { "positive" >print }
+if >^) (soma) >md.code
+
+(Note:) >md.b ( The ) (if) >md.c ( helper swaps the arguments so the condition comes first, then adds an empty block, calls ) (>choose >^) >md.c (. You still need to call it with ) (>^) >md.c ( (or use ) (>chain) >md.c (\29\.) >md.t >md.p
+
+(Using ) (while) >md.c (:) >md.t >md.b >md.p
+
+({ outer_counter 10 >< }      \29\ condition block (reads from Store\29\
+{ outer_counter >print outer_counter 1 >+ !outer_counter }  \29\ body block (uses Store\29\
+while >^) (soma) >md.code
+
+(Using ) (repeat) >md.c (:) >md.t >md.b >md.p
+
+({ "hello" >print }  \29\ body
+5  \29\ count
+repeat >^) (soma) >md.code
+
+(Output:) >md.p
+
+(hello
+hello
+hello
+hello
+hello) Nil >md.code
+
+(Note:) >md.b ( All these library functions return blocks, so you need to either:) >md.t >md.p
+
+(Execute with ) (>^) >md.c ( (as shown above\29\))
+(Use with ) (>chain) >md.c ( (e.g., ) (while >chain) >md.c (\29\))
+>md.ol
+
+>md.hr
+
+(11. Key Insights) >md.h2
+
+(11.1 Control Flow Is Data) >md.h3
+
+(In SOMA, control flow decisions are made by ) (values on the AL) >md.b (:) >md.t >md.p
 
 (Booleans determine which branch to take)
 (Blocks determine what to execute next)
-(The AL holds the program counter implicitly)
+(The AL holds the "program counter" implicitly)
 >md.ul
 
-(No Special Forms Needed) >md.h3
+(This is fundamentally different from syntax-driven control flow.) >md.p
 
-(SOMA does not need if, while, for, or switch keywords. All are user-defined.) >md.p
+(11.2 No Special Forms Needed) >md.h3
 
-(The Emergent Macro Property) >md.h3
+(SOMA does not need:) >md.p
+
+(if) >md.c ( / ) (else) >md.c ( keywords) >md.uli
+(while) >md.c ( / ) (for) >md.c ( / ) (do) >md.c ( keywords) >md.uli
+(break) >md.c ( / ) (continue) >md.c ( statements) >md.uli
+(switch) >md.c ( / ) (case) >md.c ( statements) >md.uli
+>md.ul
+
+(All of these can be ) (user-defined) >md.b ( using ) (>choose) >md.c ( and ) (>chain) >md.c (.) >md.t >md.p
+
+(11.3 The Emergent Macro Property) >md.h3
 
 (The macro-like behavior emerges from three properties:) >md.p
 
-(Blocks are first-class - can be stored and named)
-(>choose selects blocks - branching without syntax)
-(>chain executes blocks - looping without syntax)
+(Blocks are first-class) (can be stored and named) >md.dol
+(>choose) >md.c ( selects blocks) (branching without syntax) >md.dli
+(>chain) >md.c ( executes blocks) (looping without syntax) >md.dli
+>md.dol
+
+(Together, these create a ) (compositional control flow algebra) >md.b ( where complex patterns emerge from simple primitives.) >md.t >md.p
+
+(11.4 The ) (^) >md.c ( Operator Is The Key Example) >md.t >md.h3
+
+(The fact that you can define ) (execute-AL-top) >md.b ( as a user function:) >md.t >md.p
+
+({ !_ >_ } !^) (soma) >md.code
+
+(This proves that SOMA has ) (true macro power) >md.b ( — the ability to define operations that behave exactly like language primitives, but are actually user code.) >md.t >md.p
+
+>md.hr
+
+(12. Comparison to Other Approaches) >md.h2
+
+(12.1 Forth) >md.h3
+
+(Forth has similar primitives ) ((IF) >md.c (, ) (THEN) >md.c (, ) (BEGIN) >md.c (, ) (UNTIL) >md.c (,) ( but they are:) >md.t >md.p
+
+(Immediate words) >md.b ( - compile-time syntax) >md.t >md.uli
+(Not first-class values) >md.uli
+(Tied to the return stack) >md.uli
+>md.ul
+
+(Forth also has ) (EXECUTE) >md.c (, but it's a ) (built-in primitive) >md.b (.) >md.t >md.p
+
+(SOMA's blocks are ) (runtime values) >md.b (, not syntax. And SOMA's ) (^) >md.c ( is ) (user-defined) >md.b (, not a primitive.) >md.t >md.p
+
+(12.2 Lisp) >md.h3
+
+(Lisp's macros are powerful but:) >md.p
+
+(Operate at ) (compile-time) >md.b >md.uli
+(Require a separate expansion phase) >md.uli
+(Cannot be passed as first-class values at runtime) >md.uli
+>md.ul
+
+(Lisp has ) (funcall) >md.c ( and ) (apply) >md.c (, but they're ) (built-in primitives) >md.b (.) >md.t >md.p
+
+(SOMA's blocks are ) (always first-class) >md.b ( and available at runtime. And SOMA's ) (^) >md.c ( is ) (user-defined) >md.b ( using only ) (!^) >md.c ( and ) (>) >md.c (.) >md.t >md.p
+
+(12.3 Lambda Calculus) >md.h3
+
+(Lambda calculus encodes control flow using:) >md.p
+
+(Church encodings) >md.uli
+(Combinators - Y combinator for recursion) >md.uli
+>md.ul
+
+(But these are ) (encodings) >md.b (, not native operations. SOMA's ) (>choose) >md.c ( and ) (>chain) >md.c ( are ) (direct semantic primitives) >md.b (.) >md.t >md.p
+
+(And unlike Lambda Calculus, SOMA makes ) (execution explicit) >md.b ( with the ) (>) >md.c ( prefix, making computation observable.) >md.t >md.p
+
+>md.hr
+
+(13. Practical Considerations) >md.h2
+
+(13.1 When To Use ) (>choose) >md.c ( vs ) (>chain) >md.c >md.t >md.h3
+
+(Use ) (>choose) >md.c ( when:) >md.t >md.b
+
+(You need to select between exactly two alternatives) >md.uli
+(The decision is based on a boolean) >md.uli
+(Both branches should be fully defined - even if one is empty) >md.uli
+>md.ul
+
+(Use ) (>chain) >md.c ( when:) >md.t >md.b
+
+(You need to execute a sequence of blocks) >md.uli
+(The sequence length is determined at runtime) >md.uli
+(You want loops or state machines) >md.uli
+>md.ul
+
+(Use both when:) >md.b
+
+(Building complex control flow - while loops, FSMs, etc.) >md.uli
+>md.ul
+
+(13.2 Performance Implications) >md.h3
+
+(>choose) >md.c (: ) (No overhead) >md.b ( beyond evaluating the condition and selecting a branch) >md.dli
+(>chain) >md.c (: ) (No call stack growth) >md.b ( — each iteration is flat) >md.dli
+(Self-referential blocks: ) (No recursion) >md.b ( — just iteration) >md.dli
+>md.dul
+
+(SOMA's control flow is ) (as efficient as native control structures) >md.b ( in traditional languages.) >md.t >md.p
+
+(13.3 Debugging) >md.h3
+
+(To debug SOMA control flow:) >md.p
+
+(Inspect the AL before ) (>choose) >md.c ( to see the condition and blocks) >md.uli
+(Insert ) (>dump) >md.c ( inside blocks to trace execution) >md.uli
+(Use ) (>print) >md.c ( to mark state transitions in FSMs) >md.uli
+>md.ul
+
+(Because everything is explicit, debugging is often ) (easier) >md.b ( than in languages with hidden control stacks.) >md.t >md.p
+
+>md.hr
+
+(14. Errata and Corrections Applied) >md.h2
+
+(14.1 CellRef vs Block Values) >md.h3
+
+(Problem:) >md.b ( Original examples used ) (square.) >md.c ( - CellRef - with ) (>chain) >md.c >md.t >md.p
+
+(Why this fails:) >md.b
+
+(square.) >md.c ( is a ) (CellRef) >md.b ( - a reference to a cell) >md.uli
+(>chain) >md.c ( requires a ) (Block value) >md.b >md.uli
+(>chain) >md.c ( would immediately terminate) >md.uli
+>md.ul
+
+(Correction:) >md.b ( All examples now use ) (square) >md.c ( - payload access - to retrieve the block value.) >md.t >md.p
+
+(14.2 Equality Operator) >md.h3
+
+(Problem:) >md.b ( Original spec was inconsistent ) ((() (>=) >md.c ( vs ) (>==) >md.c ( vs ) (=?) >md.c (\29\) >md.t >md.p
+
+(Correction:) >md.b ( This document uses ) (>==) >md.c ( consistently for equality, ) (><) >md.c ( for less-than, and ) (>>) >md.c ( for greater-than.) >md.t >md.p
+
+(14.3 ) (>block) >md.c ( Built-in) >md.t >md.h3
+
+(This document now uses ) (>block) >md.b ( consistently throughout. The ) (>block) >md.c ( built-in pushes the currently executing block onto the AL. This enables self-referential loops and recursive block patterns.) >md.t >md.p
+
+(Key properties of ) (>block) >md.c (:) >md.t >md.p
+
+(It's a built-in operation - like ) (>choose) >md.c (, ) (>chain) >md.c >md.uli
+(Can be aliased to any name - enabling internationalization) >md.uli
+(Always returns the currently executing block) >md.uli
+(Works at all nesting levels) >md.uli
+>md.ul
+
+(All control flow patterns use ) (>block) >md.c ( rather than the deprecated ) (_.self) >md.c ( magic binding.) >md.t >md.p
+
+(14.4 ) (>choose) >md.c ( Semantics — Critical Clarification) >md.t >md.h3
+
+(CRITICAL CHANGE:) >md.b ( The semantics of ) (>choose) >md.c ( documented here differ from some earlier informal descriptions.) >md.t >md.p
+
+(Current correct semantics:) >md.b
+
+(>choose) >md.c ( is a ) (SELECTOR) >md.b ( — it selects one value based on a boolean) >md.uli
+(It does ) (NOT) >md.b ( execute blocks) >md.uli
+(To execute the selected block, you must use ) (>^) >md.c ( - or store and execute separately) >md.uli
+>md.ul
+
+(Pattern:) >md.b ( ) (>choose >^) >md.c ( - select, then execute) >md.t >md.p
+
+(This was clarified based on:) >md.b
+
+(Test files - ) (02_advanced_chain.soma) >md.c (, ) (05_test_docs_stdlib.soma) >md.c >md.oli
+(Standard library implementation - ) (>ifelse = { >choose >^ }) >md.c >md.oli
+(Working SOMA code that consistently uses ) (>choose >^) >md.c ( for execution) >md.oli
 >md.ol
 
-(Together, these create a compositional control flow algebra where complex patterns emerge from simple primitives.) >md.p
+(Why this matters:) >md.b
+
+(Separating selection from execution makes SOMA more compositional) >md.uli
+(Blocks are truly first-class — you can select without executing) >md.uli
+(The ) (>^) >md.c ( operator demonstrates that execution itself is user-defined) >md.uli
+(This enables patterns like storing the selected block before executing it) >md.uli
+>md.ul
+
+(All examples in this document have been updated) >md.b ( to use the correct ) (>choose >^) >md.c ( pattern where execution is intended.) >md.t >md.p
+
+>md.hr
 
 (Summary) >md.h2
 
-(SOMA's control flow is emergent rather than prescribed. By providing only >choose and >chain, SOMA creates a foundation on which all traditional control structures emerge as user-defined patterns.) >md.p
+(SOMA's control flow is ) (emergent) >md.b ( rather than ) (prescribed) >md.b (. By providing only ) (>choose) >md.c ( and ) (>chain) >md.c (, SOMA creates a foundation on which all traditional control structures can be built as ) (user-defined patterns) >md.b (.) >md.t >md.p
 
-(These patterns are blocks - first-class values that behave exactly like built-in language features.) >md.p
+(These patterns are not "library functions" in the traditional sense. They are ) (blocks) >md.b ( — first-class values that behave exactly like built-in language features.) >md.t >md.p
 
-(From this foundation emerge function calls, dynamic dispatch, higher-order functions, control structures, state machines, tail-call optimized recursion, and everything that looks like a language feature.) >md.p
+(This is SOMA's ) (emergent macro system) >md.b (: the ability to define new control structures that are indistinguishable from built-ins, without requiring a separate macro facility.) >md.t >md.p
 
-(control-flow.md) >md.render
+(Key Semantic Principles:) >md.b >md.p
+
+(>choose) >md.c ( is a SELECTOR, not an executor) >md.t >md.b
+
+(It pops ) ([condition, true_value, false_value]) >md.c ( from AL) >md.uli
+(It ) (pushes) >md.b ( the selected value back onto AL) >md.uli
+(It does ) (NOT) >md.b ( execute blocks) >md.uli
+>md.ul
+
+(>^) >md.c ( is the executor) >md.t >md.b
+
+(Defined as ) ({ !_ >_ }) >md.c ( — pops from AL, executes from Register) >md.uli
+(This is ) (user-defined) >md.b (, not a primitive) >md.uli
+(Demonstrates that execution itself is emergent) >md.uli
+>md.ul
+
+(>ifelse) >md.c ( = ) (>choose >^) >md.c >md.t >md.b
+
+(The standard library defines ) (>ifelse) >md.c ( as ) ({ >choose >^ }) >md.c >md.uli
+(This combines selection - choose - and execution - ^) >md.uli
+(Most control flow follows this pattern) >md.uli
+>md.ul
+
+(>chain) >md.c ( enables tail-call optimization) >md.t >md.b
+
+(Repeatedly executes blocks from AL without stack growth) >md.uli
+(Perfect for loops, recursion, state machines) >md.uli
+(Each iteration is flat — no call stack accumulation) >md.uli
+>md.ul
+
+(The ) (^) >md.c ( operator is the showcase example:) >md.t >md.b
+
+({ !_ >_ } !^        \29\ Execute AL top - like Forth's EXECUTE
+(Cats\29\ print >^     \29\ Prints 'Cats') (soma) >md.code
+
+(This proves that execution itself is not a primitive in SOMA — it's user-defined using ) (!^) >md.c ( and ) (>) >md.c (.) >md.t >md.p
+
+(From this foundation emerge:) >md.p
+
+(Function calls) >md.uli
+(Dynamic dispatch) >md.uli
+(Higher-order functions) >md.uli
+(Control structures - if/else, while, do, for) >md.uli
+(State machines) >md.uli
+(Tail-call optimized recursion) >md.uli
+(Everything that looks like a "language feature") >md.uli
+>md.ul
+
+(The key insight is that ) (blocks are the macro mechanism) >md.b (. In languages with macros, you manipulate syntax to create new forms. In SOMA, you manipulate blocks. The result is the same, but the mechanism is simpler, more uniform, and available at runtime.) >md.t >md.p
+
+(The fundamental execution pattern:) >md.b
+
+(condition
+  { true_branch }
+  { false_branch }
+>choose >^          \29\ Select, then execute) (soma) >md.code
+
+(Control flow in SOMA is not hidden behind syntax. It is ) (explicit state transformation) >md.b ( guided by blocks and boolean values on the AL. This makes SOMA programs ) (observable, inspectable, and introspectable) >md.b ( in ways that traditional languages cannot match.) >md.t >md.p
+
+>md.hr
+
+(Next Section:) >md.b ( ) (06-blocks-and-state.md) >md.l (./06-blocks-and-state.md) >md.l ( — Deep dive into block semantics, the Store, and state management patterns.) >md.t >md.p
+
+>md.print

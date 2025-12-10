@@ -1,123 +1,1503 @@
 (python) >use (markdown) >use
 >md.start
 
+) Section 00: Lexical Analysis and Parsing
+
 (2. Lexical Analysis and Parsing) >md.h1
 
-(SOMA source code is converted in two phases: Lexical Analysis converts raw text into tokens, then Parsing converts tokens into an AST.) >md.p
+(This section defines how SOMA source code is converted from raw text into an Abstract Syntax Tree \28\AST\29\. This happens in two phases:) >md.p
+
+(Lexical Analysis \28\Lexer\29\) (Converts raw text into a stream of tokens) >md.dli
+(Parsing \28\Parser\29\) (Converts the token stream into an AST) >md.dli
+>md.dol
+
+(The lexer is ) (purely syntactic) >md.b (: it recognizes token boundaries and categories but does not interpret semantic meaning. The parser builds the AST structure and performs validation like register path syntax checking.) >md.t >md.p
+
+) Section 01: Lexer Overview
 
 (2.1 Lexer Overview) >md.h2
 
-(The SOMA lexer \28\in soma/lexer.py\29\ converts source text into a stream of tokens. Each token has a kind, value, and position information. Tokenization is deterministic and left-to-right.) >md.p
+(The SOMA lexer \28\defined in ) (soma/lexer.py) >md.c (\29\ converts source text into a stream of tokens. Each token has:) >md.t >md.p
+
+(kind) >md.b (one of INT, PATH, EXEC, STORE, STRING, LBRACE, RBRACE, or EOF) >md.dli
+(value) >md.b (the string representation as it appears in source \28\decoded for STRING tokens\29\) >md.dli
+(line) >md.b (, ) (col) >md.b (position of the first character \28\1-based\29\) >md.dli
+>md.dul
+
+(Tokenization is deterministic and proceeds left-to-right, character by character. The lexer maintains state for line and column tracking but has no other state—each character is processed independently based on local context.) >md.p
+
+(Characters that do not match any token rule generate a ) (LexError) >md.c ( exception.) >md.t >md.p
+
+) Section 02: Token Categories
 
 (2.2 Token Categories) >md.h2
 
-(INT) (Decimal integer) >md.dli
-(PATH) (General identifier or name) >md.dli
-(EXEC) (Execute prefix modifier >) >md.dli
-(STORE) (Store prefix modifier !) >md.dli
-(STRING) (String literal with parentheses) >md.dli
-(LBRACE) (Block start {) >md.dli
-(RBRACE) (Block end }) >md.dli
-(EOF) (End-of-file marker) >md.dli
+(SOMA defines eight token kinds:) >md.p
+
+(Token Kind) (Description) (Example)
+>md.table.header
+(INT) >md.c (Decimal integer \28\signed or unsigned\29\) (42) >md.c (, ) (-7) >md.c (, ) (+9) >md.c >md.t
+>md.table.row
+(PATH) >md.c (General identifier or name) (foo) >md.c (, ) (x.y) >md.c (, ) (print) >md.c >md.t
+>md.table.row
+(EXEC) >md.c (Execute prefix modifier ) (>) >md.c (>print) >md.c ( \28\two tokens: EXEC + PATH\29\) >md.t
+>md.table.row
+(STORE) >md.c (Store prefix modifier ) (!) >md.c (!x) >md.c ( \28\two tokens: STORE + PATH\29\) >md.t
+>md.table.row
+(STRING) >md.c (String literal ) (\28\ … \29\) >md.c (\28\hello\29\) >md.c (, ) (\28\\5C\41\5C\\29\) >md.c >md.t
+>md.table.row
+(LBRACE) >md.c (Block start ) ({) >md.c ({) >md.c
+>md.table.row
+(RBRACE) >md.c (Block end ) (}) >md.c (}) >md.c
+>md.table.row
+(EOF) >md.c (End-of-file marker) (—)
+>md.table.row
+>md.table
+
+(All tokens except ) (EOF) >md.c ( correspond to explicit characters in the source.) >md.t >md.p
+
+(Important:) >md.b ( ) (EXEC) >md.c ( and ) (STORE) >md.c ( are ) (prefix modifiers) >md.b (, not standalone tokens. When the lexer sees ) (>print) >md.c (, it produces two separate tokens: EXEC\28\) (>) >md.c (\29\ followed by PATH\28\) (print) >md.c (\29\. The ) (>) >md.c ( is not part of the path name. The semantic meaning \28\execution or storage\29\ is handled by the parser/runtime, not the lexer.) >md.t >md.p
+
+) Section 03: Whitespace
+
+(2.3 Whitespace) >md.h2
+
+(Whitespace separates tokens but is otherwise ignored. Whitespace characters are:) >md.p
+
+(ASCII space \28\) (U+0020) >md.c (\29\) >md.t
+(Tab \28\) (U+0009) >md.c (\29\) >md.t
+(Line feed \28\) (\5C\n) >md.c (, ) (U+000A) >md.c (\29\) >md.t
+(Carriage return \28\) (\5C\r) >md.c (, ) (U+000D) >md.c (\29\) >md.t
+>md.ul
+
+(Line/column tracking rules:) >md.p
+
+(\5C\n) >md.c ( advances line, resets column to 1) >md.uli
+(\5C\r\5C\n) >md.c ( \28\CRLF\29\ counts as a single line terminator) >md.uli
+(Bare ) (\5C\r) >md.c ( also ends the line) >md.uli
+>md.ul
+
+) Section 04: Comments
+
+(2.4 Comments) >md.h2
+
+(A ) (comment) >md.b ( begins with ) (\29\) >md.c ( at the start of a token \28\after whitespace or at column 1\29\, outside any string literal.) >md.t >md.p
+
+(Syntax:) >md.h3
+
+(COMMENT ::= '\29\' <any characters until line terminator or EOF>) (Nil) >md.code
+
+(Rules:) >md.h3
+
+(The ) (\29\) >md.c ( and all characters until ) (\5C\n) >md.c (, ) (\5C\r) >md.c (, ) (\5C\r\5C\n) >md.c (, or EOF are ignored) >md.t
+(Comments do not emit tokens)
+(Inside a string literal ) (\28\ … \29\) >md.c (, the ) (\29\) >md.c ( closes the string, not a comment) >md.t
+(A ) (\29\) >md.c ( in the middle of a PATH is part of the path, not a comment starter) >md.t
+>md.ul
+
+(Examples:) >md.h3
+
+(\29\ This is a full-line comment
+
+>foo \29\ This is a trailing comment
+
+{ >a
+  \29\ Comment inside a block
+  >b
+}
+
+42 \29\ Number followed by comment) (soma) >md.code
+
+) Section 05: String Literals
+
+(2.5 String Literals) >md.h2
+
+(String literals use parenthesis delimiters with Unicode escape sequences.) >md.p
+
+(Syntax:) >md.h3
+
+(STRING ::= '\28\' STRING_CONTENT '\29\') (Nil) >md.code
+
+(Rules:) >md.h3
+
+(Any character except ) (\29\) >md.c ( and backslash is literal) >md.t
+(\29\) >md.c ( closes the string) >md.t
+(Backslash \28\) (\5C\) >md.c (\29\ starts a Unicode escape) >md.t
+>md.ul
+
+) Section 06: Unicode Escapes
+
+(2.5.1 Unicode Escapes: ) (\5C\HEX\5C\) >md.c >md.t >md.h3
+
+(ESCAPE ::= '\5C\' HEXDIGITS '\5C\'
+HEXDIGITS ::= one or more [0-9A-Fa-f]) (Nil) >md.code
+
+(Escape Rules:) >md.h3
+
+(Hex digits are decoded using ) (int\28\hex, 16\29\) >md.c
+(The result is converted to Unicode using ) (chr\28\codepoint\29\) >md.c
+(Empty escapes ) (\5C\\5C\) >md.c ( are illegal) >md.t
+(Non-hex characters in the escape raise an error)
+(Each escape is independent; they do not overlap)
+>md.ul
+
+(Examples:) >md.h3
+
+(SOMA Source) (Decoded Value) (Description)
+>md.table.header
+(\28\\5C\41\5C\\29\) >md.c ("A") >md.c (Unicode U+0041 \28\letter A\29\) >md.t
+>md.table.row
+(\28\Hello\5C\d\5C\\29\) >md.c ("Hello\5C\r") >md.c (Carriage return)
+>md.table.row
+(\28\\5C\5C\5C\\29\) >md.c ("\5C\") >md.c (Backslash)
+>md.table.row
+(\28\\5C\41\5C\\5C\42\5C\\5C\43\5C\\29\) >md.c ("ABC") >md.c (Three consecutive escapes)
+>md.table.row
+(\28\\5C\D\5C\\5C\A\5C\\29\) >md.c ("\5C\r\5C\n") >md.c (CRLF sequence)
+>md.table.row
+>md.table
+
+(Error Cases:) >md.h3
+
+(\28\hello          \29\ Unterminated string \28\missing closing paren\29\
+\28\hello\5C\5C       \29\ Unterminated escape \28\missing closing backslash\29\
+\28\\5C\g\5C\\29\           \29\ Invalid hex digit 'g'
+\28\\5C\\5C\\29\            \29\ Empty escape \28\no hex digits\29\) (soma) >md.code
+
+(Multiline Strings:) >md.h3
+
+(Strings may span multiple lines:) >md.p
+
+(\28\This is a
+multiline
+string\29\) (soma) >md.code
+
+) Section 07: Blocks
+
+(2.6 Blocks) >md.h2
+
+(Blocks are delimited by braces:) >md.p
+
+(BLOCK ::= '{' <tokens>* '}') (Nil) >md.code
+
+(Token Rules:) >md.h3
+
+({) >md.c ( produces ) (LBRACE) >md.c
+(}) >md.c ( produces ) (RBRACE) >md.c
+>md.ul
+
+(Modifier Rules:) >md.h3
+
+(>{...}) >md.c ( is valid: EXEC followed by LBRACE) >md.t
+(!{...}) >md.c ( is ) (illegal) >md.b (: cannot store directly into a block) >md.t
+>md.ul
+
+(Example:) >md.h3
+
+({ >a >b }           \29\ Valid block
+>{ >print }         \29\ Valid: execute a block directly
+!{ >print }         \29\ Invalid: cannot store to block \28\detected at lex time\29\) (soma) >md.code
+
+) Section 08: Prefix Modifiers
+
+(2.7 Prefix Modifiers) >md.h2
+
+(SOMA has two prefix operators that modify the token that follows.) >md.p
+
+) Section 09: Execute Prefix
+
+(2.7.1 Execute: ) (>) >md.c >md.t >md.h3
+
+(The ) (>) >md.c ( operator is a ) (prefix modifier) >md.b ( that marks execution of the value at the following path. It produces an ) (EXEC) >md.c ( token followed by the target token.) >md.t >md.p
+
+(Semantic Note:) >md.b ( The ) (>) >md.c ( modifier means "read the value at this path and execute it". This is an atomic operation handled by the parser/runtime, not the lexer. For example, ) (>print) >md.c ( reads the Block stored at Store path "print" and executes it. All SOMA built-ins are just Blocks at Store paths—there is no special built-in mechanism.) >md.t >md.p
+
+(Token Structure:) >md.h3
+
+(>print) >md.c ( → Two tokens: EXEC\28\) (>) >md.c (\29\ + PATH\28\) (print) >md.c (\29\) >md.t
+(>_.action) >md.c ( → Two tokens: EXEC\28\) (>) >md.c (\29\ + PATH\28\) (_.action) >md.c (\29\) >md.t
+(>{ ... }) >md.c ( → EXEC\28\) (>) >md.c (\29\ + LBRACE + ... + RBRACE) >md.t
+>md.ul
+
+(Valid Targets:) >md.h3
+
+(PATH: ) (>foo) >md.c ( → EXEC, PATH\28\) (foo) >md.c (\29\) >md.t
+(LBRACE: ) (>{ ... }) >md.c ( → EXEC, LBRACE, ...) >md.t
+>md.ul
+
+(Examples:) >md.h3
+
+(Source) (Tokens) (Description)
+>md.table.header
+(>foo) >md.c (EXEC, PATH\28\) (foo) >md.c (\29\) >md.t (Execute value at path "foo")
+>md.table.row
+(>print) >md.c (EXEC, PATH\28\) (print) >md.c (\29\) >md.t (Execute Block at Store path "print")
+>md.table.row
+(>_.self) >md.c (EXEC, PATH\28\) (_.self) >md.c (\29\) >md.t (Execute Block at Register path "_.self")
+>md.table.row
+(>{ a }) >md.c (EXEC, LBRACE, PATH\28\) (a) >md.c (\29\, RBRACE) >md.t (Execute inline block)
+>md.table.row
+(>) >md.c (PATH\28\) (>) >md.c (\29\) >md.t (Standalone \28\no target\29\)
+>md.table.row
+>md.table
+
+(Invalid Forms:) >md.h3
+
+(>\28\foo\29\              \29\ Cannot execute a string literal
+>42                 \29\ Cannot execute a number) (soma) >md.code
+
+) Section 10: Store Prefix
+
+(2.7.2 Store: ) (!) >md.c >md.t >md.h3
+
+(The ) (!) >md.c ( operator is a ) (prefix modifier) >md.b ( that marks storage of a value into the following path. It produces a ) (STORE) >md.c ( token followed by the target token.) >md.t >md.p
+
+(Semantic Note:) >md.b ( The ) (!) >md.c ( modifier means "pop the top of the Argument List and store it at this path". This operation is handled by the parser/runtime, not the lexer.) >md.t >md.p
+
+(Token Structure:) >md.h3
+
+(!counter) >md.c ( → Two tokens: STORE\28\) (!) >md.c (\29\ + PATH\28\) (counter) >md.c (\29\) >md.t
+(!_.temp) >md.c ( → Two tokens: STORE\28\) (!) >md.c (\29\ + PATH\28\) (_.temp) >md.c (\29\) >md.t
+>md.ul
+
+(Valid Targets:) >md.h3
+
+(PATH: ) (!x) >md.c ( → STORE, PATH\28\) (x) >md.c (\29\) >md.t
+>md.ul
+
+(Examples:) >md.h3
+
+(Source) (Tokens) (Description)
+>md.table.header
+(!x) >md.c (STORE, PATH\28\) (x) >md.c (\29\) >md.t (Store to path "x")
+>md.table.row
+(!a.b.c) >md.c (STORE, PATH\28\) (a.b.c) >md.c (\29\) >md.t (Store to nested path)
+>md.table.row
+(!_.temp) >md.c (STORE, PATH\28\) (_.temp) >md.c (\29\) >md.t (Store to Register path)
+>md.table.row
+(!) >md.c (PATH\28\) (!) >md.c (\29\) >md.t (Standalone \28\no target\29\)
+>md.table.row
+>md.table
+
+(Invalid Forms:) >md.h3
+
+(!{a}                \29\ Cannot store to a block
+!\28\foo\29\              \29\ Cannot store to a string
+!42                 \29\ Cannot store to a number) (soma) >md.code
+
+) Section 11: Modifier Detection
+
+(2.7.3 Modifier Detection) >md.h3
+
+(The lexer determines whether ) (>) >md.c ( or ) (!) >md.c ( is a modifier based on context:) >md.t >md.p
+
+(Modifier Form \28\produces EXEC or STORE token\29\:) >md.b
+(PATH Form \28\produces PATH token\29\:) >md.b
 >md.dul
 
-(EXEC and STORE are prefix modifiers, not standalone tokens. >print produces two tokens: EXEC and PATH.) >md.p
-
-(2.3 Whitespace and Comments) >md.h2
-
-(Whitespace \28\space, tab, newline, carriage return\29\ separates tokens but is ignored. Comments begin with ) at token start and continue to line end. Inside strings, ) closes the string, not a comment.) >md.p
-
-(2.4 String Literals) >md.h2
-
-(Strings use parenthesis delimiters: \(text\29\. Backslash starts Unicode escapes: \5C\HEX\5C\ where HEX is one or more hex digits. Example: \(\5C\41\5C\\29\ decodes to "A" \28\U\2B00041\29\.) >md.p
-
-(2.5 Blocks) >md.h2
-
-(Blocks are delimited by braces: { ... }. >{ ... } executes a block directly. !{ ... } is invalid - cannot store to a block.) >md.p
-
-(2.6 Prefix Modifiers) >md.h2
-
-(Execute > marks reading and executing a value. >print reads the Block at path "print" and executes it. >path produces EXEC token plus the path token.) >md.p
-
-(Store ! marks storing a value at a path. !counter pops the argument stack and stores at path "counter". !path produces STORE token plus the path token.) >md.p
-
-(2.7 Integers) >md.h2
-
-(Integers follow [+|-]DIGITS. Sign must precede digits. +23 is INT(23), but +hello is PATH \28\"+hello\"\29\.) >md.p
-
-(2.8 Paths) >md.h2
-
-(A PATH is any non-whitespace sequence not matching another category. May contain >, !, ., or other characters. Ends at whitespace, {, }, (, or ).) >md.p
-
-(Register paths use _ as the root: _ reads register root, _.x reads register field x, _.x.y.z reads nested fields. Paths like _x \28\without dot\29\ are lexically valid but semantically invalid.) >md.p
-
-(2.9 Lexical Errors) >md.h2
-
-(Unterminated strings) >md.uli
-(Invalid escapes \28\non-hex digits\29\) >md.uli
-(Invalid modifier targets \28\like >42 or >\28\foo\29\\29\) >md.uli
-(Illegal numeric forms \28\like 23a\29\) >md.uli
+(Followed immediately by a valid target \28\PATH, LBRACE for ) (>) >md.c (\29\) >md.t
+(No whitespace between modifier and target)
 >md.ul
 
-(2.10 Lexer Summary) >md.h2
-
-(The SOMA lexer is simple and orthogonal. Each token category is mutually exclusive. The lexer does not interpret semantics - that is the parser\29\s responsibility.) >md.p
-
-(Key design points:) >md.p
-
-(Stateless token recognition based on starting character and local context) >md.uli
-(String decoding happens in lexer) >md.uli
-(Register syntax is not enforced by lexer, only by parser) >md.uli
-(Modifier detection is context-sensitive) >md.uli
-(Error reporting includes location information) >md.uli
+(Followed by whitespace, EOF, or ) (}) >md.c
+(Appears mid-token: ) (a>b) >md.c ( → PATH\28\) (a>b) >md.c (\29\, ) (x!y) >md.c ( → PATH\28\) (x!y) >md.c (\29\) >md.t
 >md.ul
+
+(Examples:) >md.h3
+
+(>foo                \29\ EXEC, PATH("foo"\29\
+> foo               \29\ PATH(">"\29\, PATH("foo"\29\
+a>b                 \29\ PATH("a>b"\29\
+!x                  \29\ STORE, PATH("x"\29\
+! x                 \29\ PATH("!"\29\, PATH("x"\29\
+concat>             \29\ PATH("concat>"\29\) (soma) >md.code
+
+) Section 12: Integers
+
+(2.8 Integers) >md.h2
+
+(Integer literals follow this syntax:) >md.p
+
+(INT ::= [ '+' | '-' ] DIGITS
+DIGITS ::= [0-9]+) (Nil) >md.code
+
+(Rules:) >md.h3
+
+(Leading sign \28\) (+) >md.c ( or ) (-) >md.c (\29\ is optional) >md.t
+(The sign ) (must) >md.b ( be followed by a digit to form an integer) >md.t
+(Otherwise, the sign begins a PATH)
+>md.ul
+
+(Valid Integers:) >md.h3
+
+(23                  \29\ INT(23\29\
++23                 \29\ INT(+23\29\
+-23                 \29\ INT(-23\29\
+0                   \29\ INT(0\29\) (soma) >md.code
+
+(Non-Integer Tokens:) >md.h3
+
+(+hello              \29\ PATH("+hello"\29\
+-foo                \29\ PATH("-foo"\29\
++                   \29\ PATH("+"\29\
+-                   \29\ PATH("-"\29\) (soma) >md.code
+
+(Invalid Forms:) >md.h3
+
+(These cause lexical errors:) >md.p
+
+(23a                 \29\ Illegal: letter after digits
+23-5                \29\ Illegal: sign after digits
+23,5                \29\ Illegal: comma after digits) (soma) >md.code
+
+) Section 13: Paths
+
+(2.9 Paths) >md.h2
+
+(A PATH is any sequence of non-whitespace characters that doesn't match another token category.) >md.p
+
+(PATH ::= any non-whitespace printable sequence
+         excluding: '{', '}' at token level
+         and excluding \29\ at start (comment introducer\29\
+         and excluding ( at start (string literal\29\
+         and excluding integers and modifier forms) (Nil) >md.code
+
+(Characteristics:) >md.h3
+
+(May contain ) (>) >md.c (, ) (!) >md.c (, ) (.) >md.c (, ) (:) >md.c (, or other printable characters) >md.t
+(Ends at whitespace, ) ({) >md.c (, ) (}) >md.c (, ) (\28\) >md.c (, or a comment starter ) (\29\) >md.c
+>md.ul
+
+(Valid Paths:) >md.h3
+
+(foo                 \29\ Simple identifier
+dog-3               \29\ Path with hyphen
+x!y                 \29\ Path containing !
+a>b                 \29\ Path containing >
+concat>             \29\ Path ending with >
+a.b.c               \29\ Dotted path (Store path\29\
+_                   \29\ Register root (underscore alone\29\
+_.x                 \29\ Register path (root → x\29\
+_.x.y.z             \29\ Register path (root → x → y → z\29\
+_.self              \29\ Register path to self binding
+_tmp                \29\ PATH token, but not standard register syntax) (soma) >md.code
+
+(Register Paths:) >md.h3
+
+(The lexer recognizes register-related tokens purely syntactically:) >md.p
+
+(_) >md.c ( alone is a valid PATH token representing the register root) >md.t
+(_.x) >md.c (, ) (_.x.y) >md.c (, etc. are valid PATH tokens for register paths) >md.t
+(_tmp) >md.c (, ) (_x) >md.c (, ) (_self) >md.c ( \28\without dot after ) (_) >md.c (\29\ are lexically valid PATH tokens, but are ) (not) >md.b ( standard register syntax) >md.t
+>md.ul
+
+(The distinction between ) (_x) >md.c ( and ) (_.x) >md.c ( is ) (semantic) >md.b (, not lexical:) >md.t >md.p
+
+(The lexer tokenizes both as PATH tokens)
+(The ) (parser) >md.b ( validates register syntax: only ) (_) >md.c ( \28\register root\29\ and paths starting with ) (_.) >md.c ( \28\e.g., ) (_.x) >md.c (\29\ are valid) >md.t
+(Paths like ) (_x) >md.c ( \28\without dot\29\ cause a ) (ParseError) >md.c ( with a helpful message suggesting the correct ) (_.x) >md.c ( form) >md.t
+>md.ul
+
+(Edge Cases:) >md.h3
+
+(>                   \29\ Standalone: PATH(">"\29\
+!                   \29\ Standalone: PATH("!"\29\
+-\29\                  \29\ PATH("-\29\\5C\"\29\ – special case) (soma) >md.code
+
+) Section 14: Token Reference Table
+
+(2.10 Token Reference Table) >md.h2
+
+(Complete reference of SOMA token categories:) >md.p
+
+(Category) (Pattern) (Token Kind) (Notes)
+>md.table.header
+(Comment) (\29\) >md.c ( at token start) >md.t (—) (Skipped, no token emitted)
+>md.table.row
+(String) (\28\) >md.c ( ... ) (\29\) >md.c >md.t (STRING) (Unicode escapes via ) (\5C\HEX\5C\) >md.c >md.t
+>md.table.row
+(Block open) ({) >md.c (LBRACE) (Structural delimiter)
+>md.table.row
+(Block close) (}) >md.c (RBRACE) (Structural delimiter)
+>md.table.row
+(Execute) (>) >md.c ( + target) >md.t (EXEC) (Prefix modifier; ) (>print) >md.c ( is two tokens) >md.t
+>md.table.row
+(Store) (!) >md.c ( + target) >md.t (STORE) (Prefix modifier; ) (!x) >md.c ( is two tokens) >md.t
+>md.table.row
+(Integer) ([+-]?[0-9]+) >md.c (INT) (Sign must precede digits)
+>md.table.row
+(Path) (everything else) (PATH) (Default category)
+>md.table.row
+(End of file) (—) (EOF) (Implicit, always last)
+>md.table.row
+>md.table
+
+) 2.11 Lexical Errors
+
+(2.11 Lexical Errors) >md.h2
+
+(The lexer raises errors for:) >md.p
+
+(Unterminated strings) ((hello) >md.c ( (missing ) (\29\) >md.c (\29\) >md.dli
+(Invalid escapes) ((\5C\g\5C\\29\)) >md.c ( (non-hex digit), ) ((\5C\\5C\\29\)) >md.c ( (empty escape)) >md.dli
+(Invalid modifier targets) Nil >md.dli
+>md.nest
+  (>(foo\29\)) >md.c ( — cannot execute string) >md.t)
+  (!{...} — cannot store to block)
+  (>42 — cannot execute number)
+  >md.ul
+(Illegal numeric forms) (23a) >md.c (, ) (42-x) >md.c >md.dli
+(Unexpected characters) (Any malformed token sequence) >md.dli
+>md.dul
+
+) 2.12 Examples
+
+(2.12 Examples) >md.h2
+
+) 2.12.1 Valid Tokenization
+
+(2.12.1 Valid Tokenization) >md.h3
+
+(42 >print) (soma) >md.code
+
+(Tokens: INT("42"\29\, EXEC(">"\29\, PATH("print"\29\, EOF) >md.p
+
+(Note: ) (>print) >md.b ( is two tokens—EXEC prefix modifier followed by PATH. The lexer does not interpret this as "calling a built-in". It simply recognizes the prefix modifier ) (>) >md.c ( and the path name ) (print) >md.c (. The execution semantics (reading and executing the Block at Store path "print"\29\ are handled by the parser/runtime.)) >md.t >md.p
+
+((hello\29\ !message) (soma) >md.code
+
+(Tokens: STRING("hello"\29\, STORE("!"\29\, PATH("message"\29\, EOF) >md.p
+
+({ >a >b } !myblock) (soma) >md.code
+
+(Tokens: LBRACE("{"\29\, EXEC(">"\29\, PATH("a"\29\, EXEC(">"\29\, PATH("b"\29\, RBRACE("}"\29\, STORE("!"\29\, PATH("myblock"\29\, EOF) >md.p
+
+(a.b.c 23 +hello) (soma) >md.code
+
+(Tokens: PATH("a.b.c"\29\, INT("23"\29\, PATH("+hello"\29\, EOF) >md.p
+
+) 2.12.2 Edge Cases
+
+(2.12.2 Edge Cases) >md.h3
+
+(>) (soma) >md.code
+
+(Tokens: PATH(">"\29\, EOF) >md.p
+
+(!) (soma) >md.code
+
+(Tokens: PATH("!"\29\, EOF) >md.p
+
+(> { }) (soma) >md.code
+
+(Tokens: PATH(">"\29\, LBRACE("{"\29\, RBRACE("}"\29\, EOF) >md.p
+
+(concat> !result) (soma) >md.code
+
+(Tokens: PATH("concat>"\29\, STORE("!"\29\, PATH("result"\29\, EOF) >md.p
+
+) 2.12.3 Register Paths
+
+(2.12.3 Register Paths) >md.h3
+
+(_ !_.x) (soma) >md.code
+
+(Tokens: PATH("_"\29\, STORE("!"\29\, PATH("_.x"\29\, EOF) >md.p
+
+(_.counter 1 >+ !_.counter) (soma) >md.code
+
+(Tokens: PATH("_.counter"\29\, INT("1"\29\, EXEC(">"\29\, PATH("+"\29\, STORE("!"\29\, PATH("_.counter"\29\, EOF) >md.p
+
+(_.self >chain) (soma) >md.code
+
+(Tokens: PATH("_.self"\29\, EXEC(">"\29\, PATH("chain"\29\, EOF) >md.p
+
+(Lexical vs Semantic:) >md.b >md.p
+
+(_tmp                \29\ Lexically: PATH("_tmp"\29\
+                    \29\ Semantically: Not valid register syntax (missing dot\29\) (soma) >md.code
+
+(_.tmp               \29\ Lexically: PATH("_.tmp"\29\
+                    \29\ Semantically: Valid register path (root → tmp\29\) (soma) >md.code
+
+(The lexer does not enforce register syntax rules—it only produces PATH tokens. The parser or runtime must validate that register paths follow the ) (_.path) >md.c ( convention.)) >md.t >md.p
+
+) 2.12.4 Comments and Strings
+
+(2.12.4 Comments and Strings) >md.h3
+
+(\29\ This is a comment
+(This is \29\ a string\29\ \29\ Another comment) (soma) >md.code
+
+(Tokens: STRING("This is \29\ a string"\29\, EOF) >md.p
+
+(Note: The first ) (\29\) >md.c ( inside the string does not start a comment; it closes the string.)) >md.t >md.p
+
+) 2.13 Lexer Summary
+
+(2.13 Lexer Summary) >md.h2
+
+(The SOMA lexer is intentionally simple and orthogonal:) >md.p
+
+(( ... \29\) >md.c ( — strings with Unicode escapes (decoded during lexing\29\))
+({ ... }) >md.c ( — blocks (produces LBRACE/RBRACE tokens\29\))
+(\29\ at token start) >md.c ( — comments (skipped, no token produced\29\))
+(> / ! at token start) >md.c ( — prefix modifiers (produces EXEC/STORE tokens\29\))
+([+-]?[0-9]+) >md.c ( — integers (sign must precede digits\29\))
+(Everything else) (— paths (default category\29\)
+>md.dul
+
+(Each category is mutually exclusive and unambiguous. The lexer enforces structural correctness but does not interpret semantics—that is the parser's responsibility.)) >md.p
+
+(Key Design Points:) >md.b >md.p
+
+(Stateless token recognition) (Each token is recognized based on its starting character and local context) >md.dli
+(String decoding happens in lexer) (Unicode escapes () (\5C\HEX\5C\) >md.c (\29\ are decoded during lexing; the parser receives the final decoded string)) >md.dli
+(Register syntax is not enforced) (The lexer accepts both ) (_x) >md.c ( and ) (_.x) >md.c ( as PATH tokens; the parser enforces the ) (_.x) >md.c ( convention)) >md.dli
+(Modifier detection is context-sensitive) (>foo) >md.c ( produces EXEC + PATH, while ) (> foo) >md.c ( produces PATH + PATH)) >md.dli
+(Error reporting includes location) (LexError) >md.c ( exceptions include line/col information for precise error messages)) >md.dli
+>md.dol
+
+>md.hr
+
+) 3. Parser and AST Construction
 
 (3. Parser and AST Construction) >md.h1
 
-(The SOMA parser consumes the token stream and builds an AST. It is a recursive descent parser that validates syntax, builds typed AST nodes, splits paths, validates register syntax, and eagerly parses blocks.) >md.p
+(The SOMA parser (defined in ) (soma/parser.py) >md.c (\29\ consumes the token stream from the lexer and builds an Abstract Syntax Tree (AST\29\. The parser is a recursive descent parser that:)) >md.t >md.p
+
+(Validates syntax and structure)
+(Builds typed AST nodes)
+(Splits paths into components)
+(Validates semantic rules (like register path syntax\29\)
+(Eagerly parses block contents)
+>md.ol
+
+) 3.1 Parser Overview
 
 (3.1 Parser Overview) >md.h2
 
-(Entry point: parse\28\source\29\ calls lex\28\source\29\, creates a Parser, and builds the AST. Parser uses recursive descent with lookahead and token consumption methods.) >md.p
+(Entry Point:) >md.b >md.p
+
+(from soma.parser import parse
+
+ast = parse("42 >print"\29\  # Returns dictionary representation of AST) (python) >md.code
+
+(The ) (parse(\29\)) >md.c ( function is the main entry point and performs these steps:)) >md.t >md.p
+
+(Calls ) (lex(source\29\)) >md.c ( to tokenize the source))
+(Creates a ) (Parser(tokens\29\)) >md.c ( instance))
+(Calls ) (parser.parse(\29\)) >md.c ( to build the AST))
+(Converts AST nodes to dictionary representation for external use)
+>md.ol
+
+(Parser Architecture:) >md.b >md.p
+
+(The parser uses a simple recursive descent design:) >md.p
+
+(Current position tracker) (self.current) >md.c ( index into token list) >md.dli
+(Lookahead) (_peek(\29\)) >md.c ( to examine current token without consuming) >md.dli
+(Token consumption) (_advance(\29\)) >md.c (, ) (_expect(\29\)) >md.c (, ) (_check(\29\)) >md.c (, ) (_match(\29\)) >md.c >md.dli
+(Recursive parsing) (Each AST node type has its own parsing method) >md.dli
+>md.dul
+
+) 3.2 AST Node Types
 
 (3.2 AST Node Types) >md.h2
 
-(Program) (Top-level container for statements) >md.dli
-(IntNode) (Integer literal) >md.dli
-(StringNode) (String literal with decoded escapes) >md.dli
-(BlockNode) (Block { ... } with eagerly parsed body) >md.dli
-(ValuePath) (Path reading a Cell value, no trailing dot) >md.dli
-(ReferencePath) (Path with trailing dot, reads a CellRef) >md.dli
-(ExecNode) (Execute modifier targeting path or block) >md.dli
-(StoreNode) (Store modifier targeting path) >md.dli
+(The parser produces eight AST node types:) >md.p
+
+) 3.2.1 Program
+
+(3.2.1 Program) >md.h3
+
+(Top-level container for a complete SOMA program.) >md.p
+
+(Structure:) >md.b >md.p
+
+(Program(
+    statements=[...]  # List of statement nodes
+\29\) (python) >md.code
+
+(Example:) >md.b >md.p
+
+(1 2 >+) (soma) >md.code
+
+(Produces:) >md.p
+
+(Program(statements=[
+    IntNode(1\29\,
+    IntNode(2\29\,
+    ExecNode(target=ValuePath(["+"\29\\29\\29\
+]\29\) (python) >md.code
+
+) 3.2.2 IntNode
+
+(3.2.2 IntNode) >md.h3
+
+(Represents an integer literal. The lexer provides the string representation; the parser converts it to an integer.) >md.p
+
+(Structure:) >md.b >md.p
+
+(IntNode(
+    value=42  # int
+\29\) (python) >md.code
+
+(Example:) >md.b >md.p
+
+(-23) (soma) >md.code
+
+(Produces:) >md.p
+
+(IntNode(value=-23\29\) (python) >md.code
+
+) 3.2.3 StringNode
+
+(3.2.3 StringNode) >md.h3
+
+(Represents a string literal. The lexer has already decoded Unicode escapes; the parser just wraps the value.) >md.p
+
+(Structure:) >md.b >md.p
+
+(StringNode(
+    value="hello"  # str (already decoded by lexer\29\
+\29\) (python) >md.code
+
+(Example:) >md.b >md.p
+
+((\5C\41\5C\BC\5C\\29\) (soma) >md.code
+
+(Lexer produces: ) (Token(STRING, "ABC", ...\29\) >md.c >md.t >md.p
+
+(Parser produces: ) (StringNode(value="ABC"\29\) >md.c >md.t >md.p
+
+) 3.2.4 BlockNode
+
+(3.2.4 BlockNode) >md.h3
+
+(Represents a block ) ({ ... }) >md.c (. Blocks are ) (eagerly parsed) >md.b ( — the parser recursively parses all statements inside the block immediately.) >md.t >md.p
+
+(Structure:) >md.b >md.p
+
+(BlockNode(
+    body=[...]  # List of fully parsed statement nodes
+\29\) (python) >md.code
+
+(Example:) >md.b >md.p
+
+({ 1 2 >+ }) (soma) >md.code
+
+(Produces:) >md.p
+
+(BlockNode(body=[
+    IntNode(1\29\,
+    IntNode(2\29\,
+    ExecNode(target=ValuePath(["+"]\29\\29\
+]\29\) (python) >md.code
+
+(Nesting:) >md.b >md.p
+
+(Blocks can be nested to any depth. Each level is fully parsed:) >md.p
+
+({ { { 42 } } }) (soma) >md.code
+
+(Produces:) >md.p
+
+(BlockNode(body=[
+    BlockNode(body=[
+        BlockNode(body=[
+            IntNode(42\29\
+        ]\29\
+    ]\29\
+]\29\) (python) >md.code
+
+) 3.2.5 ValuePath
+
+(3.2.5 ValuePath) >md.h3
+
+(Represents a path that reads a value from a Cell (no trailing dot\29\.) >md.p
+
+(Structure:) >md.b >md.p
+
+(ValuePath(
+    components=["a", "b", "c"]  # List[str]
+\29\) (python) >md.code
+
+(Parsing Process:) >md.b >md.p
+
+(Lexer produces: ) (Token(PATH, "a.b.c", ...\29\) >md.c
+(Parser splits by ) (.) >md.c ( to get ) (["a", "b", "c"]) >md.c
+(Parser validates register syntax if first component is ) ("_") >md.c
+>md.ol
+
+(Examples:) >md.b >md.p
+
+(Source) (Components) (Description)
+>md.table.header
+(foo) (["foo"]) (Single-component path)
+>md.table.row
+(a.b.c) (["a", "b", "c"]) (Multi-component path)
+>md.table.row
+(_) (["_"]) (Register root (valid\29\))
+>md.table.row
+(_.x) (["_", "x"]) (Register path (valid\29\))
+>md.table.row
+(_.x.y.z) (["_", "x", "y", "z"]) (Nested register path (valid\29\))
+>md.table.row
+>md.table
+
+(3.2.6 ReferencePath) >md.h3
+
+(Represents a path with a trailing dot that reads a CellRef from a Cell.) >md.p
+
+(Structure:) >md.b >md.p
+
+(ReferencePath\29\
+    components=["a", "b"]  # List[str], trailing dot NOT included
+\29\) (python) >md.code
+
+(Parsing Process:) >md.b >md.p
+
+(Lexer produces: ) (Token\29\PATH, "a.b.", ...\29\) >md.c >md.oli
+(Parser detects trailing ) (.) >md.c >md.oli
+(Parser strips trailing ) (.) >md.c ( → ) ("a.b") >md.c >md.oli
+(Parser splits by ) (.) >md.c ( to get ) (["a", "b"]) >md.c >md.oli
+>md.ol
+
+(Examples:) >md.b >md.p
+
+(Source) (Components) (Description)
+>md.table.header
+(a.) >md.c (["a"]) >md.c (Single-component reference)
+>md.table.row
+(a.b.) >md.c (["a", "b"]) >md.c (Multi-component reference)
+>md.table.row
+(_.) >md.c (["_"]) >md.c (Register root reference)
+>md.table.row
+(_.x.) >md.c (["_", "x"]) >md.c (Register path reference)
+>md.table.row
+>md.table
+
+(Key Difference from ValuePath:) >md.b >md.p
+
+(The node type itself \29\ReferencePath vs ValuePath\29\ indicates the trailing dot—it's not stored in the components array.) >md.p
+
+(3.2.7 ExecNode) >md.h3
+
+(Represents the execute modifier ) (>path) >md.c ( or ) (>{...}) >md.c (.) >md.t >md.p
+
+(Structure:) >md.b >md.p
+
+(ExecNode\29\
+    target=<ValuePath or BlockNode>
+\29\) (python) >md.code
+
+(Valid Targets:) >md.b >md.p
+
+(ValuePath) >md.b ( — Execute the Block stored at this path) >md.dli
+(BlockNode) >md.b ( — Execute this inline block) >md.dli
 >md.dul
 
-(3.3 Path Parsing) >md.h2
+(Invalid Targets:) >md.b >md.p
 
-(Parser detects trailing dots to distinguish ValuePath from ReferencePath. Paths are split by dots into components. Register paths are validated: _ is valid, _.x is valid, but _x \28\without dot\29\ raises ParseError.) >md.p
+(ReferencePath) >md.b ( — Cannot execute a CellRef \29\raises ) (ParseError) >md.c (\29\) >md.dli
+>md.dul
 
-(3.4 Block Parsing) >md.h2
+(Parsing Process:) >md.b >md.p
 
-(Blocks are parsed eagerly - all statements inside are recursively parsed at lex time. This enables early error detection and a complete AST.) >md.p
+(Lexer produces: ) (Token\29\EXEC, ">", ...\29\) >md.c ( + target token) >md.oli
+(Parser consumes EXEC token) >md.oli
+(Parser checks next token:) >md.oli
+>md.nest
+(If ) (LBRACE) >md.c ( → parse block → ) (ExecNode\29\BlockNode\29\...\29\\29\) >md.c >md.uli
+(If ) (PATH) >md.c ( → parse path → validate not ReferencePath → ) (ExecNode\29\ValuePath\29\...\29\\29\) >md.c >md.uli
+>md.ul
+>md.ol
 
-(3.5 Modifier Parsing) >md.h2
+(Examples:) >md.b >md.p
 
-(Execute > targets ValuePath or BlockNode, not ReferencePath. Store ! targets ValuePath or ReferencePath. Semantic meaning is determined by the trailing dot in the path.) >md.p
+(>print) (soma) >md.code
 
-(3.6 Error Handling) >md.h2
+(→ ) (ExecNode\29\target=ValuePath\29\["print"]\29\\29\) >md.c >md.p
 
-(Parser provides detailed error messages with line/column information. Errors include unclosed blocks, unexpected braces, invalid register syntax, and empty path components.) >md.p
+(>{ 5 5 >* }) (soma) >md.code
 
-(3.7 Lexer/Parser Boundary) >md.h2
+(→ ) (ExecNode\29\target=BlockNode\29\body=[IntNode\29\5\29\, IntNode\29\5\29\, ExecNode\29\...\29\]\29\\29\) >md.c >md.p
 
-(Lexer handles character-level tokenization, string decoding, comment stripping, and whitespace. Parser handles AST construction, path splitting, validation, and semantic rules.) >md.p
+(>a.b.) (soma) >md.code
 
-(Lexer does NOT: split paths, validate register syntax, distinguish ValuePath from ReferencePath, or parse blocks.) >md.p
+(→ ) (ParseError: "Cannot execute a reference path \29\path with trailing '.'\29\") >md.c >md.p
 
-(Parser does NOT: recognize token boundaries or decode string escapes.) >md.p
+(3.2.8 StoreNode) >md.h3
 
-(3.8 Summary) >md.h2
+(Represents the store modifier ) (!path) >md.c ( or ) (!path.) >md.c (.) >md.t >md.p
 
-(The SOMA lexer and parser work together with clear separation of concerns. Lexer produces flat token stream, parser builds hierarchical AST with validation. Design emphasizes simplicity, determinism, and early error detection.) >md.p
+(Structure:) >md.b >md.p
 
-(lexer.md) >md.render
+(StoreNode\29\
+    target=<ValuePath or ReferencePath>
+\29\) (python) >md.code
+
+(Valid Targets:) >md.b >md.p
+
+(ValuePath) >md.b ( — Store to the Cell's value \29\modifies Cell content\29\) >md.dli
+(ReferencePath) >md.b ( — Replace the entire Cell \29\structural mutation\29\) >md.dli
+>md.dul
+
+(Parsing Process:) >md.b >md.p
+
+(Lexer produces: ) (Token\29\STORE, "!", ...\29\) >md.c ( + ) (Token\29\PATH, "...", ...\29\) >md.c >md.oli
+(Parser consumes STORE token) >md.oli
+(Parser parses path \29\which may be ValuePath or ReferencePath\29\) >md.oli
+(Parser creates ) (StoreNode\29\target=<path>\29\) >md.c >md.oli
+>md.ol
+
+(Examples:) >md.b >md.p
+
+(!counter) (soma) >md.code
+
+(→ ) (StoreNode\29\target=ValuePath\29\["counter"]\29\\29\) >md.c >md.p
+
+(!a.b.c) (soma) >md.code
+
+(→ ) (StoreNode\29\target=ValuePath\29\["a", "b", "c"]\29\\29\) >md.c >md.p
+
+(!data.) (soma) >md.code
+
+(→ ) (StoreNode\29\target=ReferencePath\29\["data"]\29\\29\) >md.c >md.p
+
+(3.3 Path Parsing and Validation) >md.h2
+
+(Path parsing is one of the parser's key responsibilities. The lexer produces a single PATH token \29\e.g., ) ("a.b.c.") >md.c (\29\; the parser must:) >md.t >md.p
+
+(Detect trailing dot \29\determines ValuePath vs ReferencePath\29\) >md.oli
+(Strip trailing dot if present) >md.oli
+(Split remaining string by ) (.) >md.c ( to get components) >md.oli
+(Validate each component is non-empty) >md.oli
+(Validate register path syntax if first component is ) ("_") >md.c >md.oli
+>md.ol
+
+(3.3.1 Path Splitting Algorithm) >md.h3
+
+(def _parse_path\29\self\29\:
+    token = self._expect\29\TokenKind.PATH\29\
+    value = token.value
+    is_reference = False
+
+    # Step 1: Check for trailing dot
+    if value.endswith\29\"."\29\:
+        is_reference = True
+        value = value[:-1]  # Strip trailing dot
+
+    # Step 2: Split by dot
+    components = value.split\29\"."\29\
+
+    # Step 3: Validate non-empty components
+    if any\29\c == "" for c in components\29\:
+        raise ParseError\29\"Empty path component in '%s'" % token.value, ...\29\
+
+    # Step 4: Validate register paths
+    self._validate_register_path\29\components, token\29\
+
+    # Step 5: Return appropriate node type
+    if is_reference:
+        return ReferencePath\29\components\29\
+    else:
+        return ValuePath\29\components\29\) (python) >md.code
+
+(3.3.2 Register Path Validation) >md.h3
+
+(Register paths must follow strict syntax rules:) >md.p
+
+(Valid Forms:) >md.b >md.p
+
+(_) >md.c ( — Register root \29\single component\29\) >md.dli
+(_.x) >md.c ( — Register path \29\two components: ) (["_", "x"]) >md.c (\29\) >md.dli
+(_.x.y.z) >md.c ( — Nested register path \29\components: ) (["_", "x", "y", "z"]) >md.c (\29\) >md.dli
+>md.dul
+
+(Invalid Forms:) >md.b >md.p
+
+(_x) >md.c ( — Missing dot after underscore) >md.dli
+(_temp) >md.c ( — Missing dot after underscore) >md.dli
+(_self) >md.c ( — Missing dot after underscore) >md.dli
+>md.dul
+
+(Validation Logic:) >md.b >md.p
+
+(def _validate_register_path\29\self, components, token\29\:
+    # Check if single component starts with _ but is not exactly "_"
+    if len\29\components\29\ == 1 and components[0].startswith\29\"_"\29\ and components[0] != "_":
+        raise ParseError\29\
+            "Invalid register syntax: '%s'. Register paths must use '_.%s' \29\with dot\29\, not '%s' \29\without dot\29\" % \29\
+                token.value,
+                components[0][1:],  # Suggest correct form
+                token.value
+            \29\,
+            token.line,
+            token.col
+        \29\) (python) >md.code
+
+(Error Messages:) >md.b >md.p
+
+(_temp) (soma) >md.code
+
+(→ ) (ParseError: "Invalid register syntax: '_temp'. Register paths must use '_.temp' \29\with dot\29\, not '_temp' \29\without dot\29\ \29\line 1, col 1\29\") >md.c >md.p
+
+(This validation ensures that register paths are unambiguous and follow the documented convention.) >md.p
+
+(3.4 Block Parsing \29\Eager Evaluation\29\) >md.h2
+
+(Blocks are parsed ) (eagerly) >md.b ( — when the parser encounters a ) ({) >md.c (, it immediately parses all statements inside until the matching ) (}) >md.c (. The block body contains fully parsed AST nodes, not tokens.) >md.t >md.p
+
+(Parsing Algorithm:) >md.b >md.p
+
+(def _parse_block\29\self\29\:
+    self._expect\29\TokenKind.LBRACE\29\
+    body = []
+
+    while not self._check\29\TokenKind.RBRACE\29\:
+        if self._is_at_end\29\\29\:
+            raise ParseError\29\"Unclosed block \29\missing '}'\29\", ...\29\
+        body.append\29\self._parse_statement\29\\29\\29\  # Recursive parsing
+
+    self._expect\29\TokenKind.RBRACE\29\
+    return BlockNode\29\body\29\) (python) >md.code
+
+(Why Eager Parsing?) >md.b >md.p
+
+(Eager parsing means blocks are fully validated at parse time:) >md.p
+
+(Syntax errors detected early) >md.b ( — No need to wait until execution) >md.dli
+(AST is complete) >md.b ( — All code structures are represented in the AST) >md.dli
+(Simpler interpreter) >md.b ( — No need to re-parse blocks during execution) >md.dli
+>md.dul
+
+(Trade-offs:) >md.b >md.p
+
+(Parse time) >md.b ( — Must parse all code upfront \29\but SOMA programs are typically small\29\) >md.dli
+(Memory) >md.b ( — Full AST in memory \29\but SOMA ASTs are compact\29\) >md.dli
+>md.dul
+
+(Example:) >md.b >md.p
+
+({ 1 { 2 { 3 } } }) (soma) >md.code
+
+(Parsing trace:) >md.p
+
+(_parse_block\29\\29\) >md.c ( — Enter outer block) >md.oli
+(_parse_statement\29\\29\) >md.c ( → ) (IntNode\29\1\29\) >md.c >md.oli
+(_parse_statement\29\\29\) >md.c ( → calls ) (_parse_block\29\\29\) >md.c ( — Enter middle block) >md.oli
+(_parse_statement\29\\29\) >md.c ( → ) (IntNode\29\2\29\) >md.c >md.oli
+(_parse_statement\29\\29\) >md.c ( → calls ) (_parse_block\29\\29\) >md.c ( — Enter inner block) >md.oli
+(_parse_statement\29\\29\) >md.c ( → ) (IntNode\29\3\29\) >md.c >md.oli
+(Return from inner block → ) (BlockNode\29\body=[IntNode\29\3\29\]\29\) >md.c >md.oli
+(Return from middle block → ) (BlockNode\29\body=[IntNode\29\2\29\, BlockNode\29\...\29\]\29\) >md.c >md.oli
+(Return from outer block → ) (BlockNode\29\body=[IntNode\29\1\29\, BlockNode\29\...\29\]\29\) >md.c >md.oli
+>md.ol
+
+(The result is a fully populated AST with all nesting preserved.) >md.p
+
+(3.5 Modifier Parsing and Validation) >md.h2
+
+(Modifiers \29\) (>) >md.c ( and ) (!) >md.c (\29\ are parsed by consuming the modifier token and then parsing the target.) >md.t >md.p
+
+(3.5.1 Execute Modifier \29\) (>) >md.c (\29\) >md.t >md.h3
+
+(Valid Targets:) >md.b >md.p
+
+(ValuePath — ) (>print) >md.c (, ) (>a.b.c) >md.c (, ) (>+) >md.c >md.uli
+(BlockNode — ) (>{ ... }) >md.c >md.uli
+>md.ul
+
+(Invalid Targets:) >md.b >md.p
+
+(ReferencePath — ) (>a.) >md.c ( raises error \29\cannot execute a CellRef\29\) >md.uli
+>md.ul
+
+(Parsing:) >md.b >md.p
+
+(def _parse_exec\29\self\29\:
+    self._expect\29\TokenKind.EXEC\29\
+
+    # Check for block target
+    if self._check\29\TokenKind.LBRACE\29\:
+        block = self._parse_block\29\\29\
+        return ExecNode\29\block\29\
+
+    # Must be a path target
+    if self._check\29\TokenKind.PATH\29\:
+        path = self._parse_path\29\\29\
+        # Validate not ReferencePath
+        if isinstance\29\path, ReferencePath\29\:
+            raise ParseError\29\
+                "Cannot execute a reference path \29\path with trailing '.'\29\",
+                ...
+            \29\
+        return ExecNode\29\path\29\
+
+    # No valid target
+    raise ParseError\29\"Expected path or block after '>'", ...\29\) (python) >md.code
+
+(3.5.2 Store Modifier \29\) (!) >md.c (\29\) >md.t >md.h3
+
+(Valid Targets:) >md.b >md.p
+
+(ValuePath — ) (!x) >md.c (, ) (!a.b.c) >md.c >md.uli
+(ReferencePath — ) (!x.) >md.c (, ) (!a.b.) >md.c >md.uli
+>md.ul
+
+(Invalid Targets:) >md.b >md.p
+
+(BlockNode — Lexer already prevents ) (!{...}) >md.c ( \29\raises ) (LexError) >md.c (\29\) >md.uli
+>md.ul
+
+(Parsing:) >md.b >md.p
+
+(def _parse_store\29\self\29\:
+    self._expect\29\TokenKind.STORE\29\
+
+    # Must be a path target
+    if not self._check\29\TokenKind.PATH\29\:
+        raise ParseError\29\"Expected path after '!'", ...\29\
+
+    path = self._parse_path\29\\29\
+    return StoreNode\29\path\29\  # Can be ValuePath or ReferencePath) (python) >md.code
+
+(Semantic Difference:) >md.b >md.p
+
+(!x      \29\ ValuePath — Store value to Cell at 'x' \29\modifies Cell content\29\
+!x.     \29\ ReferencePath — Replace entire Cell at 'x' \29\structural mutation\29\) (soma) >md.code
+
+(The trailing dot fundamentally changes the semantics of the store operation.) >md.p
+
+(3.6 Error Handling and Reporting) >md.h2
+
+(The parser provides detailed error messages with source location information.) >md.p
+
+(3.6.1 ParseError Exception) >md.h3
+
+(class ParseError\29\Exception\29\:
+    def __init__\29\self, message, line=None, col=None\29\:
+        # Formats as: "message \29\line X, col Y\29\"
+        self.message = message
+        self.line = line
+        self.col = col) (python) >md.code
+
+(3.6.2 Common Error Scenarios) >md.h3
+
+(Unclosed Block:) >md.b >md.p
+
+({ 1 2 3) (soma) >md.code
+
+(→ ) (ParseError: "Unclosed block \29\missing '}'\29\ \29\line 1, col 8\29\") >md.c >md.p
+
+(Unexpected Closing Brace:) >md.b >md.p
+
+(}) (soma) >md.code
+
+(→ ) (ParseError: "Unexpected '}' without matching '{' \29\line 1, col 1\29\") >md.c >md.p
+
+(Invalid Register Syntax:) >md.b >md.p
+
+(_temp) (soma) >md.code
+
+(→ ) (ParseError: "Invalid register syntax: '_temp'. Register paths must use '_.temp' \29\with dot\29\, not '_temp' \29\without dot\29\ \29\line 1, col 1\29\") >md.c >md.p
+
+(Cannot Execute Reference:) >md.b >md.p
+
+(>data.) (soma) >md.code
+
+(→ ) (ParseError: "Cannot execute a reference path \29\path with trailing '.'\29\ \29\line 1, col 1\29\") >md.c >md.p
+
+(Empty Path Component:) >md.b >md.p
+
+(a..b) (soma) >md.code
+
+(→ ) (ParseError: "Empty path component in 'a..b' \29\line 1, col 1\29\") >md.c >md.p
+
+(3.7 Complete Parsing Examples) >md.h2
+
+(3.7.1 Simple Arithmetic) >md.h3
+
+(Source:) >md.b >md.p
+
+(1 2 >+) (soma) >md.code
+
+(Token Stream:) >md.b >md.p
+
+(Token\29\INT, "1", 1, 1\29\
+Token\29\INT, "2", 1, 3\29\
+Token\29\EXEC, ">", 1, 5\29\
+Token\29\PATH, "+", 1, 6\29\
+Token\29\EOF, "", 1, 7\29\) Nil >md.code
+
+(AST:) >md.b >md.p
+
+(Program\29\statements=[
+    IntNode\29\value=1\29\,
+    IntNode\29\value=2\29\,
+    ExecNode\29\target=ValuePath\29\components=["+"]\29\\29\
+]\29\) (python) >md.code
+
+(3.7.2 Block Storage) >md.h3
+
+(Source:) >md.p
+
+({ >dup >* } !square) (soma) >md.code
+
+(Token Stream:) >md.p
+
+(Token\28\LBRACE, "{", 1, 1\29\
+Token\28\EXEC, ">", 1, 3\29\
+Token\28\PATH, "dup", 1, 4\29\
+Token\28\EXEC, ">", 1, 8\29\
+Token\28\PATH, "*", 1, 9\29\
+Token\28\RBRACE, "}", 1, 11\29\
+Token\28\STORE, "!", 1, 13\29\
+Token\28\PATH, "square", 1, 14\29\
+Token\28\EOF, "", 1, 20\29\) Nil >md.code
+
+(AST:) >md.p
+
+(Program\28\statements=[
+    BlockNode\28\body=[
+        ExecNode\28\target=ValuePath\28\components=["dup"]\29\\29\,
+        ExecNode\28\target=ValuePath\28\components=["*"]\29\\29\
+    ]\29\,
+    StoreNode\28\target=ValuePath\28\components=["square"]\29\\29\
+]\29\) (python) >md.code
+
+(3.7.3 Register Operations) >md.h3
+
+(Source:) >md.p
+
+(5 !_.x _.x _.x >* !_.result) (soma) >md.code
+
+(Token Stream:) >md.p
+
+(Token\28\INT, "5", 1, 1\29\
+Token\28\STORE, "!", 1, 3\29\
+Token\28\PATH, "_.x", 1, 4\29\
+Token\28\PATH, "_.x", 1, 8\29\
+Token\28\PATH, "_.x", 1, 12\29\
+Token\28\EXEC, ">", 1, 16\29\
+Token\28\PATH, "*", 1, 17\29\
+Token\28\STORE, "!", 1, 19\29\
+Token\28\PATH, "_.result", 1, 20\29\
+Token\28\EOF, "", 1, 29\29\) Nil >md.code
+
+(AST:) >md.p
+
+(Program\28\statements=[
+    IntNode\28\value=5\29\,
+    StoreNode\28\target=ValuePath\28\components=["_", "x"]\29\\29\,
+    ValuePath\28\components=["_", "x"]\29\,
+    ValuePath\28\components=["_", "x"]\29\,
+    ExecNode\28\target=ValuePath\28\components=["*"]\29\\29\,
+    StoreNode\28\target=ValuePath\28\components=["_", "result"]\29\\29\
+]\29\) (python) >md.code
+
+(Path Parsing Details:) >md.p
+
+("_.x") >md.c ( → Split by ) (".") >md.c ( → ) (["_", "x"]) >md.c ( → Validate register syntax → Valid \28\two components, first is ) ("_") >md.c (\29\) >md.t >md.p
+
+("_.result") >md.c ( → Split by ) (".") >md.c ( → ) (["_", "result"]) >md.c ( → Valid) >md.t >md.p
+
+(3.7.4 CellRef Operations) >md.h3
+
+(Source:) >md.p
+
+(data. !ref 42 !ref) (soma) >md.code
+
+(Token Stream:) >md.p
+
+(Token\28\PATH, "data.", 1, 1\29\
+Token\28\STORE, "!", 1, 7\29\
+Token\28\PATH, "ref", 1, 8\29\
+Token\28\INT, "42", 1, 12\29\
+Token\28\STORE, "!", 1, 15\29\
+Token\28\PATH, "ref", 1, 16\29\
+Token\28\EOF, "", 1, 19\29\) Nil >md.code
+
+(AST:) >md.p
+
+(Program\28\statements=[
+    ReferencePath\28\components=["data"]\29\,      # Read CellRef for 'data'
+    StoreNode\28\target=ValuePath\28\["ref"]\29\\29\,    # Store CellRef to 'ref' \28\value store\29\
+    IntNode\28\value=42\29\,
+    StoreNode\28\target=ValuePath\28\["ref"]\29\\29\     # Store 42 to 'ref' \28\value store\29\
+]\29\) (python) >md.code
+
+(Note:) >md.b ( Both stores use ValuePath because ) ("ref") >md.c ( has no trailing dot. The first store receives a CellRef value \28\from ) (data.) >md.c (\29\, the second receives an integer.) >md.t >md.p
+
+(3.7.5 Nested Blocks with Execute) >md.h3
+
+(Source:) >md.p
+
+(>{ { 1 2 >+ } >^ }) (soma) >md.code
+
+(Token Stream:) >md.p
+
+(Token\28\EXEC, ">", 1, 1\29\
+Token\28\LBRACE, "{", 1, 2\29\
+Token\28\LBRACE, "{", 1, 4\29\
+Token\28\INT, "1", 1, 6\29\
+Token\28\INT, "2", 1, 8\29\
+Token\28\EXEC, ">", 1, 10\29\
+Token\28\PATH, "+", 1, 11\29\
+Token\28\RBRACE, "}", 1, 13\29\
+Token\28\EXEC, ">", 1, 15\29\
+Token\28\PATH, "^", 1, 16\29\
+Token\28\RBRACE, "}", 1, 18\29\
+Token\28\EOF, "", 1, 19\29\) Nil >md.code
+
+(AST:) >md.p
+
+(ExecNode\28\target=BlockNode\28\body=[
+    BlockNode\28\body=[
+        IntNode\28\value=1\29\,
+        IntNode\28\value=2\29\,
+        ExecNode\28\target=ValuePath\28\components=["+"]\29\\29\
+    ]\29\,
+    ExecNode\28\target=ValuePath\28\components=["^"]\29\\29\
+]\29\\29\) (python) >md.code
+
+(Parsing Trace:) >md.p
+
+(_parse_exec\28\\29\) >md.c ( — Consumes EXEC) >md.oli
+(_parse_block\28\\29\) >md.c ( — Outer block) >md.oli
+(_parse_statement\28\\29\ → _parse_block\28\\29\) >md.c ( — Inner block) >md.oli
+(Parse ) (1) >md.c (, ) (2) >md.c (, ) (>+) >md.c ( inside inner block) >md.oli
+(Return inner ) (BlockNode) >md.c >md.oli
+(_parse_statement\28\\29\ → _parse_exec\28\\29\ → ExecNode\28\ValuePath\28\["^"]\29\\29\) >md.c >md.oli
+(Return outer ) (BlockNode) >md.c >md.oli
+(Return ) (ExecNode\28\target=<outer block>\29\) >md.c >md.oli
+>md.ol
+
+(3.8 Lexer/Parser Boundary) >md.h2
+
+(Understanding the division of responsibilities between lexer and parser is crucial:) >md.p
+
+(Lexer Responsibilities) >md.h3
+
+(Character-level tokenization) >md.b ( — Recognize token boundaries) >md.oli
+(String decoding) >md.b ( — Decode ) (\5C\HEX\5C\) >md.c ( escapes in strings) >md.oli
+(Comment stripping) >md.b ( — Remove ) (\29\) >md.c ( comments completely) >md.oli
+(Whitespace handling) >md.b ( — Skip whitespace, track line/col) >md.oli
+(Basic validation) >md.b ( — Reject illegal numeric forms \28\e.g., ) (23a) >md.c (\29\) >md.oli
+(Modifier detection) >md.b ( — Distinguish ) (>foo) >md.c ( \28\EXEC + PATH\29\ from ) (> foo) >md.c ( \28\PATH + PATH\29\) >md.oli
+>md.ol
+
+(What lexer does NOT do:) >md.b >md.p
+
+(Split paths into components \28\produces single PATH token\29\)
+(Validate register syntax \28\accepts both _x and _.x\29\)
+(Distinguish ValuePath vs ReferencePath \28\both are PATH tokens\29\)
+(Parse blocks \28\just produces LBRACE/RBRACE tokens\29\)
+(Enforce semantic rules)
+>md.ul
+
+(Parser Responsibilities) >md.h3
+
+(AST construction) >md.b ( — Build typed node tree) >md.oli
+(Path splitting) >md.b ( — Split ) ("a.b.c") >md.c ( into ) (["a", "b", "c"]) >md.c >md.oli
+(Trailing dot detection) >md.b ( — Distinguish ValuePath vs ReferencePath) >md.oli
+(Register validation) >md.b ( — Reject _x, accept _.x) >md.oli
+(Modifier target validation) >md.b ( — Ensure ) (>) >md.c ( targets ValuePath or Block, not ReferencePath) >md.oli
+(Block nesting) >md.b ( — Recursively parse block contents) >md.oli
+(Semantic validation) >md.b ( — Enforce rules beyond syntax) >md.oli
+>md.ol
+
+(Data Flow) >md.h3
+
+(Source Code
+    ↓
+┌─────────────────┐
+│     LEXER       │
+│  \28\lexer.py\29\     │
+├─────────────────┤
+│ • Tokenization  │
+│ • String decode │
+│ • Comment strip │
+│ • Whitespace    │
+└─────────────────┘
+    ↓
+Token Stream \28\List[Token]\29\
+    ↓
+┌─────────────────┐
+│    PARSER       │
+│  \28\parser.py\29\    │
+├─────────────────┤
+│ • AST building  │
+│ • Path parsing  │
+│ • Validation    │
+│ • Type checking │
+└─────────────────┘
+    ↓
+Abstract Syntax Tree \28\Program\29\
+    ↓
+Dictionary Representation \28\for API\29\) Nil >md.code
+
+(Example: Register Path Validation) >md.h3
+
+(Source:) >md.b ( ) (_temp) >md.c >md.t >md.p
+
+(Lexer Output:) >md.p
+
+(Token\28\PATH, "_temp", 1, 1\29\  # Lexer accepts this as valid PATH) (python) >md.code
+
+(Parser Processing:) >md.p
+
+(# _parse_path\28\\29\ is called
+token = Token\28\PATH, "_temp", 1, 1\29\
+components = "_temp".split\28\"."\29\  # ["_temp"]
+
+# _validate_register_path\28\\29\ is called
+# components[0] is "_temp"
+# Starts with "_" but is not exactly "_"
+# len\28\components\29\ == 1
+
+# RAISE ParseError:
+# "Invalid register syntax: '_temp'.
+#  Register paths must use '_.temp' \28\with dot\29\, not '_temp' \28\without dot\29\
+#  \28\line 1, col 1\29\") (python) >md.code
+
+(The lexer produces a valid token, but the parser rejects it semantically.) >md.p
+
+(3.9 Parser Implementation Notes) >md.h2
+
+(3.9.1 Helper Methods) >md.h3
+
+(The parser uses standard recursive descent helper methods:) >md.p
+
+(_peek\28\\29\) >md.c (Look at current token without consuming:) >md.dli
+>md.dul
+
+(def _peek\28\self\29\:
+    return self.tokens[self.current]) (python) >md.code
+
+(_advance\28\\29\) >md.c (Consume current token and move to next:) >md.dli
+>md.dul
+
+(def _advance\28\self\29\:
+    token = self.tokens[self.current]
+    if not self._is_at_end\28\\29\:
+        self.current += 1
+    return token) (python) >md.code
+
+(_check\28\kind\29\) >md.c (Test if current token matches kind:) >md.dli
+>md.dul
+
+(def _check\28\self, kind\29\:
+    if self._is_at_end\28\\29\:
+        return kind == TokenKind.EOF
+    return self._peek\28\\29\.kind == kind) (python) >md.code
+
+(_expect\28\kind\29\) >md.c (Consume token of expected kind or raise error:) >md.dli
+>md.dul
+
+(def _expect\28\self, kind\29\:
+    if not self._check\28\kind\29\:
+        current = self._peek\28\\29\
+        raise ParseError\28\
+            "Expected %s but found %s" % \28\kind.value, current.kind.value\29\,
+            current.line,
+            current.col
+        \29\
+    return self._advance\28\\29\) (python) >md.code
+
+(_is_at_end\28\\29\) >md.c (Check if we've reached EOF:) >md.dli
+>md.dul
+
+(def _is_at_end\28\self\29\:
+    return self._peek\28\\29\.kind == TokenKind.EOF) (python) >md.code
+
+(3.9.2 Statement Dispatching) >md.h3
+
+(The _parse_statement\28\\29\ method dispatches to appropriate parsers based on the current token type.) >md.p
+
+(3.9.3 AST to Dictionary Conversion) >md.h3
+
+(The public API returns dictionaries, not Python objects, for easier serialization:) >md.p
+
+(def _ast_to_dict\28\node\29\:
+    if isinstance\28\node, Program\29\:
+        return {
+            "kind": "Program",
+            "body": [_ast_to_dict\28\stmt\29\ for stmt in node.statements],
+            "location": {"line": 1, "column": 1, "length": 0}
+        }
+    elif isinstance\28\node, IntNode\29\:
+        return {
+            "kind": "IntNode",
+            "value": node.value,
+            "location": {"line": 1, "column": 1, "length": 1}
+        }
+    # ... etc for all node types) (python) >md.code
+
+(This conversion allows the AST to be easily inspected, serialized to JSON, or consumed by other tools.) >md.p
+
+(3.10 Summary: Lexer and Parser Together) >md.h2
+
+(The SOMA lexer and parser work together to transform source code into a validated AST:) >md.p
+
+(Lexer \28\lexer.py\29\:) >md.b >md.p
+
+(Scans character by character)
+(Recognizes token boundaries)
+(Decodes string escapes)
+(Strips comments)
+(Produces flat token stream)
+(Reports lexical errors \28\invalid syntax at character level\29\)
+>md.ul
+
+(Parser \28\parser.py\29\:) >md.b >md.p
+
+(Consumes token stream)
+(Builds hierarchical AST)
+(Splits paths into components)
+(Validates semantic rules \28\register syntax, modifier targets\29\)
+(Eagerly parses blocks)
+(Reports parse errors \28\invalid syntax at token/structure level\29\)
+>md.ul
+
+(Design Philosophy:) >md.b >md.p
+
+(Separation of concerns) >md.b ( — Lexer handles characters, parser handles tokens) >md.dli
+(Eager validation) >md.b ( — Errors caught at parse time, not runtime) >md.dli
+(Simple and deterministic) >md.b ( — No ambiguity, no backtracking) >md.dli
+(Helpful errors) >md.b ( — Clear messages with source locations) >md.dli
+(Complete AST) >md.b ( — All code structures represented in tree) >md.dli
+>md.dol
+
+(When to use each:) >md.b >md.p
+
+(Lexer alone) >md.b ( — If you only need tokens \28\e.g., syntax highlighting\29\) >md.dli
+(Parser) >md.b ( — For complete AST \28\e.g., interpretation, analysis, transformation\29\) >md.dli
+>md.dul
+
+(Example workflow:) >md.b >md.p
+
+(from soma.parser import parse
+
+source = """
+{ 0 !_.counter
+  _.counter 10 ><
+  { _.counter 1 >+ !_.counter >block }
+  Nil
+  >choose >^
+}
+"""
+
+# Parse source → AST
+ast = parse\28\source\29\
+
+# ast["kind"] == "Program"
+# ast["body"][0]["kind"] == "BlockNode"
+# ast["body"][0]["body"][0]["kind"] == "IntNode"
+# ... etc) (python) >md.code
+
+(The result is a complete, validated AST ready for interpretation or further analysis.) >md.p
+
+>md.print

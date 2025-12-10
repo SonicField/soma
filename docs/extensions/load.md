@@ -3,26 +3,32 @@
 **Pure SOMA File Loading System**
 
 **Implementation:** Python Reference Implementation
+
 **Status:** Complete (v1.0)
+
 **Dependencies:** Python FFI Extension (`>use.python.*`)
 
 ## Overview
 
-The `load` extension provides a file loading system for SOMA programs, enabling modular code organization across multiple files. It implements path searching (current directory → `$SOMA_LIB`) entirely in pure SOMA using the Python FFI primitives.
+The `load` extension provides a file loading system for SOMA programs, enabling modular code organization across multiple files. It implements path searching (current directory -> `$SOMA_LIB`) entirely in pure SOMA using the Python FFI primitives.
 
 **Key Innovation:** This extension adds **zero Python builtins**. All logic is implemented in SOMA code (`soma/extensions/load.soma`) using only the existing `>use.python.call` and `>use.python.load` primitives.
 
 ## Problem & Solution
 
 ### Problem
+
 SOMA programs need to:
+
 - Split code across multiple files for organization
 - Share common libraries between programs
 - Search multiple directories for dependencies
 - Provide clear error messages when files aren't found
 
 ### Solution
+
 The `load` extension provides `>load` which:
+
 1. Searches current directory first
 2. Falls back to `$SOMA_LIB` environment variable
 3. Loads and executes SOMA code in current context
@@ -63,7 +69,7 @@ export SOMA_LIB=/home/user/soma_libraries
 ### Directory Search Order
 
 1. **Current working directory** (checked first)
-2. **`$SOMA_LIB`** (checked if not found in pwd)
+2. `$SOMA_LIB` (checked if not found in pwd)
 3. **Error** if not found in either location
 
 This ensures local files override library versions.
@@ -73,6 +79,7 @@ This ensures local files override library versions.
 ### Example 1: Simple Library
 
 **my_math.soma:**
+
 ```soma
 ) Define some math helpers
 { >dup >* } !square
@@ -80,6 +87,7 @@ This ensures local files override library versions.
 ```
 
 **main.soma:**
+
 ```soma
 (python) >use
 (load) >use
@@ -93,12 +101,14 @@ This ensures local files override library versions.
 ### Example 2: Library with Dependencies
 
 **constants.soma:**
+
 ```soma
 3.14159 !math.pi
 2.71828 !math.e
 ```
 
 **geometry.soma:**
+
 ```soma
 (python) >use
 (load) >use
@@ -111,6 +121,7 @@ This ensures local files override library versions.
 ```
 
 **app.soma:**
+
 ```soma
 (python) >use
 (load) >use
@@ -123,16 +134,18 @@ This ensures local files override library versions.
 ### Example 3: $SOMA_LIB Usage
 
 Directory structure:
+
 ```
 /home/user/soma_libraries/
-  ├── string_utils.soma
-  └── list_utils.soma
+  |- string_utils.soma
+  |- list_utils.soma
 
 /home/user/my_project/
-  └── app.soma
+  |- app.soma
 ```
 
 **app.soma:**
+
 ```soma
 (python) >use
 (load) >use
@@ -152,31 +165,32 @@ Directory structure:
 The `load` extension demonstrates SOMA's **layered extension model**:
 
 ```
-┌─────────────────────────────────────┐
-│   >load (Pure SOMA)                 │
-│   - Path searching logic            │
-│   - Error handling                  │
-│   - File existence checking         │
-└─────────────────────────────────────┘
-              ↓ uses
-┌─────────────────────────────────────┐
-│   Python FFI Primitives             │
-│   - >use.python.call                │
-│   - >use.python.load                │
-└─────────────────────────────────────┘
-              ↓ wraps
-┌─────────────────────────────────────┐
-│   Python Standard Library           │
-│   - os.getcwd()                     │
-│   - os.path.join()                  │
-│   - os.path.exists()                │
-│   - os.getenv()                     │
-└─────────────────────────────────────┘
++-------------------------------------+
+|   >load (Pure SOMA)                 |
+|   - Path searching logic            |
+|   - Error handling                  |
+|   - File existence checking         |
++-------------------------------------+
+              | uses
++-------------------------------------+
+|   Python FFI Primitives             |
+|   - >use.python.call                |
+|   - >use.python.load                |
++-------------------------------------+
+              | wraps
++-------------------------------------+
+|   Python Standard Library           |
+|   - os.getcwd()                     |
+|   - os.path.join()                  |
+|   - os.path.exists()                |
+|   - os.getenv()                     |
++-------------------------------------+
 ```
 
 ### Python Extension Module
 
 **soma/extensions/load.py:**
+
 ```python
 """Pure SOMA Load Extension"""
 
@@ -193,6 +207,7 @@ def get_soma_setup():
 ```
 
 **Key Points:**
+
 - `register()` is empty - no Python builtins added
 - `get_soma_setup()` loads SOMA code from `load.soma`
 - Uses `__file__` to find the `.soma` file in same directory
@@ -261,16 +276,16 @@ The implementation is split into focused, composable functions.
 
 The extension provides clear error messages:
 
-| Situation | Error Message |
-|-----------|---------------|
-| File not in pwd, `$SOMA_LIB` not set | `Error: File not found in current directory and SOMA_LIB not set` |
-| File not in pwd or `$SOMA_LIB` | `Error: File not found in pwd or $SOMA_LIB` |
-| Cannot get current directory | `Error: Could not get current working directory` |
-| File not in pwd (no `$SOMA_LIB` check) | `Error: File not found in current directory` |
+| Situation                              | Error Message                                                   |
+|----------------------------------------|-----------------------------------------------------------------|
+| File not in pwd, `$SOMA_LIB` not set   | Error: File not found in current directory and SOMA_LIB not set |
+| File not in pwd or `$SOMA_LIB`         | Error: File not found in pwd or $SOMA_LIB                       |
+| Cannot get current directory           | Error: Could not get current working directory                  |
+| File not in pwd (no `$SOMA_LIB` check) | Error: File not found in current directory                      |
 
 ## Best Practices
 
-### ✅ Do
+### Do
 
 ```soma
 ) Load at start of file
@@ -282,7 +297,7 @@ The extension provides clear error messages:
 utils.function
 ```
 
-### ✅ Do
+### Do
 
 ```soma
 ) Use descriptive filenames
@@ -290,21 +305,21 @@ utils.function
 (database_helpers.soma) >load
 ```
 
-### ✅ Do
+### Do
 
-```soma
-) Set SOMA_LIB for shared libraries
+```bash
+# Set SOMA_LIB for shared libraries
 export SOMA_LIB=/usr/local/lib/soma
 ```
 
-### ❌ Don't
+### Don't
 
 ```soma
 ) Don't forget to load dependencies
 math.pi  ) Error: undefined if constants.soma not loaded
 ```
 
-### ❌ Don't
+### Don't
 
 ```soma
 ) Don't rely on load order for local variables
@@ -333,6 +348,7 @@ The implementation uses Register variables (not Store) for all temporary state:
 ```
 
 **Benefits:**
+
 - Doesn't pollute global Store namespace with temporary variables
 - Demonstrates proper context-passing idiom
 - Ensures library code is well-encapsulated
@@ -355,14 +371,15 @@ This makes the two-step "choose then execute" process explicit and idiomatic for
 
 ### Public Functions
 
-| Function | Input | Output | Description |
-|----------|-------|--------|-------------|
-| `>load` | `[filename(string), ...]` | `[...]` | Load and execute SOMA file with path searching |
-| `>load.checkpath` | `[filename(string), directory(string), ...]` | `[fullpath, exists(bool), ...]` | Check if file exists in directory (helper) |
+| Function          | Input                                        | Output                          | Description                                    |
+|-------------------|----------------------------------------------|---------------------------------|------------------------------------------------|
+| `>load`           | `[filename(string), ...]`                    | `[...]`                         | Load and execute SOMA file with path searching |
+| `>load.checkpath` | `[filename(string), directory(string), ...]` | `[fullpath, exists(bool), ...]` | Check if file exists in directory (helper)     |
 
 ### Dependencies
 
 Requires Python FFI extension with:
+
 - `>use.python.call` - Call Python functions
 - `>use.python.load` - Load and execute SOMA files
 
@@ -370,11 +387,11 @@ Requires Python FFI extension with:
 
 The extension includes comprehensive tests in `tests/test_load_extension.py`:
 
-- ✅ Loading from current directory
-- ✅ Loading from `$SOMA_LIB`
-- ✅ Current directory takes precedence over `$SOMA_LIB`
-- ✅ Loaded code executes in current context
-- ✅ Error messages for missing files
+1. Loading from current directory
+2. Loading from `$SOMA_LIB`
+3. Current directory takes precedence over `$SOMA_LIB`
+4. Loaded code executes in current context
+5. Error messages for missing files
 
 All 305 tests in the SOMA test suite pass.
 
@@ -390,12 +407,12 @@ Potential additions:
 
 ## Comparison to Other Languages
 
-| Language | Mechanism | SOMA Equivalent |
-|----------|-----------|-----------------|
-| Python | `import module` | `(module.soma) >load` |
-| JavaScript | `require('./file.js')` | `(file.soma) >load` |
-| C | `#include "file.h"` | `(file.soma) >load` |
-| Lua | `require "module"` | `(module.soma) >load` |
+| Language   | Mechanism              | SOMA Equivalent       |
+|------------|------------------------|-----------------------|
+| Python     | `import module`        | `(module.soma) >load` |
+| JavaScript | `require('./file.js')` | `(file.soma) >load`   |
+| C          | `#include "file.h"`    | `(file.soma) >load`   |
+| Lua        | `require "module"`     | `(module.soma) >load` |
 
 **Key Difference:** SOMA's `>load` executes in the same context (shared Store/Register), similar to C's `#include`, rather than creating isolated namespaces like Python's `import`.
 
@@ -412,4 +429,6 @@ This exemplifies SOMA's philosophy: **Minimal primitives, maximal expressiveness
 
 ---
 
-*Category: Extension | Version: 1.0 | Dependencies: Python FFI | Date: 26 Nov 2025*
+_Category: Extension | Version: 1.0 | Dependencies: Python FFI | Date: 26 Nov 2025_
+
+

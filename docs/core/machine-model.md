@@ -1,6 +1,7 @@
-# 03 — Machine Model
+# 03 -- Machine Model
 
 **SOMA v1.0 Language Specification**
+
 **State-Oriented Machine Algebra**
 
 ---
@@ -9,9 +10,9 @@
 
 SOMA is not a calculus. It is a **machine algebra** defined entirely by observable state transformations. This chapter specifies the three fundamental state structures that comprise the SOMA execution model:
 
-1. **The Accumulator List (AL)** — a LIFO value conduit for dynamic state
-2. **The Store** — a persistent hierarchical graph of identity-bearing Cells
-3. **The Register** — a block-local hierarchical graph of identity-bearing Cells
+1. **The Accumulator List (AL)** -- a LIFO value conduit for dynamic state
+2. **The Store** -- a persistent hierarchical graph of identity-bearing Cells
+3. **The Register** -- a block-local hierarchical graph of identity-bearing Cells
 
 Together with Blocks (executable state transformers), these structures define the complete operational semantics of SOMA.
 
@@ -46,16 +47,16 @@ Example:
 1 2 >+
 ```
 
-| Step | Token | AL State | Description |
-|------|-------|----------|-------------|
-| 0 | (start) | `[]` | Empty AL |
-| 1 | `1` | `[1]` | Push literal 1 |
-| 2 | `2` | `[2, 1]` | Push literal 2 (top is 2) |
-| 3 | `>+` | `[3]` | Execute block at Store path "+", pops 2 and 1, pushes sum |
+| Step | Token   | AL State | Description                                               |
+|------|---------|----------|-----------------------------------------------------------|
+| 0    | (start) | ``       | Empty AL                                                  |
+| 1    | `1`     | `[1]`    | Push literal 1                                            |
+| 2    | `2`     | `[2, 1]` | Push literal 2 (top is 2)                                 |
+| 3    | `>+`    | `[3]`    | Execute block at Store path "+", pops 2 and 1, pushes sum |
 
 The AL is updated **in-place**. No copying or implicit duplication occurs unless requested by a built-in (e.g. `>dup`).
 
-**Note on Execution Prefix (`>`):** The `>` prefix reads the value at a path and executes it. This works with both Store paths (e.g. `>+`, `>print`) and Register paths (e.g. `>_.action`). See Section 5.4 for details.
+Note on Execution Prefix (`>`**):** The `>` prefix reads the value at a path and executes it. This works with both Store paths (e.g. `>+`, `>print`) and Register paths (e.g. `>_.action`). See Section 5.4 for details.
 
 ### 1.3 AL Ordering Convention
 
@@ -90,18 +91,18 @@ Example:
 5 square >chain
 ```
 
-| Step | Token | AL State | Description |
-|------|-------|----------|-------------|
-| 0 | (start) | `[]` | Empty |
-| 1 | Block literal | `[{>dup >*}]` | Push block |
-| 2 | `!square` | `[]` | Pop block, store at `square` |
-| 3 | `5` | `[5]` | Push 5 |
-| 4 | `square` | `[{>dup >*}, 5]` | Push block from Store |
-| 5 | `>chain` | (enters block) | Pop block and execute it |
-| 5.1 | `>dup` | `[5, 5]` | Duplicate top |
-| 5.2 | `>*` | `[25]` | Multiply |
-| 5.3 | (block ends) | `[25]` | Returns to chain, AL has Nil, stops |
-| 6 | (end) | `[25]` | Final AL state |
+| Step                                       | Token         | AL State         | Description                         |
+|--------------------------------------------|---------------|------------------|-------------------------------------|
+| 0                                          | (start)       | ``               | Empty                               |
+| 1                                          | Block literal | `[{>dup >*}]`    | Push block                          |
+| 2`!square``[]`Pop block, store at `square` |               |                  |                                     |
+| 3                                          | `5`           | `[5]`            | Push 5                              |
+| 4                                          | `square`      | `[{>dup >*}, 5]` | Push block from Store               |
+| 5                                          | `>chain`      | (enters block)   | Pop block and execute it            |
+| 5.1                                        | `>dup`        | `[5, 5]`         | Duplicate top                       |
+| 5.2                                        | `>*`          | `[25]`           | Multiply                            |
+| 5.3                                        | (block ends)  | `[25]`           | Returns to chain, AL has Nil, stops |
+| 6                                          | (end)         | `[25]`           | Final AL state                      |
 
 The block consumed 1 value (implicitly) and produced 1 value.
 
@@ -115,9 +116,9 @@ Example: Conditional execution
 True { "Yes" >print } { "No" >print } >choose
 ```
 
-| Before `>choose` | AL State |
-|------------------|----------|
-| Top → Bottom | `[{...No...}, {...Yes...}, True]` |
+| Before        | `>choose`                         |  | AL State |
+|---------------|-----------------------------------|--|----------|
+| Top -> Bottom | `[{...No...}, {...Yes...}, True]` |  |          |
 
 Execution:
 
@@ -131,19 +132,19 @@ After execution, AL contains only the results of the chosen Block.
 
 ### 1.7 Example: AL Transformations
 
-```soma
-10 20 30 >swap >drop >dup
+```10 20 30 >swap >drop >dup
+soma
 ```
 
-| Step | Token | AL State | Description |
-|------|-------|----------|-------------|
-| 0 | (start) | `[]` | Empty |
-| 1 | `10` | `[10]` | Push 10 |
-| 2 | `20` | `[20, 10]` | Push 20 |
-| 3 | `30` | `[30, 20, 10]` | Push 30 |
-| 4 | `>swap` | `[20, 30, 10]` | Swap top 2 |
-| 5 | `>drop` | `[30, 10]` | Drop top |
-| 6 | `>dup` | `[30, 30, 10]` | Duplicate top |
+| Step | Token     | AL State       | Description   |
+|------|-----------|----------------|---------------|
+| 0    | `(start)` | `[]`           | Empty         |
+| 1    | `10`      | `[10]`         | Push 10       |
+| 2    | `20`      | `[20, 10]`     | Push 20       |
+| 3    | `30`      | `[30, 20, 10]` | Push 30       |
+| 4    | `>swap`   | `[20, 30, 10]` | Swap top 2    |
+| 5    | `>drop`   | `[30, 10]`     | Drop top      |
+| 6    | `>dup`    | `[30, 30, 10]` | Duplicate top |
 
 ---
 
@@ -169,17 +170,17 @@ Each named location in the Store refers to a **Cell**. A Cell has two **orthogon
 
 **Cell Structure:**
 
-```
-        ┌─────────────────┐
-        │      Cell       │
-        ├─────────────────┤
-        │ value: 42       │  ← Payload (any CellValue)
-        ├─────────────────┤
-        │ subpaths: {     │  ← Children (independent of value)
-        │   "x": Cell,    │
-        │   "y": Cell     │
-        │ }               │
-        └─────────────────┘
+```        +---------------------+
+        |      Cell       |
+        +---------------------+
+        | value: 42       |  <- Payload (any CellValue)
+        +---------------------+
+        | subpaths: {     |  <- Children (independent of value)
+        |   "x": Cell,    |
+        |   "y": Cell     |
+        | }               |
+        +---------------------+
+Nil
 ```
 
 **Key Properties:**
@@ -191,14 +192,15 @@ Each named location in the Store refers to a **Cell**. A Cell has two **orthogon
 
 **Example: Value and Subpaths Coexist**
 
-```soma
-Nil !a.b        ; Set a.b's VALUE to Nil
+```Nil !a.b        ; Set a.b's VALUE to Nil
 23 !a.b.c       ; Create child 'c' in a.b's SUBPATHS
 a.b             ; Returns Nil (reads VALUE)
 a.b.c           ; Returns 23 (traverses SUBPATHS to c)
+soma
 ```
 
 **Cell `a.b` now has:**
+
 - Value: `Nil`
 - Subpaths: `{"c": Cell(value: 23, subpaths: {})}`
 
@@ -219,7 +221,7 @@ node            ; Returns 42 (reads VALUE only, ignores subpaths)
 
 ```soma
 42 !a.b.c       ; a.b.c has value 42
-a.b.c           ; Traverses a → b → c through SUBPATHS, returns c's VALUE (42)
+a.b.c           ; Traverses a -> b -> c through SUBPATHS, returns c's VALUE (42)
 ```
 
 Path resolution walks through the **subpaths dictionary**, completely ignoring the values of intermediate Cells.
@@ -273,53 +275,61 @@ list.next. !list.next        ; CellRef to next node
 
 **Key Principle:**
 
-> Setting or reading a Cell's **value** never affects its **subpaths**.
-> Creating or removing **subpaths** never affects the **value**.
+> Setting or reading a Cell's 
+> **value**
+>  never affects its 
+> **subpaths**
+> .
+> Creating or removing 
+> **subpaths**
+>  never affects the 
+> **value**
+> .
 
-### 2.3 Nil vs Void — The Semantic Distinction
+### 2.3 Nil vs Void - The Semantic Distinction
 
 SOMA distinguishes between "never set" and "explicitly set to empty":
 
-| Concept | Meaning | Can WRITE? | Can READ? |
-|---------|---------|------------|-----------|
-| **Void** | Cell exists for structure but has **never been set** | **Yes** (legal) | **Yes** (returns Void if Cell exists, RuntimeError if path undefined) |
-| **Nil** | Cell has been **explicitly set to empty** | **Yes** (legal) | **Yes** (returns Nil) |
+| Concept                                                                                                                                          | Meaning | Can WRITE? | Can READ? |
+|--------------------------------------------------------------------------------------------------------------------------------------------------|---------|------------|-----------|
+| **Void**Cell exists for structure but has **never been set****Yes** (legal)**Yes** (returns Void if Cell exists, RuntimeError if path undefined) |         |            |           |
+| **Nil**Cell has been **explicitly set to empty****Yes** (legal)**Yes** (returns Nil)                                                             |         |            |           |
 
 **The Key Insight:** Void represents "this was never initialized" while Nil represents "this was set to nothing."
 
 **CRITICAL RULES:**
 
-```
-Void !path     → Legal (stores Void as payload)
-Void !path.    → Legal (deletes Cell structurally)
-Nil !path      → Legal (stores Nil as payload)
+```Void !path     -> Legal (stores Void as payload)
+Void !path.    -> Legal (deletes Cell structurally)
+Nil !path      -> Legal (stores Nil as payload)
 
-undefined.path → RuntimeError (path doesn't exist - STRICT semantics)
+undefined.path -> RuntimeError (path doesn't exist - STRICT semantics)
+Nil
 ```
 
 **Examples:**
 
-```soma
-Nil !a.b     ; Legal: explicitly set a.b to Nil
+```Nil !a.b     ; Legal: explicitly set a.b to Nil
 a.b          ; AL = [Nil] - was set to empty
+soma
 ```
 
-```soma
-Void !a.b    ; Legal: stores Void as payload
+```Void !a.b    ; Legal: stores Void as payload
 a.b          ; AL = [Void] - Cell exists with Void value
+soma
 ```
 
-```soma
-Void !a.b.   ; Legal: delete Cell a.b structurally
+```Void !a.b.   ; Legal: delete Cell a.b structurally
 a.b          ; RuntimeError - path no longer exists
+soma
 ```
 
-```soma
-42 !a.b.c    ; Auto-vivifies a and a.b with Void payload
+```42 !a.b.c    ; Auto-vivifies a and a.b with Void payload
 a.b          ; AL = [Void] - auto-vivified Cell exists
 a.b.c        ; AL = [42] - was explicitly set
 
 undefined    ; RuntimeError - path never created
+soma
 ```
 
 ### 2.4 Cell Creation and Auto-Vivification
@@ -337,28 +347,31 @@ A Cell is created automatically when a value is **written** to a path that did n
 **Auto-vivification semantics:**
 
 When you write to a deep path like `42 !a.b.c`, intermediate cells are created automatically:
+
 - Their **value** is set to Void (representing "never explicitly set")
 - Their **subpaths** are populated to allow path traversal
 - The two components (value and subpaths) are orthogonal
 
 Example:
 
-```soma
-42 !a.b.c
+```42 !a.b.c
+soma
 ```
 
 **Before:**
-```
-Store = {}
+
+```Store = {}
+Nil
 ```
 
 **After:**
-```
-Store = {
+
+```Store = {
   a: Cell(value: Void, subpaths: {"b": ...})
-    └─ b: Cell(value: Void, subpaths: {"c": ...})
-         └─ c: Cell(value: 42, subpaths: {})
+    +-- b: Cell(value: Void, subpaths: {"c": ...})
+         +-- c: Cell(value: 42, subpaths: {})
 }
+Nil
 ```
 
 **What happened:**
@@ -369,33 +382,33 @@ Store = {
 
 **Reading auto-vivified cells vs undefined paths:**
 
-```soma
-42 !a.b.c
-a.b.c        ; AL = [42] - explicitly set (reads VALUE) ✓
-a.b          ; AL = [Void] - auto-vivified, CAN be read ✓
-a            ; AL = [Void] - auto-vivified, CAN be read ✓
+```42 !a.b.c
+a.b.c        ; AL = [42] - explicitly set (reads VALUE) +
+a.b          ; AL = [Void] - auto-vivified, CAN be read +
+a            ; AL = [Void] - auto-vivified, CAN be read +
+soma
 ```
 
 **Reading undefined paths (STRICT semantics):**
 
-```soma
-undefined.path    ; RuntimeError - path does not exist ❌
+```undefined.path    ; RuntimeError - path does not exist X
+soma
 ```
 
 **The key distinction:**
 
-- **Auto-vivified Cells exist** (created during write) → reading them returns Void ✓
-- **Undefined paths don't exist** → reading them raises RuntimeError ❌
+- **Auto-vivified Cells exist** (created during write) -> reading them returns Void +
+- **Undefined paths don't exist** -> reading them raises RuntimeError X
 
 **Path traversal through auto-vivified Cells:**
 
 Auto-vivified intermediate cells allow path traversal - you can traverse through cells with Void value to reach deeper values:
 
-```soma
-42 !a.b.c       ; Auto-vivifies 'a' and 'a.b' with Void value
+```42 !a.b.c       ; Auto-vivifies 'a' and 'a.b' with Void value
 a.b.c           ; Can traverse through a (Void) and a.b (Void) to reach c (42)
                 ; Path traversal uses SUBPATHS, ignores intermediate VALUES
-                ; Returns 42 ✓
+                ; Returns 42 +
+soma
 ```
 
 This is crucial for sparse structures - once you've written a deep path, all intermediate nodes exist and can be traversed.
@@ -404,39 +417,40 @@ This is crucial for sparse structures - once you've written a deep path, all int
 
 Because value and subpaths are orthogonal, a Cell with Void value can still have children in its subpaths:
 
-```soma
-42 !a.b.c       ; Auto-vivifies 'a' with Void value
+```42 !a.b.c       ; Auto-vivifies 'a' with Void value
 99 !a.x         ; Add child 'x' to a's SUBPATHS (a already exists from previous write)
 
-a               ; Returns Void (VALUE was never set, but Cell exists) ✓
-a.b.c           ; Returns 42 (traverses SUBPATHS) ✓
-a.x             ; Returns 99 (traverses SUBPATHS) ✓
+a               ; Returns Void (VALUE was never set, but Cell exists) +
+a.b.c           ; Returns 42 (traverses SUBPATHS) +
+a.x             ; Returns 99 (traverses SUBPATHS) +
+soma
 ```
 
 Cell `a` now has:
+
 - Value: `Void` (never explicitly set, from auto-vivification)
 - Subpaths: `{"b": Cell(...), "x": Cell(99)}`
 
 **Summary of auto-vivification rules:**
 
-1. **Write creates path** → auto-vivifies intermediate Cells with Void value
-2. **Read auto-vivified Cell** → returns Void (Cell exists, value never set)
-3. **Read undefined path** → RuntimeError (path doesn't exist)
-4. **Traverse through auto-vivified Cells** → works (uses subpaths, not value)
+1. **Write creates path** -> auto-vivifies intermediate Cells with Void value
+2. **Read auto-vivified Cell** -> returns Void (Cell exists, value never set)
+3. **Read undefined path** -> RuntimeError (path doesn't exist)
+4. **Traverse through auto-vivified Cells** -> works (uses subpaths, not value)
 
 ### 2.5 Paths and CellReferences
 
 SOMA distinguishes between:
 
-- **Value access**: `a.b` → retrieves payload
-- **Cell access**: `a.b.` → retrieves CellReference
+- **Value access**: `a.b` -> retrieves payload
+- **Cell access**: `a.b.` -> retrieves CellReference
 
 Example:
 
-```soma
-99 !config.timeout
+```99 !config.timeout
 config.timeout      ; Pushes 99 onto AL
 config.timeout.     ; Pushes CellRef onto AL
+soma
 ```
 
 A **trailing dot** denotes a reference to the Cell itself, not its payload.
@@ -447,39 +461,39 @@ Two paths may refer to the **same Cell**. This is structural aliasing.
 
 Example: Value aliasing (no sharing)
 
-```soma
-23 !a.b
+```23 !a.b
 a.b !a.c
 24 !a.b
 a.c >print   ; prints 23
+soma
 ```
 
-| Step | Store State | Description |
-|------|-------------|-------------|
-| 1 | `a.b = 23` | Store 23 in a.b |
-| 2 | `a.c = 23` | Copy value to a.c |
-| 3 | `a.b = 24` | Update a.b |
-| 4 | `a.c` still `23` | No aliasing occurred |
+| Step              | Store State          | Description       |
+|-------------------|----------------------|-------------------|
+| 1                 | `a.b = 23`           | Store 23 in a.b   |
+| 2                 | `a.c = 23`           | Copy value to a.c |
+| 3                 | `a.b = 24`           | Update a.b        |
+| 4`a.c` still `23` | No aliasing occurred |                   |
 
 Example: Cell aliasing (sharing)
 
-```soma
-(hello) !a.b.c
+```(hello) !a.b.c
 a.b. !x.y.
 (goodbye) !d.b.c
 d.b. !a.b.
 a.b.c >print   ; prints "goodbye"
 x.y.c >print   ; prints "hello"
+soma
 ```
 
-| Step | Description |
-|------|-------------|
-| 1 | Create Cell at `a.b.c` with payload "hello" |
-| 2 | Store **CellRef** to `a.b` at `x.y` |
-| 3 | Create Cell at `d.b.c` with payload "goodbye" |
-| 4 | Replace Cell at `a.b` with CellRef to `d.b` |
-| 5 | `a.b.c` now resolves to "goodbye" (via `d.b.c`) |
-| 6 | `x.y.c` still resolves to "hello" (original Cell preserved) |
+| Step                                                         | Description |
+|--------------------------------------------------------------|-------------|
+| 1Create Cell at `a.b.c` with payload "hello"                 |             |
+| 2Store **CellRef** to `a.b` at `x.y`                         |             |
+| 3Create Cell at `d.b.c` with payload "goodbye"               |             |
+| 4Replace Cell at `a.b` with CellRef to `d.b`                 |             |
+| 5`a.b.c` now resolves to "goodbye" (via `d.b.c`)             |             |
+| 6`x.y.c` still resolves to "hello" (original Cell preserved) |             |
 
 Aliasing does not copy values. It **shares identity**.
 
@@ -505,7 +519,7 @@ Val !a.b.c.
 - New Cell's payload is `Val`
 - All child Cells are **discarded**
 
-**Structural deletion (path deletion):**
+**Structural deletion )path deletion):**
 
 ```soma
 Void !a.b.c.
@@ -513,8 +527,8 @@ Void !a.b.c.
 
 - Deletes the **path** `a.b.c` from the Store tree
 - Removes the edge from parent's subpaths dictionary
-- **Does not delete the Cell** if other references (CellRefs or paths) to it exist
-- If the Cell is still accessible via CellRefs, it persists (see Section 4.4)
+- **Does not delete the Cell** if other references )CellRefs or paths) to it exist
+- If the Cell is still accessible via CellRefs, it persists )see Section 4.4)
 - If no other references exist, the Cell becomes unreachable and may be reclaimed
 
 **Example: Path deletion with surviving CellRef**
@@ -542,16 +556,16 @@ counter.n 1 >+ !counter.n
 counter.n >print
 ```
 
-| Step | Token | AL State | Store State | Description |
-|------|-------|----------|-------------|-------------|
-| 1 | `1` | `[1]` | `{}` | Push 1 |
-| 2 | `!counter.n` | `[]` | `counter.n = 1` | Store 1 |
-| 3 | `counter.n` | `[1]` | `counter.n = 1` | Read value |
-| 4 | `1` | `[1, 1]` | - | Push 1 |
-| 5 | `>+` | `[2]` | - | Add |
-| 6 | `!counter.n` | `[]` | `counter.n = 2` | Write back |
-| 7 | `counter.n` | `[2]` | `counter.n = 2` | Read |
-| 8 | `>print` | `[]` | - | Print 2 |
+| Step | Token        | AL State | Store State     | Description |
+|------|--------------|----------|-----------------|-------------|
+| 1    | `1`          | `[1]`    | `{}`            | Push 1      |
+| 2    | `!counter.n` | `[]`     | `counter.n = 1` | Store 1     |
+| 3    | `counter.n`  | `[1]`    | `counter.n = 1` | Read value  |
+| 4    | `1`          | `[1, 1]` | -               | Push 1      |
+| 5    | `>+`         | `[2]`    | -               | Add         |
+| 6    | `!counter.n` | `[]`     | `counter.n = 2` | Write back  |
+| 7    | `counter.n`  | `[2]`    | `counter.n = 2` | Read        |
+| 8    | `>print`     | `[]`     | -               | Print 2     |
 
 ---
 
@@ -573,11 +587,12 @@ A **Register** is a hierarchical graph identical in structure to the Store, but 
 - **No Sharing**: Inner blocks **cannot** see outer block's Register paths
 - **No Nesting**: There is **no lexical scoping** between parent and child block Registers
 
-**Note on Block Access:** To access the currently executing block, use the `>block` built-in (see Chapter 6 — Built-ins). There are no automatic Register bindings.
+**Note on Block Access:** To access the currently executing block, use the `>block` built-in )see Chapter 6 — Built-ins). There are no automatic Register bindings.
 
 **If you want to share data between blocks, you MUST:**
-- Use the **Store** (global, persistent state)
-- Pass values via the **AL** (stack-based communication)
+
+- Use the **Store** )global, persistent state)
+- Pass values via the **AL** )stack-based communication)
 - Use **CellRefs** to share structure
 
 ### 3.2 Register Lifecycle
@@ -597,34 +612,37 @@ When a Block begins execution:
 
 ### 3.3 Store vs Register
 
-| Feature | Store | Register |
-|---------|-------|----------|
-| **Scope** | Global | Block-local |
-| **Lifetime** | Persistent | Block execution |
-| **Sharing** | All blocks can access | **Completely isolated per block** |
-| **Purpose** | Shared state | Local computation |
-| **Visibility** | Global across all blocks | Only the executing block |
-| **Nesting** | N/A (single global) | **No nesting - fresh per block** |
-| **Root** | Single, unnamed | Single, named `_` |
-| **Syntax** | `a.b` | `_.a.b` |
-| **Write syntax** | `!a.b` | `!_.a.b` |
-| **Root value access** | N/A (unnamed) | `_` |
-| **Root CellRef access** | N/A (unnamed) | `_.` |
+| Feature                                  | Store                    | Register                          |
+|------------------------------------------|--------------------------|-----------------------------------|
+| **Scope**                                | Global                   | Block-local                       |
+| **Lifetime**                             | Persistent               | Block execution                   |
+| **Sharing**                              | All blocks can access    | **Completely isolated per block** |
+| **Purpose**                              | Shared state             | Local computation                 |
+| **Visibility**                           | Global across all blocks | Only the executing block          |
+| **Nesting**                              | N/A )single global)      | **No nesting - fresh per block**  |
+| **Root**Single, unnamedSingle, named `_` |                          |                                   |
+| **Syntax**                               | `a.b`                    | `_.a.b`                           |
+| **Write syntax**                         | `!a.b`                   | `!_.a.b`                          |
+| **Root value access**                    | N/A )unnamed)            | `_`                               |
+| **Root CellRef access**                  | N/A )unnamed)            | `_.`                              |
 
 ### 3.4 When to Use Store vs Register vs AL
 
 **Use Store when:**
+
 - Sharing data between unrelated blocks
 - Persisting configuration or state
 - Global variables or shared counters
 - Communication across the entire program
 
 **Use Register when:**
-- Temporary local computation (`_.temp`, `_.result`)
+
+- Temporary local computation )`_.temp`, `_.result`)
 - Loop counters in recursive blocks
 - Local variables that don't need to escape
 
 **Use AL when:**
+
 - Passing arguments to blocks
 - Returning values from blocks
 - Stack-based computation
@@ -632,19 +650,19 @@ When a Block begins execution:
 
 ### 3.5 Register Root
 
-The Register is a hierarchical graph with a **single root named `_`**. All Register paths begin with `_` followed by a dot and subsequent path components.
+The Register is a hierarchical graph with a **single root named ****`_`**. All Register paths begin with `_` followed by a dot and subsequent path components.
 
-**Why `_` is the Root:**
+Why `_`** is the Root:**
 
 The Store has an unnamed root that cannot be directly referenced. For symmetry, the Register has a **named root** `_` that can be referenced and manipulated:
 
 ```soma
 _                 ; Register root value
 _.                ; Register root CellRef
-_.x               ; Register path: root → x (value)
-_.x.              ; Register path: root → x (CellRef)
-_.x.y.z           ; Register path: root → x → y → z (value)
-_.x.y.z.          ; Register path: root → x → y → z (CellRef)
+_.x               ; Register path: root \u2192 x )value)
+_.x.              ; Register path: root \u2192 x )CellRef)
+_.x.y.z           ; Register path: root \u2192 x \u2192 y \u2192 z )value)
+_.x.y.z.          ; Register path: root \u2192 x \u2192 y \u2192 z )CellRef)
 ```
 
 This allows the entire Register graph to be captured, stored, or manipulated as a single entity.
@@ -654,12 +672,12 @@ This allows the entire Register graph to be captured, stored, or manipulated as 
 **Valid Register Syntax:**
 
 ```soma
-_                 ; Register root value (payload at root)
+_                 ; Register root value )payload at root)
 _.                ; Register root CellRef
-_.x               ; Register path to child cell (value)
-_.x.              ; Register path to child cell (CellRef)
-_.counter         ; Nested register path (value)
-_.counter.        ; Nested register path (CellRef)
+_.x               ; Register path to child cell )value)
+_.x.              ; Register path to child cell )CellRef)
+_.counter         ; Nested register path )value)
+_.counter.        ; Nested register path )CellRef)
 ```
 
 **Invalid Register Syntax:**
@@ -672,7 +690,7 @@ _x.y              ; ILLEGAL: must be _.x.y
 
 **NORMATIVE RULE:**
 
-> All Register paths MUST use the form `_.path` where `_` is the root component. The syntax `_name` (without a dot) is not a valid Register path and MUST be rejected by the lexer.
+> All Register paths MUST use the form `_.path` where `_` is the root component. The syntax `_name` )without a dot) is not a valid Register path and MUST be rejected by the lexer.
 
 ### 3.7 Register Write Operations
 
@@ -754,16 +772,16 @@ Inner blocks **cannot** see outer block's Register cells. Each block sees only i
 
 **What happens:**
 
-1. Outer block executes, gets Register₁
-2. `1 !_.n` → Store 1 in Register₁ path `_.n`
-3. `>{2 !_.n}` → Execute inner block
-   - Inner block gets **fresh Register₂** (empty)
-   - `2 !_.n` → Store 2 in Register₂ path `_.n`
-   - Inner block completes
-   - Register₂ is **destroyed**
-4. Back in outer block with Register₁
-5. `_.n >print` → Register₁ still has `_.n = 1`
-6. **Prints 1** ✓
+1. Outer block executes, gets Register1
+2. `1 !_.n` -> Store 1 in Register1 path `_.n`
+3. `>{2 !_.n}` -> Execute inner block
+  - Inner block gets **fresh Register2** (empty)
+  - `2 !_.n` -> Store 2 in Register2 path `_.n`
+  - Inner block completes
+  - Register2 is **destroyed**
+4. Back in outer block with Register1
+5. `_.n >print` -> Register1 still has `_.n = 1`
+6. **Prints 1** 
 
 **Key insight:** Inner block's `_.n` was in a different Register. It didn't affect outer block's `_.n`.
 
@@ -775,13 +793,13 @@ Inner blocks **cannot** see outer block's Register cells. Each block sees only i
 
 **What happens:**
 
-1. Outer block executes, gets Register₁
-2. `1 !_.n` → Store 1 in Register₁ path `_.n`
-3. `>{_.n >print}` → Execute inner block
-   - Inner block gets **fresh Register₂** (empty)
-   - `_.n` → Try to read Register₂ path `_.n`
-   - Register₂ has no `_.n` → path undefined
-   - **RuntimeError**: Path doesn't exist ❌
+1. Outer block executes, gets Register1
+2. `1 !_.n` -> Store 1 in Register1 path `_.n`
+3. `>{_.n >print}` -> Execute inner block
+  - Inner block gets **fresh Register2** (empty)
+  - `_.n` -> Try to read Register2 path `_.n`
+  - Register2 has no `_.n` -> path undefined
+  - **RuntimeError**: Path doesn't exist
 
 **Key insight:** Inner blocks cannot access outer block's Register cells (strict semantics).
 
@@ -796,13 +814,13 @@ _ >print  ) Prints 23
 
 - The root/top-level is itself a block
 - It has its own Register with root `_`
-- `23 !_` → Store 23 at Register root
-- `_ >print` → Read Register root value (23), print it
-- **Prints 23** ✓
+- `23 !_` -> Store 23 at Register root
+- `_ >print` -> Read Register root value (23), print it
+- **Prints 23** 
 
 ### 3.10 The Correct Way to Share Data Between Blocks
 
-#### ❌ WRONG - Try to use outer Register (fails)
+####  WRONG - Try to use outer Register (fails)
 
 ```soma
 >{1 !_.n >{_.n >print}}  ) RuntimeError
@@ -810,13 +828,14 @@ _ >print  ) Prints 23
 
 Inner block can't see outer's `_.n` (strict semantics).
 
-#### ✅ RIGHT - Pass via AL
+####  RIGHT - Pass via AL
 
 ```soma
 >{1 !_.n _.n >{>print}}  ) Prints 1
 ```
 
 **Execution:**
+
 1. Outer block: `1 !_.n` stores 1
 2. Outer block: `_.n` pushes 1 onto AL
 3. Inner block executes with AL = [1]
@@ -824,20 +843,21 @@ Inner block can't see outer's `_.n` (strict semantics).
 
 Data passed explicitly via the AL.
 
-#### ✅ RIGHT - Use Store
+#### 
 
 ```soma
 >{1 !data.n >{data.n >print}}  ) Prints 1
 ```
 
 **Execution:**
+
 1. Outer block: `1 !data.n` stores 1 in **Store** (global)
 2. Inner block: `data.n` reads from **Store**
 3. Inner block: `>print` prints 1
 
 Data shared via the Store (persistent, global state).
 
-#### ✅ RIGHT - Return via AL
+#### 
 
 ```soma
 >{
@@ -848,12 +868,13 @@ Data shared via the Store (persistent, global state).
 ```
 
 **Execution:**
+
 1. Define `_.square` block in outer Register
 2. `7` pushes 7 onto AL
 3. `>_.square` executes the block (which has its own fresh Register)
-   - Pops 7 from AL → stores in its own `_.n`
-   - Computes `_.n * _.n = 49`
-   - Leaves 49 on AL
+  - Pops 7 from AL -> stores in its own `_.n`
+  - Computes `_.n * _.n = 49`
+  - Leaves 49 on AL
 4. Outer block continues with AL = [49]
 5. `>print` prints 49
 
@@ -886,6 +907,7 @@ Blocks communicate via the AL (stack).
 ```
 
 **Key points:**
+
 - Outer block has `_.i` for outer counter
 - `_.inner_loop` block has its own `_.i` for inner counter
 - They don't interfere - different Registers
@@ -904,6 +926,7 @@ Blocks communicate via the AL (stack).
 ```
 
 **Key points:**
+
 - Each helper function call gets fresh Register
 - `_.square` and `_.double` each have their own `_.x`
 - No interference even though both use `_.x`
@@ -924,6 +947,7 @@ Blocks communicate via the AL (stack).
 ```
 
 **Key points:**
+
 - Outer block's Register context not visible to inner
 - Must explicitly save to Store to share
 - Inner block reads from Store (global)
@@ -974,13 +998,13 @@ Registers are destroyed when their Block completes, but **Cells referenced by es
 1 { _ 1 >+ !_ } >chain _  >print   ; ERROR: Register Not Set
 ```
 
-| Step | Description |
-|------|-------------|
-| 1 | Push 1 onto AL |
-| 2 | Execute Block: pop 1, add 1, store in `_` (Register root) |
-| 3 | Block ends, Register is **destroyed** |
-| 4 | `_` refers to non-existent Register → Void |
-| 5 | `>print` receives Void (or error if undefined) |
+| Step                                                       | Description    |
+|------------------------------------------------------------|----------------|
+| 1                                                          | Push 1 onto AL |
+| 2Execute Block: pop 1, add 1, store in `_` (Register root) |                |
+| 3Block ends, Register is **destroyed**                     |                |
+| 4`_` refers to non-existent Register -> Void               |                |
+| 5`>print` receives Void (or error if undefined)            |                |
 
 **Example: CellRef escapes, Cell persists**
 
@@ -989,14 +1013,14 @@ Registers are destroyed when their Block completes, but **Cells referenced by es
 escaped_ref >print   ; Prints "value" - Cell persists!
 ```
 
-| Step | Description |
-|------|-------------|
-| 1 | Execute Block: store "value" in Register path `_.data` |
-| 2 | Create CellRef to Register Cell `_.data` |
-| 3 | Push CellRef onto AL |
-| 4 | Block ends, Register destroyed, but **Cell persists** |
-| 5 | CellRef stored at `escaped_ref` in Store |
-| 6 | Dereferencing `escaped_ref` accesses the Cell → "value" |
+| Step                                                      | Description          |
+|-----------------------------------------------------------|----------------------|
+| 1Execute Block: store "value" in Register path `_.data`   |                      |
+| 2Create CellRef to Register Cell `_.data`                 |                      |
+| 3                                                         | Push CellRef onto AL |
+| 4Block ends, Register destroyed, but **Cell persists**    |                      |
+| 5CellRef stored at `escaped_ref` in Store                 |                      |
+| 6Dereferencing `escaped_ref` accesses the Cell -> "value" |                      |
 
 **The Cell persists** because the CellRef provides access to it, even though the Register that originally contained it is gone.
 
@@ -1072,15 +1096,15 @@ saved_context.y >print      ; prints 2
 3 5 add_two >chain
 ```
 
-| Step | Token | AL State | Register State | Description |
-|------|-------|----------|----------------|-------------|
-| 0 | (Block starts) | `[5, 3]` | `{}` | Fresh Register |
-| 1 | `!_.y` | `[3]` | `_.y = 5` | Pop 5, store in Register |
-| 2 | `!_.x` | `[]` | `_.x = 3, _.y = 5` | Pop 3, store |
-| 3 | `_.x` | `[3]` | - | Read from Register |
-| 4 | `_.y` | `[5, 3]` | - | Read from Register |
-| 5 | `>+` | `[8]` | - | Add |
-| 6 | (Block ends) | `[8]` | *destroyed* | Register discarded |
+| Step | Token            | AL State | Register State   | Description              |
+|------|------------------|----------|------------------|--------------------------|
+| 0    | `(Block starts)` | [5, 3]   | {}               | Fresh Register           |
+| 1    | `!_.y`           | [3]      | _.y = 5          | Pop 5, store in Register |
+| 2    | `!_.x`           | []       | _.x = 3, _.y = 5 | Pop 3, store             |
+| 3    | `_.x`            | [3]      | -                | Read from Register       |
+| 4    | `_.y`            | [5, 3]   | -                | Read from Register       |
+| 5    | `>+`             | [8]      | -                | Add                      |
+| 6    | `(Block ends)`   | [8]      | _destroyed_      | Register discarded       |
 
 ---
 
@@ -1090,9 +1114,7 @@ saved_context.y >print      ; prints 2
 
 A **Cell** is the fundamental unit of storage. Cells have:
 
-- **Identity** — independent of the values they contain
-- **Payload** — any value except Void
-- **Child Cells** — hierarchical structure
+- **Identity** -- independent of the values they contain**Payload** -- any value except Void**Child Cells** -- hierarchical structure
 
 Cells cannot:
 
@@ -1105,10 +1127,7 @@ A **CellReference (CellRef)** is an immutable value that provides access to a Ce
 
 **CellRefs have value semantics:**
 
-- CellRefs are immutable values, like Int, String, or Block
-- They provide direct access to Cells
-- Whether they are "copied" or shared internally is unobservable and implementation-defined
-- **No identity comparison** — you cannot distinguish between "same CellRef" vs "different CellRef to same Cell"
+- CellRefs are immutable values, like Int, String, or BlockThey provide direct access to CellsWhether they are "copied" or shared internally is unobservable and implementation-defined**No identity comparison** -- you cannot distinguish between "same CellRef" vs "different CellRef to same Cell"
 - Multiple CellRefs can refer to the same Cell
 
 **CellRefs can:**
@@ -1129,12 +1148,12 @@ ref { !_.ref. (dog) !_.ref }
 a.b.c >print   ; prints "dog"
 ```
 
-| Step | Description |
-|------|-------------|
-| 1 | Store "cat" at `a.b.c` |
-| 2 | Store **CellRef** to `a.b.c` at `ref` |
-| 3 | Execute Block: pop CellRef into Register, set its payload to "dog" |
-| 4 | `a.b.c` now reads "dog" |
+| Step                                   | Description                                                        |
+|----------------------------------------|--------------------------------------------------------------------|
+| 1Store "cat" at `a.b.c`                |                                                                    |
+| 2Store **CellRef** to `a.b.c` at `ref` |                                                                    |
+| 3                                      | Execute Block: pop CellRef into Register, set its payload to "dog" |
+| 4`a.b.c` now reads "dog"               |                                                                    |
 
 **Example: Multiple CellRefs to the same Cell**
 
@@ -1176,6 +1195,7 @@ The trailing dot is **syntactically significant**.
 **Cells have independent existence from paths.**
 
 A Cell persists as long as it is accessible through any route:
+
 - Any path in the Store
 - Any path in any active Register
 - Any CellRef on the AL
@@ -1196,10 +1216,10 @@ ref             ) Still works! Returns 23
 
 **What happened:**
 
-1. `23 !a.b` — Created Cell, made accessible via Store path `a.b`
-2. `a.b. !ref` — Created immutable CellRef value pointing to that Cell
-3. `Void !a.b.` — Removed path `a.b` from Store tree (deleted tree edge)
-4. `ref` — Dereferenced CellRef, accessed Cell, returned value 23
+1. **>md.c**: 23 !a.b — Created Cell, made accessible via Store path `a.b`
+2. **>md.c**: a.b. !ref — Created immutable CellRef value pointing to that Cell
+3. **>md.c**: Void !a.b. — Removed path `a.b` from Store tree (deleted tree edge)
+4. **>md.c**: ref — Dereferenced CellRef, accessed Cell, returned value 23
 
 **The Cell still exists** because the CellRef at path `ref` provides access to it.
 
@@ -1269,6 +1289,7 @@ ref             ) NOT dangling - Cell still exists!
 ```
 
 CellRefs in SOMA never "dangle" in the traditional sense because:
+
 - Deleting a path doesn't delete the Cell
 - Cells persist as long as accessible
 - CellRefs provide direct access
@@ -1276,6 +1297,7 @@ CellRefs in SOMA never "dangle" in the traditional sense because:
 #### Semantic Definition, Not Mechanism
 
 This behavior is defined **semantically, not mechanistically**:
+
 - We don't prescribe heap allocation
 - We don't prescribe garbage collection
 - We don't prescribe reference counting
@@ -1309,18 +1331,14 @@ a.b
 
 Resolution yields one of:
 
-- A value (Int, String, Block, Nil, Void, CellRef) if the Cell exists
-- **RuntimeError** if the path does not exist (strict semantics)
+- A value (Int, String, Block, Nil, Void, CellRef) if the Cell exists>md.bRuntimeError if the path does not exist (strict semantics)
 
 **CRITICAL: Auto-vivified vs Undefined**
-
-- **Auto-vivified Cells exist** → reading returns Void ✓
-- **Undefined paths don't exist** → reading raises RuntimeError ❌
 
 ```soma
 42 !a.b.c       ; Auto-vivifies a and a.b
 a.b             ; Returns Void (Cell exists) ✓
-undefined.path  ; RuntimeError (path doesn't exist) ❌
+undefined.path  ; RuntimeError (path doesn't exist) ✗
 ```
 
 **CellRef access** (trailing dot):
@@ -1331,36 +1349,43 @@ a.b.
 
 Resolution yields:
 
+- >md.b
+- Auto-vivified Cells exist
+-  \u2192 reading returns Void ✓
+  - >md.b
+  - Undefined paths don't exist
+  -  \u2192 reading raises RuntimeError ✗
 - A CellReference to the Cell at `a.b` if the Cell exists
-- **RuntimeError** if the path does not exist (strict semantics)
+- >md.bRuntimeError if the path does not exist (strict semantics)
 
 ### 5.3 Path Behavior Summary
 
-| Path | Meaning | May Return |
-|------|---------|------------|
-| `a.b` | Payload at a.b | Value, Nil, Void (if Cell exists), or RuntimeError (if path undefined) |
-| `a.b.` | CellRef for a.b | CellRef (if Cell exists), or RuntimeError (if path undefined) |
-| `42 !a.b` | Write payload 42 into a.b | (mutates Store) |
-| `X !a.b.` | Replace Cell a.b with new Cell | (mutates Store) |
-| `Void !a.b.` | Delete Cell a.b | (mutates Store) |
-| `Void !a.b` | Store Void as payload | (mutates Store) |
+| Path  | Meaning    | May Return                     |
+|-------|------------|--------------------------------|
+| >md.c | a.b        | Payload at a.b                 |
+| >md.c | a.b.       | CellRef for a.b                |
+| >md.c | 42 !a.b    | Write payload 42 into a.b      |
+| >md.c | X !a.b.    | Replace Cell a.b with new Cell |
+| >md.c | Void !a.b. | Delete Cell a.b                |
+| >md.c | Void !a.b  | Store Void as payload          |
 
 **Note:** The same rules apply to Register paths. Simply replace `a.b` with `_.a.b` for Register operations:
 
-| Path | Meaning | May Return |
-|------|---------|------------|
-| `_.a.b` | Payload at Register path _.a.b | Value, Nil, Void (if Cell exists), or RuntimeError (if path undefined) |
-| `_.a.b.` | CellRef for Register path _.a.b | CellRef (if Cell exists), or RuntimeError (if path undefined) |
-| `42 !_.a.b` | Write payload 42 into Register | (mutates Register) |
-| `X !_.a.b.` | Replace Cell _.a.b with new Cell | (mutates Register) |
-| `Void !_.a.b.` | Delete Cell _.a.b | (mutates Register) |
-| `Void !_.a.b` | Store Void as payload | (mutates Register) |
+| Path  | Meaning      | May Return                       |
+|-------|--------------|----------------------------------|
+| >md.c | _.a.b        | Payload at Register path _.a.b   |
+| >md.c | _.a.b.       | CellRef for Register path _.a.b  |
+| >md.c | 42 !_.a.b    | Write payload 42 into Register   |
+| >md.c | X !_.a.b.    | Replace Cell _.a.b with new Cell |
+| >md.c | Void !_.a.b. | Delete Cell _.a.b                |
+| >md.c | Void !_.a.b  | Store Void as payload            |
 
 ### 5.4 Execution Prefix (`>`)
 
 The `>` prefix is used to **execute the value at a path**. This is an atomic operation: read the value and execute it.
 
 **Syntax:**
+
 - `>path` — Execute the Block at Store path `path`
 - `>_.path` — Execute the Block at Register path `_.path`
 
@@ -1415,6 +1440,7 @@ parent.child     ; Returns 42 (traverses SUBPATHS)
 ```
 
 Cell `parent` has:
+
 - Value: `Nil` (explicitly set to empty)
 - Subpaths: `{"child": Cell(42)}`
 
@@ -1427,18 +1453,19 @@ a.b.c            ; Returns 42 (traverses SUBPATHS)
 ```
 
 Cell `a.b` has:
+
 - Value: `Void` (never explicitly set, auto-vivified)
 - Subpaths: `{"c": Cell(42)}`
 
 This distinction is analogous to:
 
-| Domain | Void | Nil |
-|--------|------|-----|
-| **JavaScript** | `undefined` | `null` |
-| **Python** | Uninitialized variable | `None` |
-| **Databases** | Column never inserted | `NULL` value explicitly inserted |
-| **Logic** | Logical absurdity (⊥) | Empty set (∅) |
-| **Type Theory** | Bottom type / uninhabited | Unit type / Maybe Nothing |
+| Domain          | Void                      | Nil                              |
+|-----------------|---------------------------|----------------------------------|
+| **JavaScript**  | `undefined`               | `null`                           |
+| **Python**      | Uninitialized variable    | `None`                           |
+| **Databases**   | Column never inserted     | `NULL value explicitly inserted` |
+| **Logic**       | Logical absurdity (\))    | Empty set (\))                   |
+| **Type Theory** | Bottom type / uninhabited | Unit type / Maybe Nothing        |
 
 ### 6.2 Void — "Never Set"
 
@@ -1446,56 +1473,50 @@ This distinction is analogous to:
 
 **Properties:**
 
-- Auto-vivified intermediate cells start with Void value
-- Can be detected (hypothetically with `>isVoid`)
-- **Reading auto-vivified Cells returns Void** (not an error - Cell exists)
-- **Reading undefined paths raises RuntimeError** (path doesn't exist)
-- **Can** be written as a value (stores Void as payload)
-- **Can** be used for structural deletion (`Void !path.`)
-- **Can have children** (value and subpaths are orthogonal)
+- Auto-vivified intermediate cells start with Void valueCan be detected (hypothetically with `>isVoid`)**Reading auto-vivified Cells returns Void** (not an error - Cell exists)**Reading undefined paths raises RuntimeError** (path doesn't exist)**Can** be written as a value (stores Void as payload)**Can** be used for structural deletion (`Void !path.`)**Can have children** (value and subpaths are orthogonal)
 
 **When do cells have Void value?**
 
-1. When auto-vivified during path writes
-2. When explicitly written with `Void !path`
+1. When auto-vivified during path writesWhen explicitly written with `Void !path`
 
 **CRITICAL: Void vs Undefined**
 
 SOMA distinguishes between:
-- **Void value** → Cell exists but has Void value (can be read) ✓
-- **Undefined path** → Cell/path doesn't exist (reading raises RuntimeError) ❌
+
+- **Void value** -> Cell exists but has Void value (can be read) 
+- **Undefined path** -> Cell/path doesn't exist (reading raises RuntimeError) 
 
 **Examples:**
 
 ```soma
 42 !a.b.c       ; Creates: a (Void), a.b (Void), a.b.c (42)
 
-a.b.c           ; Returns 42 (explicitly set) ✓
-a.b             ; Returns Void (auto-vivified Cell exists) ✓
-a               ; Returns Void (auto-vivified Cell exists) ✓
+a.b.c           ; Returns 42 (explicitly set)
+a.b             ; Returns Void (auto-vivified Cell exists)
+a               ; Returns Void (auto-vivified Cell exists)
 
-undefined.path  ; RuntimeError - path doesn't exist ❌
+undefined.path  ; RuntimeError - path doesn't exist 
 ```
 
 ```soma
 ) Writing Void as value is allowed
-Void !a.b       ; OK - stores Void as value ✓
-a.b             ; Returns Void (Cell exists with Void value) ✓
+Void !a.b       ; OK - stores Void as value
+a.b             ; Returns Void (Cell exists with Void value) 
 ```
 
 ```soma
 ) Reading auto-vivified Cells is legal
 42 !a.b.c
-a.b             ; Returns Void - Cell exists, was auto-vivified ✓
+a.b             ; Returns Void - Cell exists, was auto-vivified 
 ```
 
 ```soma
 ) Void cells can have children
 42 !a.b.c       ; Auto-vivifies 'a' with Void value
 99 !a.x         ; Add sibling to 'a.b' in a's subpaths
-a               ; Returns Void (value never set, but Cell exists) ✓
-a.b.c           ; Returns 42 (traverses subpaths) ✓
-a.x             ; Returns 99 (traverses subpaths) ✓
+a               ; Returns Void (value never set, but Cell exists)
+a.b.c           ; Returns 42 (traverses subpaths)
+a.x             ; Returns 99 (traverses subpaths) 
 ```
 
 ### 6.3 Nil — "Explicitly Set to Empty"
@@ -1504,13 +1525,7 @@ a.x             ; Returns 99 (traverses subpaths) ✓
 
 **Properties:**
 
-- Deliberately chosen value
-- Represents intentional absence
-- Reading returns Nil
-- **Can** be written as a value
-- **Can** be read back unchanged
-- Distinct from "never initialized"
-- **Can have children** (value and subpaths are orthogonal)
+- Deliberately chosen valueRepresents intentional absenceReading returns Nil**Can** be written as a value**Can** be read back unchangedDistinct from "never initialized"**Can have children** (value and subpaths are orthogonal)
 
 **Examples:**
 
@@ -1564,7 +1579,7 @@ The Void-Payload Invariant restricts the **value** component only. A Cell's **su
 ```soma
 42 !a.b.c       ; Auto-vivifies 'a' with Void value
                 ; 'a' has: value=Void, subpaths={"b": ...}
-                ; This is legal! ✓
+                ; This is legal! 
 ```
 
 ### 6.5 Distinguishing Void from Nil
@@ -1592,8 +1607,8 @@ a.b             ; Returns Nil
 Nil !person.middle_name         ; Explicitly no middle name
 42 !person.age
 
-person.middle_name              ; Nil - explicitly empty ✓
-person.spouse                   ; RuntimeError - path never created ❌
+person.middle_name              ; Nil - explicitly empty
+person.spouse                   ; RuntimeError - path never created 
 ```
 
 ### 6.6 Reading Void vs Nil
@@ -1602,80 +1617,78 @@ person.spouse                   ; RuntimeError - path never created ❌
 
 ```soma
 42 !intermediate.node.leaf
-intermediate.node           ; Returns Void (auto-vivified Cell exists) ✓
+intermediate.node           ; Returns Void (auto-vivified Cell exists)
 
 Nil !empty.node
-empty.node                  ; Returns Nil (explicitly set) ✓
+empty.node                  ; Returns Nil (explicitly set) 
 ```
 
 **Reading undefined paths (STRICT semantics):**
 
 ```soma
-undefined.path              ; RuntimeError - path doesn't exist ❌
+undefined.path              ; RuntimeError - path doesn't exist 
 ```
 
 **The difference:**
 
-- Reading **auto-vivified Cell** → returns Void (Cell exists, never explicitly set) ✓
-- Reading **Cell with Nil value** → returns Nil (Cell exists, explicitly set to empty) ✓
-- Reading **undefined path** → RuntimeError (path/Cell doesn't exist) ❌
+- Reading **auto-vivified Cell** -> returns Void (Cell exists, never explicitly set) 
+- Reading **Cell with Nil value** -> returns Nil (Cell exists, explicitly set to empty) 
+- Reading **undefined path** -> RuntimeError (path/Cell doesn't exist) 
 
 ### 6.7 Writing Void vs Nil
 
 **You CAN write Nil:**
 
 ```soma
-Nil !path       ; Legal - set payload to Nil ✓
+Nil !path       ; Legal - set payload to Nil 
 ```
 
 **You CAN write Void:**
 
 ```soma
-Void !path      ; Legal - set payload to Void ✓
+Void !path      ; Legal - set payload to Void 
 ```
 
 **You CAN use Void for structural deletion:**
 
 ```soma
-Void !path.     ; Legal - delete the cell ✓
+Void !path.     ; Legal - delete the cell 
 ```
 
 ### 6.8 Comparison Table
 
-| Operation | Nil | Void |
-|-----------|-----|------|
-| Push onto AL | ✓ Legal | ✓ Legal |
-| Store as value | ✓ Legal | ✓ Legal |
-| Use in structural delete | ✗ No effect | ✓ Legal (`!path.`) |
-| Read from undefined path | RuntimeError | RuntimeError |
-| Read from Cell with this value | Returns Nil | Returns Void |
-| Read from auto-vivified Cell | Returns Void | Returns Void |
-| Result of path traversal failure | RuntimeError | RuntimeError |
-| Can have children in subpaths | ✓ Yes | ✓ Yes |
+| Operation                                         | Nil          | Void         |
+|---------------------------------------------------|--------------|--------------|
+| Push onto AL                                      | Legal        | Legal        |
+| Store as value                                    | Legal        | Legal        |
+| Use in structural deleteNo effectLegal (`!path.`) |              |              |
+| Read from undefined path                          | RuntimeError | RuntimeError |
+| Read from Cell with this value                    | Returns Nil  | Returns Void |
+| Read from auto-vivified Cell                      | Returns Void | Returns Void |
+| Result of path traversal failure                  | RuntimeError | RuntimeError |
+| Can have children in subpaths                     | Yes          | Yes          |
 
 ### 6.9 Auto-Vivification Creates Void
 
 **When writing to a.b.c:**
 
 1. **If `a` doesn't exist:**
-   - Create cell `a` with **Void** value and empty subpaths
-   - Add `a` to parent's subpaths
 
-2. **If `a.b` doesn't exist:**
-   - Create cell `a.b` with **Void** value and empty subpaths
-   - Add `b` to `a`'s subpaths
+  - Create cell `a` with **Void** value and empty subpaths
+  - Add `a` to parent's subpaths
+1. **If `a.b` doesn't exist:**
 
-3. **Set `a.b.c`:**
-   - Create cell `a.b.c` with the provided value
-   - Add `c` to `a.b`'s subpaths
+  - Create cell `a.b` with **Void** value and empty subpaths
+  - Add `b` to `a`'s subpaths
+1. **Set `a.b.c`:**
 
 **Result:**
 
 ```
 Store:
-  a → Cell(value: Void, subpaths: {"b": ...})
-    └─ b → Cell(value: Void, subpaths: {"c": ...})
-         └─ c → Cell(value: 42, subpaths: {})
+  a -> Cell(value: Void, subpaths: {"b": ...})
+    +-- b -> Cell(value: Void, subpaths: {"c": ...})
+         +-- c -> Cell(value: 42, subpaths: {})
 ```
 
 **Key insight:** Intermediate nodes are **structural scaffolding** with Void value until explicitly set. But they still have subpaths that allow path traversal.
@@ -1728,10 +1741,13 @@ deep.other.path         ; RuntimeError - path never created ❌
 **Writing Void is now legal:**
 
 ```soma
-Void !a.b       ; Legal - stores Void as value ✓
+Void !a.b       ; Legal - stores Void as value
 ```
 
 **Note:** You cannot distinguish between:
+
+  - Create cell `a.b.c` with the provided value
+  - Add `c` to `a.b`'s subpaths
 - Auto-vivified Void (path never written)
 - Explicitly written Void (path written with Void value)
 
@@ -1750,13 +1766,12 @@ never.written explicit >==  ; Returns True
 ```
 
 This is an acceptable tradeoff for simpler language semantics.
-```
 
 **Not an error: Reading Void**
 
 ```soma
 42 !a.b.c
-a.b             ; Returns Void - this is fine! ✓
+a.b             ; Returns Void - this is fine!
 ```
 
 Reading Void is not an error. It just means "this cell exists structurally but has never had its value set."
@@ -1767,8 +1782,8 @@ Reading Void is not an error. It just means "this cell exists structurally but h
 
 SOMA distinguishes between two operations:
 
-1. **Reading a path** → Returns the Cell's value OR raises RuntimeError if path doesn't exist
-2. **Traversing through a path** → Uses subpaths to reach a deeper Cell
+1. **Reading a path** -> Returns the Cell's value OR raises RuntimeError if path doesn't exist
+2. **Traversing through a path** -> Uses subpaths to reach a deeper Cell
 
 **Reading semantics (STRICT):**
 
@@ -1784,8 +1799,8 @@ undefined.path  ; ❌ RuntimeError - path does not exist
 
 **The key distinction:**
 
-- **Auto-vivified Cells exist** (created during write) → reading them returns Void ✓
-- **Undefined paths don't exist** → reading them raises RuntimeError ❌
+- **Auto-vivified Cells exist** (created during write) -> reading them returns Void ✓
+- **Undefined paths don't exist** -> reading them raises RuntimeError ❌
 
 **Path traversal uses subpaths, not values:**
 
@@ -1796,7 +1811,7 @@ Because value and subpaths are orthogonal (Section 2.2.1), path traversal walks 
 ```soma
 42 !a.b.c       ; Auto-vivifies 'a' and 'a.b' with Void value
 
-a.b.c           ; Traverses a's subpaths → b's subpaths → c
+a.b.c           ; Traverses a's subpaths -> b's subpaths -> c
                 ; Returns c's VALUE (42)
                 ; Intermediate VALUES (Void) are ignored during traversal ✓
 ```
@@ -1831,12 +1846,12 @@ a.b.c.d         ; ❌ RuntimeError - 'c' has no subpath 'd'
 
 ```
 Path: a.b.c
-Step 1: Start at root, lookup "a" in root's subpaths → find Cell(a)
-Step 2: Lookup "b" in Cell(a)'s subpaths → find Cell(b)  [ignores a's value]
-Step 3: Lookup "c" in Cell(b)'s subpaths → find Cell(c)  [ignores b's value]
-Step 4: Return Cell(c)'s value → 42
+Step 1: Start at root, lookup "a" in root's subpaths -> find Cell(a)
+Step 2: Lookup "b" in Cell(a)'s subpaths -> find Cell(b)  [ignores a's value]
+Step 3: Lookup "c" in Cell(b)'s subpaths -> find Cell(c)  [ignores b's value]
+Step 4: Return Cell(c)'s value -> 42
 
-If any lookup fails → RuntimeError (path doesn't exist)
+If any lookup fails -> RuntimeError (path doesn't exist)
 ```
 
 ---
@@ -1851,15 +1866,15 @@ If any lookup fails → RuntimeError (path doesn't exist)
 1 2 3 >swap >drop >dup
 ```
 
-| Step | AL State | Description |
-|------|----------|-------------|
-| 0 | `[]` | Empty |
-| 1 | `[1]` | Push 1 |
-| 2 | `[2, 1]` | Push 2 |
-| 3 | `[3, 2, 1]` | Push 3 |
-| 4 | `[2, 3, 1]` | Swap top 2 |
-| 5 | `[3, 1]` | Drop top |
-| 6 | `[3, 3, 1]` | Duplicate top |
+| Step | AL State  | Description   |
+|------|-----------|---------------|
+| 0    | []        | Empty         |
+| 1    | [1]       | Push 1        |
+| 2    | [2, 1]    | Push 2        |
+| 3    | [3, 2, 1] | Push 3        |
+| 4    | [2, 3, 1] | Swap top 2    |
+| 5    | [3, 1]    | Drop top      |
+| 6    | [3, 3, 1] | Duplicate top |
 
 ### 7.2 Store Mutations
 
@@ -1872,12 +1887,12 @@ counter.n 1 >+ !counter.n
 counter.n >print
 ```
 
-| Step | Store State | Description |
-|------|-------------|-------------|
-| 1 | `counter.n = 0` | Initialize |
-| 2 | `counter.n = 1` | Increment |
-| 3 | `counter.n = 2` | Increment |
-| 4 | Prints `2` | Read and print |
+| Step        | Store State    | Description |
+|-------------|----------------|-------------|
+| 1           | counter.n = 0  | Initialize  |
+| 2           | counter.n = 1  | Increment   |
+| 3           | counter.n = 2  | Increment   |
+| 4Prints `2` | Read and print |             |
 
 ### 7.3 Aliasing
 
@@ -1899,12 +1914,12 @@ a. !b.
 a >print   ; prints 99
 ```
 
-| Description |
-|-------------|
-| Store 42 at `a` |
-| Store **CellRef** to `a` at `b` |
+| Description                          |
+|--------------------------------------|
+| Store 42 at `a`                      |
+| Store **CellRef** to `a` at `b`      |
 | Update `b` (which is aliased to `a`) |
-| `a` now reads 99 |
+| `a` now reads 99                     |
 
 ### 7.4 Register Isolation
 
@@ -1928,16 +1943,16 @@ The Register is destroyed when the Block ends.
 }
 ```
 
-| Step | Token | AL State | Register State | Description |
-|------|-------|----------|----------------|-------------|
-| 0 | (Block starts) | `[]` | `{}` | Fresh Register |
-| 1 | `print` | `[print_block]` | - | Push print block |
-| 2 | `!_.action` | `[]` | `_.action = print_block` | Store in Register |
-| 3 | `(Hello from register)` | `[(Hello from register)]` | - | Push string |
-| 4 | `>_.action` | `[]` | - | Execute block at _.action (prints string) |
-| 5 | (Block ends) | `[]` | *destroyed* | Register discarded |
+| Step | Token                   | AL State                  | Register State           | Description                               |
+|------|-------------------------|---------------------------|--------------------------|-------------------------------------------|
+| 0    | (Block starts)          | `[]`                      | `{}`                     | Fresh Register                            |
+| 1    | `print`                 | `[print_block]`           | -                        | Push print block                          |
+| 2    | `!_.action`             | `[]`                      | `_.action = print_block` | Store in Register                         |
+| 3    | `(Hello from register)` | `[(Hello from register)]` | -                        | Push string                               |
+| 4    | `>_.action`             | `[]`                      | -                        | Execute block at _.action (prints string) |
+| 5    | (Block ends)            | `[]`                      | _*destroyed*_            | Register discarded                        |
 
-**Output:** `Hello from register`
+**Output: **`Hello from register`
 
 **Example: Nested blocks with isolated Registers**
 
@@ -1957,6 +1972,7 @@ The Register is destroyed when the Block ends.
 ```
 
 **Key points:**
+
 - Outer block's `_.outer_val` is in Outer Register
 - Inner block's `_.inner_val` is in Inner Register (completely separate)
 - Inner block **cannot** access `_.outer_val` from outer block (undefined path)
@@ -1980,6 +1996,7 @@ The Register is destroyed when the Block ends.
 ```
 
 **Key points:**
+
 - Both blocks use Store paths (no `_` prefix)
 - Store is global - all blocks can access
 - Data persists across block boundaries
@@ -2156,11 +2173,13 @@ No hidden stacks, no return contexts, no exception handlers.
 **SOMA is defined with a happens-before memory model, but the exact nature of that model is intentionally implementation-defined.**
 
 This approach:
+
 - Fits with machine algebra (systematic, mechanistic)
 - Defines observable ordering relationships
 - Is well-understood in concurrent systems
 
 The specification leaves the exact memory model undefined because:
+
 - It may be application-specific (single-threaded, multi-threaded, distributed)
 - It may be hardware-specific (x86, ARM, GPU)
 - An overly restrictive specification would limit implementations
@@ -2225,6 +2244,7 @@ shared      ) When does this see 42?
 #### 9.3.2 Synchronization Primitives
 
 SOMA does not define:
+
 - Mutexes
 - Semaphores
 - Atomic compare-and-swap
@@ -2235,6 +2255,7 @@ SOMA does not define:
 #### 9.3.3 Thread Creation/Management
 
 SOMA does not specify:
+
 - How threads are created
 - How threads are synchronized
 - Thread scheduling
@@ -2248,12 +2269,11 @@ SOMA does not specify:
 **Properties:**
 
 1. **Program Order:** Within a thread, if operation A comes before operation B in program text, then A ⊏ B
-
 2. **Transitivity:** If A ⊏ B and B ⊏ C, then A ⊏ C
-
 3. **Synchronization:** The exact synchronization edges that establish happens-before between threads are implementation-defined
 
 **What this means:**
+
 - Single-threaded: happens-before = program order (simple)
 - Multi-threaded with locks: happens-before includes lock release → acquire
 - Distributed: happens-before might include message send → receive
@@ -2264,6 +2284,7 @@ SOMA does not specify:
 #### Single-Threaded Execution
 
 In a single-threaded SOMA implementation:
+
 - Happens-before is simply program order
 - All operations are sequentially consistent
 - No memory model concerns
@@ -2281,6 +2302,7 @@ a b >+
 #### Multi-Threaded Execution
 
 In multi-threaded implementations:
+
 - Happens-before relationships must be defined by the implementation
 - Cross-thread visibility depends on synchronization
 - Memory model must be documented
@@ -2322,6 +2344,7 @@ Sequential consistency - program order equals execution order. No additional con
 #### For Multi-Threaded Implementations
 
 **Choose a memory model:**
+
 - Sequential consistency (simplest, may be slower)
 - TSO (Total Store Order - like x86)
 - Relaxed (like ARM, requires careful synchronization)
@@ -2331,6 +2354,7 @@ Sequential consistency - program order equals execution order. No additional con
 #### For Distributed Implementations
 
 **Choose a consistency model:**
+
 - Causal consistency
 - Eventual consistency
 - Strong consistency
@@ -2350,6 +2374,7 @@ When a fatal error occurs: **"The Store remains in its last valid state."**
 ```
 
 **After the error:**
+
 - `a` contains 1 (operation completed)
 - Store is in a **valid** state (no corrupted data structures)
 - Individual operations are atomic (no partial writes)
@@ -2358,16 +2383,16 @@ When a fatal error occurs: **"The Store remains in its last valid state."**
 
 **Not guaranteed:** Exactly which operations completed in multi-threaded scenarios (depends on memory model).
 
-**Conservative interpretation for portable code:** After an error, only operations that completed *before* the error are guaranteed to be visible. Cross-thread visibility is unspecified.
+**Conservative interpretation for portable code:** After an error, only operations that completed _before_ the error are guaranteed to be visible. Cross-thread visibility is unspecified.
 
 ### 9.8 Key Principles Summary
 
-1. **SOMA uses a happens-before memory model** (systematic, mechanistic)
-2. **Exact details are implementation-defined** (application/hardware specific)
-3. **Single-threaded execution is straightforward** (program order)
-4. **Multi-threaded requires implementation-specific synchronization**
-5. **Individual operations are atomic** (no partial writes)
-6. **Store remains valid after errors** (no corruption)
+1. **SOMA uses a happens-before memory model**:  (systematic, mechanistic)
+2. **Exact details are implementation-defined**:  (application/hardware specific)
+3. **Single-threaded execution is straightforward**:  (program order)
+4. **Multi-threaded requires implementation-specific synchronization**: 
+5. **Individual operations are atomic**:  (no partial writes)
+6. **Store remains valid after errors**:  (no corruption)
 
 ---
 
@@ -2375,14 +2400,14 @@ When a fatal error occurs: **"The Store remains in its last valid state."**
 
 During analysis of the specification, the following issues were identified:
 
-1. **CellRef vs Block in `>chain` examples**: Several examples use `square.` or `toggle.` (CellRefs) where `>chain` expects a Block value. These should use `square` (payload) instead.
-
-~~2. **Register destruction semantics for escaped CellRefs**: RESOLVED - Section 3.13 and Section 4.4 now clarify that Cells (whether in Store or Register) persist as long as they're accessible via any CellRef, even after the Register is destroyed. The CellRef keeps the Cell alive.~~
-
-~~3. **Path resolution through Nil payloads**: RESOLVED - Section 6.12 now clarifies that path traversal works through ANY value (including Nil and Void) because path resolution uses only the subpaths component. Value and subpaths are orthogonal (Section 2.2.1).~~
+1. CellRef vs Block in `>chain`** examples**: Several examples use `square.` or `toggle.` (CellRefs) where `>chain` expects a Block value. These should use `square` (payload) instead.
+2. ~~2. **Register destruction semantics for escaped CellRefs**: RESOLVED - Section 3.13 and Section 4.4 now clarify that Cells (whether in Store or Register) persist as long as they're accessible via any CellRef, even after the Register is destroyed. The CellRef keeps the Cell alive.~~
+3. ~~3. **Path resolution through Nil payloads**: RESOLVED - Section 6.12 now clarifies that path traversal works through ANY value (including Nil and Void) because path resolution uses only the subpaths component. Value and subpaths are orthogonal (Section 2.2.1).~~
 
 These issues do not affect the fundamental machine model but require clarification for full implementability.
 
 ---
 
 **End of Chapter 03 — Machine Model**
+
+

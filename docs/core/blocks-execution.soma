@@ -1,143 +1,1425 @@
 (python) >use (markdown) >use
 >md.start
 
-(04 – Blocks and Execution) >md.h1
-
-(Blocks are the fundamental executable units in SOMA. Unlike functions, blocks are first-class values that transform machine state directly. They have no arity, declare no parameters, and do not return values. A block is not called—it is executed, transforming the pair \29\AL, Store\29\ into \29\AL'\29\, Store'\29\\29\.) >md.p
+(04 - Blocks and Execution) >md.h1
 
 (Overview) >md.h2
 
+(Blocks are the fundamental executable units in SOMA. Unlike functions in traditional languages, blocks are ) (first-class values) >md.b ( that transform machine state directly. They have no arity, declare no parameters, and do not return values. A block is not called-it is executed, transforming the pair ) (\29\AL, Store\29\) >md.c ( into a new state ) (\29\AL', Store'\29\) >md.c (.) >md.t >md.p
+
+(This document clarifies what blocks are, how they execute, and what distinguishes them from functions.) >md.p
+
+>md.hr
+
+(1. Blocks Are Values) >md.h2
+
 (A block is written as a sequence of tokens enclosed in braces:) >md.p
 
-(soma) ({ token token token }) >md.code
+({ token token token }) (soma) >md.code
 
-(Blocks may be nested without limit and are not executed when read—they are pushed onto the AL as values, just like integers or strings.) >md.p
+(Blocks may be nested without limit:) >md.p
 
-(Blocks Are Values) >md.h2
+({ 1 { 2 3 >+ } >drop }) (soma) >md.code
+
+(Critically: a block is not executed when it is read.) >md.b ( It is pushed onto the AL as a value, just like an integer or string.) >md.t >md.p
+
+({ 5 5 >* }     ; AL now contains a Block, not 25) (soma) >md.code
 
 (Blocks behave like any other SOMA value. They may be:) >md.p
 
 (Pushed onto the AL)
 (Stored in a Cell)
-(Passed between blocks)
-(Used in control flow like >choose)
+(Passed between Blocks)
+(Used in control flow \29\) (>choose) >md.c (, ) (>chain) >md.c (\29\) >md.t
 (Executed via built-ins or path execution)
 >md.ul
 
-(No Arity, No Return) >md.h2
+(Example: Storing and Reusing a Block) >md.h3
+
+({ >dup >* } !square
+
+7 square >chain >print) (soma) >md.code
+
+(Output:) >md.b ( ) (49) >md.c >md.t >md.p
+
+(Here:) >md.p
+
+(A block is created and stored in the Cell ) (square) >md.c >md.oli
+(The integer ) (7) >md.c ( is pushed onto the AL) >md.oli
+(The block stored at ) (square) >md.c ( is retrieved and executed via ) (>chain) >md.c >md.oli
+(The block duplicates ) (7) >md.c ( and multiplies it by itself) >md.oli
+(The result ) (49) >md.c ( is printed) >md.oli
+>md.ol
+
+>md.hr
+
+(2. No Arity, No Return) >md.h2
 
 (SOMA blocks do not declare parameters. They simply consume whatever values they need from the AL and leave new values behind.) >md.p
 
-(Execution Model: Linear, Token-by-Token) >md.h2
+(There is no signature like ) (f\29\x, y\29\ -> z) >md.c (. Instead:) >md.t >md.p
 
-(When a block executes, SOMA processes its tokens left to right, one at a time. Each token transforms the machine state:) >md.p
+(A block reads from the AL if it needs input)
+(A block writes to the AL \29\or Store\29\ if it produces output)
+(The "contract" is entirely dynamic)
+>md.ul
 
-(soma) ({ 2 3 >+ 5 >* }) >md.code
+(Example: A Block That Consumes Two Values) >md.h3
 
-(Initial AL = \[\], Register = {} \29\empty graph\29\. After token 2: AL = [2]. After token 3: AL = [3, 2]. After >+: AL = [5]. After token 5: AL = [5, 5]. After >*: AL = [25].) >md.p
+({ >+ } !add_two_numbers
 
-(Execution proceeds strictly linearly. There is no symbolic reduction, no lazy evaluation, no hidden control flow.) >md.p
+3 4 add_two_numbers >chain
+; AL now contains [7]) (soma) >md.code
 
-(No Call Stack) >md.h2
+(The block ) (add_two_numbers) >md.c ( doesn't declare "I take two integers." It simply executes ) (>+) >md.c (, which consumes two values from the AL. If fewer than two values are present, execution fails fatally.) >md.t >md.p
 
-(SOMA does not implement a call stack. Executing a block does not create a new stack frame. Instead, block execution is a direct state transformation:) >md.p
+(Example: A Block That Leaves Multiple Values) >md.h3
 
-(soma) (Before: \29\AL₁, Store₁, Register₁\29\ After: \29\AL₂, Store₂, Register₂\29\) >md.code
+({ 1 2 3 } !push_three
+
+push_three >chain
+; AL now contains [1, 2, 3]) (soma) >md.code
+
+(There is no formal return statement. The block simply leaves values on the AL.) >md.p
+
+>md.hr
+
+(3. Execution Model: Linear, Token-by-Token) >md.h2
+
+(When a block executes, SOMA processes its tokens ) (left to right) >md.b (, one at a time. Each token transforms the machine state:) >md.t >md.p
+
+(\29\AL, Store, Register, IP\29\ -> \29\AL', Store', Register', IP'\29\) Nil >md.code
+
+(Where:) >md.p
+
+(AL) >md.b (: The Accumulator List) >md.uli
+(Store) >md.b (: The global graph of Cells) >md.uli
+(Register) >md.b (: The block-local graph of Cells) >md.uli
+(IP) >md.b (: Instruction Pointer \29\next token to execute\29\) >md.uli
+>md.ul
+
+(Execution proceeds ) (strictly linearly) >md.b (. There is no symbolic reduction, no lazy evaluation, no hidden control flow. Each token is processed in sequence until the block ends.) >md.t >md.p
+
+(Example: Step-by-Step Execution) >md.h3
+
+({ 2 3 >+ 5 >* }) (soma) >md.code
+
+(Initial state:) >md.p
+
+(AL = ) ([]) >md.c >md.uli
+(Register = ) ({}) >md.c ( \29\empty graph\29\) >md.uli
+>md.ul
+
+(After token ) (2) >md.c (:) >md.t >md.p
+
+(AL = ) ([2]) >md.c >md.uli
+>md.ul
+
+(After token ) (3) >md.c (:) >md.t >md.p
+
+(AL = ) ([3, 2]) >md.c >md.uli
+>md.ul
+
+(After token ) (>+) >md.c (:) >md.t >md.p
+
+(AL = ) ([5]) >md.c ( \29\pops 3 and 2, pushes their sum\29\) >md.uli
+>md.ul
+
+(After token ) (5) >md.c (:) >md.t >md.p
+
+(AL = ) ([5, 5]) >md.c >md.uli
+>md.ul
+
+(After token ) (>*) >md.c (:) >md.t >md.p
+
+(AL = ) ([25]) >md.c ( \29\pops two 5s, pushes their product\29\) >md.uli
+>md.ul
+
+(Final state:) >md.p
+
+(AL = ) ([25]) >md.c >md.uli
+>md.ul
+
+>md.hr
+
+(4. No Call Stack) >md.h2
+
+(SOMA does not implement a call stack. Executing a block ) (does not create a new stack frame) >md.b (. There is no return path, no stack unwinding, and no exception model.) >md.t >md.p
+
+(Instead, block execution is a ) (direct state transformation) >md.b (:) >md.t >md.p
+
+(Before: \29\AL1, Store1, Register1\29\
+After:  \29\AL2, Store2, Register2\29\) Nil >md.code
 
 (When a block finishes, execution simply continues with the next token in the enclosing context.) >md.p
 
-(Everything is a Block) >md.h2
+(Comparison: Function Call vs. SOMA Block) >md.h3
 
-(The >block Built-in) >md.h3
+(Traditional function call:) >md.p >md.b
 
-(SOMA provides a built-in operation >block that pushes the currently executing block onto the AL. This enables blocks to reference themselves without any special magic or automatic bindings.) >md.p
+(def square(x\29\:
+    return x * x
 
-(Stack Effect: \[\] → [Block]) >md.p
+result = square(7\29\) (python) >md.code
 
-(All SOMA execution occurs within a block context. Top-level code is itself a block. There is no \29\outside\29\ the outermost block—that's the runtime environment.) >md.p
+(Here:) >md.p
 
-(Block Execution Patterns) >md.h2
+(A new stack frame is created)
+(The value ) (7) >md.c ( is bound to parameter ) (x) >md.c >md.t
+(A value is returned and the frame is popped)
+(Control returns to the caller)
+>md.ul
 
-(6.1 Executing Blocks from Paths: >path) >md.h3
+(SOMA block execution:) >md.p >md.b
 
-(The execution prefix > is an atomic read-and-execute operation for blocks stored at paths.) >md.p
+({ >dup >* } !square
+7 square >chain) (soma) >md.code
 
-(The > prefix performs: 1\29\ Resolve path to a value 2\29\ If the value is a Block, execute it 3\29\ If the value is not a Block, this is a fatal error.) >md.p
+(Here:) >md.p
 
-(soma) (> prefix makes execution explicit and first-class) >md.code
+(No stack frame is created)
+(The value ) (7) >md.c ( is already on the AL) >md.t
+(A new Register is created for the block's execution)
+(The block reads and transforms the AL in-place)
+(When the block ends, execution continues linearly and the Register is destroyed)
+>md.ul
 
-(Built-ins Are Just Store Paths) >md.h3
+>md.hr
 
-(All SOMA built-ins are Blocks stored at Store paths. When you write >print, you're not calling a \29\built-in function\29\—you're executing the Block at Store path \29\print\29\.) >md.p
+(5. Everything is a Block) >md.h2
 
-(Key distinction: square pushes the Block value onto AL, >square executes the Block.) >md.p
+(The ) (>block) >md.c ( Built-in) >md.t >md.h3
 
-(6.2 Executing Block Literals: >{}) >md.h3
+(SOMA provides a built-in operation ) (>block) >md.c ( that pushes the currently executing block onto the AL. This enables blocks to reference themselves without any special magic or automatic bindings.) >md.t >md.p
 
-(The >{ } pattern executes a block literal immediately without storing it first. This is the cleanest way to execute ad-hoc code.) >md.p
+(Stack Effect:) >md.p >md.b
 
-(soma) (>{ \29\Hello\29\ >print }) >md.code
+([] -> [Block]) Nil >md.code
 
-(6.3 Loops and Tail-Calls: >chain) >md.h3
+(Semantics:) >md.p >md.b
 
-(The >chain operation enables loops and tail-call optimization. It repeatedly pops the AL top and executes it if it's a Block. If the top is not a Block, >chain stops and leaves it on the AL.) >md.p
+(Pushes the currently executing block onto the AL.) >md.p
 
-(soma) (fib-step >chain) >md.code
+(Everything Executes in a Block Context) >md.h3
 
-(Tail-call optimization: This pattern uses constant space—no stack growth. The block returns itself for the next iteration.) >md.p
+(All SOMA execution occurs within a block context:) >md.p
 
-(6.4 Execute from AL: >^) >md.h3
+(Top-level code) >md.b ( is itself a block (the outermost block\29\) >md.t
+(Explicit blocks) >md.b ( ) ({ ... }) >md.c ( are nested blocks) >md.t >md.t
+(There is no "outside" the outermost block-that's the runtime environment)
+>md.ul
 
-(The >^ pattern executes a block that's already on the AL. This is typically user-defined:) >md.p
+(No Infinite Regress) >md.h3
 
-(soma) ({ !_ >_ } !^) >md.code
+(We don't need to ask "what executes the top-level block?" The top-level code IS a block, axiomatically. The SOMA runtime executes it. There's nothing to formalize "outside" SOMA's computational model.) >md.p
 
-(Execution Patterns Summary) >md.h2
+(>block) >md.c ( Works Everywhere) >md.t >md.h3
+
+(; Top-level
+>block              ; Returns the outermost block (the "program"\29\
+
+; Inside explicit block
+{ >block }          ; Returns this block
+
+; Nested blocks
+{
+  >block !outer
+  {
+    >block !inner
+    outer inner >Equal    ; False - different blocks
+  }
+}) (soma) >md.code
+
+(Just Another Built-in) >md.h3
+
+(>block) >md.c ( is not special syntax or a magic binding. It's a regular built-in operation, just like ) (>choose) >md.c ( or ) (>chain) >md.c (. This means:) >md.t >md.p
+
+(It can be aliased to any name: ) (block !blok) >md.c ( (Russian\29\, ) (block !kedja) >md.c ( (Swedish\29\) >md.t
+(No English-centric constraints)
+(No special Register treatment)
+(Simpler specification)
+>md.ul
+
+(Example: Infinite Loop) >md.h3
+
+({ >block >chain }) (soma) >md.code
+
+(How it works:) >md.p >md.b
+
+(Block begins execution)
+(>block) >md.c ( pushes this block onto the AL) >md.t
+(>chain) >md.c ( executes the block (which is on top of AL\29\) >md.t
+(The cycle repeats indefinitely)
+>md.ol
+
+(This creates an infinite loop without any external naming or storage.) >md.p
+
+(Example: Nested Blocks Each Have Access to Their Own Block) >md.h3
+
+({
+  "Outer block executing" >print
+  >block !outer_self_reg           ; Store in outer's Register
+
+  {
+    "Inner block executing" >print
+    >block !inner_self_reg         ; Store in inner's Register
+  } >chain
+
+  ; After inner block completes, inner's Register is destroyed
+  ; outer_self_reg still exists in outer's Register
+  ; inner_self_reg is GONE (was in inner's Register\29\
+
+  >block outer_self_reg >==        ; Compare current block with saved value
+  { "Same block (correct\29\" }
+  { "Different blocks (impossible\29\" }
+  >choose >chain >print
+}) (soma) >md.code
+
+(Output:) >md.p >md.b
+
+(Outer block executing
+Inner block executing
+Same block (correct\29\) Nil >md.code
+
+(How it works:) >md.p >md.b
+
+(Outer block executes, ) (>block) >md.c ( returns the outer Block) >md.t
+(Outer Block stores the block reference in Register1 at path ) (outer_self_reg) >md.c >md.t
+(Inner block executes, creates Register2)
+(Inner block's ) (>block) >md.c ( returns the inner Block) >md.t
+(Inner Block stores the block reference in Register2 at path ) (inner_self_reg) >md.c >md.t
+(Inner block completes -> ) (Register2 is destroyed) >md.b ( (along with ) (inner_self_reg) >md.c (\29\) >md.t >md.t
+(Back in outer block with Register1)
+(>block) >md.c ( refers to outer block again) >md.t
+(Comparing ) (>block) >md.c ( with ) (outer_self_reg) >md.c ( shows they're the same) >md.t
+>md.ol
+
+(Key insight:) >md.p >md.b
+
+(Each block can use ) (>block) >md.c ( to get a reference to itself) >md.t
+(Inner block's Register is destroyed when it completes)
+(Outer block's Register persists and its values are still accessible)
+(If you want to compare blocks across execution contexts, store them in the Store, not the Register!) >md.b
+>md.ul
+
+(Corrected Example: Comparing Inner and Outer Blocks) >md.h3
+
+(If you want to actually compare the inner and outer blocks, you must use the Store:) >md.p
+
+({
+  "Outer block executing" >print
+  >block !outer_block              ; Store in Store (global\29\
+
+  {
+    "Inner block executing" >print
+    >block !inner_block            ; Store in Store (global\29\
+  } >chain
+
+  outer_block inner_block >==
+  { "SAME block (impossible\29\" }
+  { "DIFFERENT blocks (correct\29\" }
+  >choose >chain >print
+}) (soma) >md.code
+
+(Output:) >md.p >md.b
+
+(Outer block executing
+Inner block executing
+DIFFERENT blocks (correct\29\) Nil >md.code
+
+(Now the comparison works because both blocks are stored in the Store, which persists across block executions.) >md.p
+
+>md.hr
+
+(6. Block Execution Patterns) >md.h2
+
+(SOMA provides multiple ways to execute blocks, each serving different purposes. Understanding these patterns is essential for writing idiomatic SOMA code.) >md.p
+
+(Overview of Execution Patterns) >md.h3
+
+({ 1 2 >+ } !myblock         \29\ Store a block
+>myblock                    \29\ Pattern 1: Execute from Store path
+>{ 1 2 >+ }                 \29\ Pattern 2: Execute block literal directly
+myblock >chain              \29\ Pattern 3: Execute via chain (loops/tail-calls\29\
+myblock >^                  \29\ Pattern 4: Execute from AL) (soma) >md.code
+
+>md.hr
+
+(6.1 Executing Blocks from Paths: ) (>path) >md.c >md.t >md.h3
+
+(The ) (execution prefix ) >md.b (>) >md.c ( is an atomic read-and-execute operation for blocks stored at paths.) >md.t >md.p
+
+(Core Semantics:) >md.b >md.p
+
+(The ) (>) >md.c ( prefix performs a single atomic operation:) >md.t >md.p
+
+(Resolve ) (path) >md.c ( to a value) >md.t
+(If the value is a Block, execute it)
+(If the value is not a Block, this is a fatal error)
+>md.ol
+
+(This is NOT two separate operations.) >md.b ( It's an atomic read-and-execute.) >md.t >md.p
+
+(Blocks Are Values Until Executed:) >md.b >md.p
+
+(print           ; Pushes the print Block onto AL (it's a value\29\
+>print          ; Executes the print Block (it's an operation\29\) (soma) >md.code
+
+(Without ) (>) >md.c (, blocks are just values:) >md.t >md.b >md.p
+
+({ 1 2 >+ }      ; This is a value (a Block\29\ pushed onto AL
+{ 1 2 >+ } >^   ; This pushes the block, then executes from AL
+>{ 1 2 >+ }     ; This executes immediately (cleaner!\29\) (soma) >md.code
+
+(The ) (>) >md.c ( modifier makes execution ) (explicit and first-class) >md.b (.) >md.t >md.p
+
+(Execution from Store Paths) >md.h4
+
+(The most common use of ) (>) >md.c ( is executing blocks stored in the Store:) >md.t >md.p
+
+({ >dup >* } !square
+
+>square         ; Execute the block at Store path "square") (soma) >md.code
+
+(How it works:) >md.b >md.p
+
+(>) >md.c (square) >md.t ( reads the Block stored at path "square") >md.oli
+(Executes that Block immediately) >md.oli
+(The Block operates on whatever's on the AL) >md.oli
+>md.ol
+
+(Example: Storing and executing a greeting:) >md.b >md.p
+
+({ (Hello\29\ >print } !say_hello
+
+>say_hello      ; Prints: Hello) (soma) >md.code
+
+(Execution from Register Paths) >md.h4
+
+(The ) (>) >md.c ( modifier works identically with Register paths:) >md.t >md.p
+
+({
+  { (Hi from register\29\ >print } !_.greet
+  >_.greet      ; Execute block at Register path "_.greet"
+}) (soma) >md.code
+
+(Output:) >md.b ( ) (Hi from register) >md.c >md.t >md.p
+
+(This is crucial for local execution patterns:) >md.p
+
+({
+  { >dup >* } !_.operation
+  7 >_.operation    ; Execute the locally-stored operation
+}) (soma) >md.code
+
+(Output:) >md.b ( AL contains ) ([49]) >md.c >md.t >md.p
+
+(Built-ins Are Just Store Paths) >md.h4
+
+(All SOMA built-ins are Blocks stored at Store paths.) >md.b ( When you write ) (>print) >md.c (, you're not calling a "built-in function"—you're executing the Block at Store path "print".) >md.t >md.p
+
+(>print          ; Execute block at Store path "print"
+>dup            ; Execute block at Store path "dup"
+>+              ; Execute block at Store path "+"
+>==             ; Execute block at Store path "==") (soma) >md.code
+
+(There's no special built-in syntax. They're just pre-populated Store paths!) >md.p
+
+(User-defined blocks work exactly the same:) >md.p
+
+({ ... } !my_func    ; Store block at path "my_func"
+>my_func            ; Execute block at path "my_func") (soma) >md.code
+
+(The key distinction:) >md.b >md.p
+
+(square          ; Pushes the Block value onto AL
+>square         ; Executes the Block (nothing pushed onto AL\29\) (soma) >md.code
+
+>md.hr
+
+(6.2 Executing Block Literals: ) (>{ }) >md.c >md.t >md.h3
+
+(The ) (>{ }) >md.c ( pattern executes a block literal ) (immediately) >md.b ( without storing it first. This is the cleanest way to execute ad-hoc code.) >md.t >md.p
+
+(Syntax:) >md.b >md.p
+
+(>{ code }       ; Execute this block immediately) (soma) >md.code
+
+(Examples from test suite:) >md.b >md.p
+
+(\29\ TEST: Simple execute block literal
+\29\ EXPECT_OUTPUT: Hello
+>{ (Hello\29\ >print }
+
+\29\ TEST: Execute block with result
+\29\ EXPECT_AL: [42]
+>{ 42 }
+
+\29\ TEST: Execute block with computation
+\29\ EXPECT_AL: [8]
+>{ 5 3 >+ }) (soma) >md.code
+
+(Passing Arguments via AL) >md.h4
+
+(Blocks can receive arguments from the AL:) >md.p
+
+(\29\ TEST: Execute block with argument from AL
+\29\ EXPECT_AL: [10]
+5 >{ !_.x _.x 2 >* }) (soma) >md.code
+
+(How it works:) >md.b >md.p
+
+(5) >md.c ( is pushed onto AL) >md.t
+(The block executes with AL = [5])
+(!_.x) >md.c ( pops 5 and stores in Register) >md.t
+(_.x 2 >*) >md.c ( computes 5 x 2 = 10) >md.t
+(Leaves 10 on AL)
+>md.ol
+
+(#### Multiple Arguments) >md.h4
+
+(\29\ TEST: Execute block with multiple arguments
+\29\ EXPECT_AL: [15]
+5 10 >{ !_.b !_.a _.a _.b >+ }) (soma) >md.code
+
+(**Note the order:** LIFO \40\Last In, First Out\41\. `10` is popped first into `_.b`, then `5` into `_.a`.) >md.p
+
+(Nested Execute Blocks) >md.h4
+
+(\29\ TEST: Nested execute blocks
+\29\ EXPECT_AL: [100]
+>{
+  >{ 10 }
+  >{ !_.x _.x _.x >* }
+}) (soma) >md.code
+
+(How it works:) >md.b >md.p
+
+(Outer block executes)
+(>{ 10 }) >md.c ( executes, leaving 10 on AL) >md.t
+(>{ !_.x _.x _.x >* }) >md.c ( executes:) >md.t >md.oli
+>md.nest
+  (Pops 10 into ) (_.x) >md.c >md.t
+  (Computes 10 x 10 = 100)
+  (Leaves 100 on AL)
+  >md.ul
+>md.ol
+
+(Execute Block vs Chain Comparison) >md.h4
+
+(Old pattern (verbose\29\:) >md.b >md.p
+
+({ 42 } >chain       ; Push block to AL, then execute with chain) (soma) >md.code
+
+(New pattern (cleaner\29\:) >md.b >md.p
+
+(>{ 42 }             ; Execute block literal directly) (soma) >md.code
+
+(Both give the same result, but ) (>{ }) >md.c ( is more concise and clearer in intent.) >md.t >md.p
+
+(Register Isolation) >md.h4
+
+(Each ) (>{ }) >md.c ( execution creates a fresh Register:) >md.t >md.p
+
+(\29\ TEST: Execute block with Register isolation
+\29\ EXPECT_AL: [5]
+>{
+  5 !_.outer
+  _.outer >{ !_.inner _.inner }
+}) (soma) >md.code
+
+(How it works:) >md.b >md.p
+
+(Outer block creates Register1)
+(Store 5 in Register1 at path ) (_.outer) >md.c >md.t
+(Push 5 onto AL)
+(Inner block executes with fresh Register2)
+(! _.inner) >md.c ( pops 5, stores in Register2) >md.t
+(_.inner) >md.c ( pushes 5 back onto AL) >md.t
+(Inner block completes -> Register2 destroyed)
+(Back in outer block with Register1)
+>md.ol
+
+>md.hr
+
+(6.3 Loops and Tail-Calls: ) (>chain) >md.c >md.t >md.h3
+
+(The ) (>chain) >md.c ( operation enables loops and tail-call optimization. It repeatedly pops the AL top and executes it ) >md.t (if it's a Block) >md.b (. If the top is not a Block, ) (>chain) >md.c ( stops and leaves it on the AL.) >md.t >md.t >md.p
+
+(Behavior:) >md.b >md.p
+
+(Loop:
+  Pop AL top
+  If it's a Block:
+    Execute the block
+    Repeat
+  Else:
+    Push it back onto AL
+    Stop) Nil >md.code
+
+(Stack Effect:) >md.b >md.p
+
+([Block1, ...] -> (execute Block1 and repeat\29\
+[Nil, ...] -> [Nil, ...] (stop\29\
+[42, ...] -> [42, ...] (stop\29\) Nil >md.code
+
+(Basic Chain Example) >md.h4
+
+({ (Hello\29\ >print Nil } !say_hello
+>say_hello) (soma) >md.code
+
+(How it works:) >md.b >md.p
+
+(Execute the block at path ) (say_hello) >md.c >md.t
+(Block prints "Hello" and pushes Nil)
+(>chain) >md.c ( sees Nil (not a Block\29\, stops) >md.t
+(AL = [Nil])
+>md.ol
+
+(Tail-Call Optimization: Fibonacci) >md.h4
+
+(From ) (02_advanced_chain.soma) >md.c (:) >md.t >md.p
+
+(\29\ TEST: Fibonacci with tail-call optimization via chain
+0 !fib.a
+1 !fib.b
+7 !fib.count
+
+{
+  fib.a >toString >print
+
+  fib.count 1 >=<
+    Nil
+    {
+      fib.count 1 >- !fib.count
+      fib.a fib.b >+ !fib.next
+      fib.b !fib.a
+      fib.next !fib.b
+      fib-step
+    }
+  >choose
+} !fib-step
+
+fib-step >chain) (soma) >md.code
+
+(Output:) >md.b ( ) (0 1 1 2 3 5 8) >md.c >md.t >md.p
+
+(How it works:) >md.b >md.p
+
+(fib-step >chain) >md.c ( executes the block and continues chaining) >md.t
+(Block prints current Fibonacci number)
+(Check if count <= 1:) >md.nest
+  (If yes: return ) (Nil) >md.c ( (stops chain\29\) >md.t
+  (If no: update state and return ) (fib-step) >md.c ( block (continues chain\29\) >md.t
+  >md.ul
+(>choose) >md.c ( selects the appropriate result) >md.t
+(>chain) >md.c ( sees either Nil (stops\29\ or fib-step Block (continues\29\) >md.t
+>md.ol
+
+(Key insight:) >md.b ( This is tail-call optimization! No call stack grows. The block returns itself for the next iteration.) >md.t >md.p
+
+(Tail-Call Optimization: Factorial with Accumulator) >md.h4
+
+(\29\ TEST: Factorial with tail-call via chain (accumulator pattern\29\
+5 !fact.n
+1 !fact.acc
+
+{
+  fact.n 0 >=<
+    fact.acc
+    {
+      fact.n 1 >- !fact.n
+      fact.acc fact.n 1 >+ >* !fact.acc
+      fact-step
+    }
+  >choose
+} !fact-step
+
+fact-step >chain) (soma) >md.code
+
+(Output:) >md.b ( AL = [120]) >md.t >md.p
+
+(How it works:) >md.b >md.p
+
+(Check if n <= 0:) >md.nest
+  (Base case: return accumulator (stops chain\29\)
+  (Recursive case: update state, return ) (fact-step) >md.c ( block) >md.t
+  >md.ul
+(Each iteration multiplies accumulator by current n)
+(No stack growth--constant space!)
+>md.ol
+
+(State Machine Pattern) >md.h4
+
+(\29\ TEST: State machine via chain
+{
+  (State A\29\ >print
+  state-b
+} !state-a
+
+{
+  (State B\29\ >print
+  state-c
+} !state-b
+
+{
+  (State C\29\ >print
+  { (Done\29\ >print }
+} !state-c
+
+state-a >chain) (soma) >md.code
+
+(Output:) >md.b >md.p
+
+(State A
+State B
+State C
+Done) Nil >md.code
+
+(How it works:) >md.b >md.p
+
+(Each state block prints its message and returns the next state block)
+(state-c) >md.c ( returns a block (not a simple value\29\, so chain continues) >md.t
+(Final block prints "Done" and implicitly returns Void)
+(Chain stops when no Block is left on AL)
+>md.ol
+
+(Countdown with Mixed Execution) >md.h4
+
+(From test suite:) >md.p
+
+(\29\ TEST: Countdown using chain
+3 !count
+
+{
+  count >toString >print
+  count 1 >- !count
+
+  count 0 >=<
+    { (Liftoff\29\ >print }
+    countdown
+  >choose >^
+} !countdown
+
+countdown >chain) (soma) >md.code
+
+(Output:) >md.b >md.p
+
+(3
+2
+1
+Liftoff) Nil >md.code
+
+(How it works:) >md.b >md.p
+
+(Print current count, decrement)
+(Check if count <= 0:) >md.nest
+  (If yes: return a block that prints "Liftoff")
+  (If no: return ) (countdown) >md.c ( block itself) >md.t
+  >md.ul
+(>choose) >md.c ( selects the result) >md.t
+(>^) >md.c ( executes whatever's on AL (either the liftoff block or countdown block\29\) >md.t
+(Chain continues until the liftoff block completes)
+>md.ol
+
+(Note:) >md.b ( This uses ) (>^) >md.c ( to execute the chosen value. See next section.) >md.t >md.p
+
+(Trampoline Pattern: Mutual Recursion) >md.h4
+
+(\29\ TEST: Trampoline pattern - mutual recursion via chain
+{
+  (even: \29\ parity.n >toString >concat >print
+
+  parity.n 0 >==
+    { (Result: True\29\ >print }
+    { parity.n 1 >- !parity.n is-odd }
+  >choose
+} !is-even
+
+{
+  (odd: \29\ parity.n >toString >concat >print
+
+  parity.n 0 >==
+    { (Result: False\29\ >print }
+    { parity.n 1 >- !parity.n is-even }
+  >choose
+} !is-odd
+
+4 !parity.n
+is-even >chain) (soma) >md.code
+
+(Output:) >md.b >md.p
+
+(even: 4
+odd: 3
+even: 2
+odd: 1
+even: 0
+Result: True) Nil >md.code
+
+(How it works:) >md.b >md.p
+
+(Each function checks base case)
+(If not base case, returns the other function)
+(>chain) >md.c ( continues bouncing between functions) >md.t
+(No stack growth--trampolining handles mutual recursion in constant space!)
+>md.ol
+
+>md.hr
+
+(6.4 Execute from AL: ) (>^) >md.c >md.t >md.h3
+
+(The ) (>^) >md.c ( pattern executes a block that's ) >md.t (already on the AL) >md.b (. This is typically user-defined in stdlib:) >md.t >md.p
+
+({ !_ >_ } !^                 ; Like Forth's EXECUTE) (soma) >md.code
+
+(How it works:) >md.b >md.p
+
+(!_) >md.c ( pops the AL top and stores it in Register at path ) >md.t (_) >md.c >md.t
+(>_) >md.c ( reads from Register path ) >md.t (_) >md.c ( and executes it) >md.t
+>md.ol
+
+(Example:) >md.b >md.p
+
+((Data\29\ print >^              ; Execute print block on "Data") (soma) >md.code
+
+(How it works:) >md.b >md.p
+
+(Push string ) ((Data\29\) >md.c ( onto AL) >md.t
+(Push ) (print) >md.c ( block onto AL (AL = [print, (Data\29\]\29\) >md.t
+(>^) >md.c ( executes:) >md.t >md.nest
+  (Pops ) (print) >md.c ( block, stores in ) >md.t (_) >md.c >md.t
+  (>_) >md.c ( executes the print block) >md.t
+  (Print block pops "(Data\29\" and prints it)
+  >md.ul
+>md.ol
+
+(Pattern: Higher-Order Operations) >md.h4
+
+({ !_.f !_.x _.x >_.f } !apply
+
+{ 1 >+ } !increment
+5 increment >apply         ; AL: [6]) (soma) >md.code
+
+(How it works:) >md.b >md.p
+
+(Push 5 onto AL)
+(Push ) (increment) >md.c ( block onto AL) >md.t >md.oli
+(apply) >md.c ( block executes:) >md.t >md.oli
+>md.ol
+
+(Pops ) (increment) >md.c ( into ) (_.f) >md.c >md.t >md.uli
+(Pops 5 into ) (_.x) >md.c >md.t >md.uli
+(Pushes 5 back onto AL) >md.uli
+(>_.f) >md.c ( executes ) (increment) >md.c ( block) >md.t >md.uli
+(Result: 6) >md.uli
+>md.ul
+
+(This pattern is powerful: it takes a Block from the AL and executes it, similar to Forth's ) (EXECUTE) >md.c ( or Lisp's ) (FUNCALL) >md.c (, but ) (user-defined) >md.b ( using only primitives!) >md.t >md.p
+
+>md.hr
+
+(Summary: Execution Patterns) >md.h3
 
 (Pattern) (Syntax) (Use Case) (Example)
 >md.table.header
-(Execute from path) (>path) (Call stored blocks) (>square)
+(Execute from path) >md.b (>path) >md.c (Call stored blocks \29\like functions\29\) (>square) >md.c
 >md.table.row
-(Execute literal) (>{ code }) (Ad-hoc execution) (>{ 5 3 >+ })
+(Execute literal) >md.b (>{ code }) >md.c (Ad-hoc execution, inline blocks) (>{ 5 3 >+ }) >md.c
 >md.table.row
-(Chain execution) (>chain) (Loops, tail-calls) (fib-step >chain)
+(Chain execution) >md.b (>chain) >md.c (Loops, tail-calls, state machines) (fib-step >chain) >md.c
 >md.table.row
-(Execute from AL) (>^) (Higher-order functions) (myblock >^)
+(Execute from AL) >md.b (>^) >md.c (Higher-order functions, dynamic execution) (myblock >^) >md.c
+>md.table.row
 >md.table
 
-(Register Lifetime and Isolation) >md.h2
+(When to use each:) >md.b >md.p
 
-(Each block execution creates a fresh, empty Register that is destroyed when the block completes. Registers are completely isolated between blocks:) >md.p
-
-(Inner blocks cannot see outer block's Register cells)
-(Parent blocks cannot see child block's Register cells)
-(There is no lexical scoping of Registers)
+(>path) >md.c (: Calling predefined functions, accessing built-ins) >md.t >md.uli
+(>{ }) >md.c (: One-off execution, passing code blocks as arguments) >md.t >md.uli
+(>chain) >md.c (: Iterative algorithms, tail-recursive functions, FSMs) >md.t >md.uli
+(>^) >md.c (: Higher-order patterns, dynamic dispatch) >md.t >md.uli
 >md.ul
 
-(If you want to share data between blocks, you must:) >md.p
+>md.hr
 
-(Use the Store \29\global, persistent state\29\)
-(Pass values via the AL \29\stack-based communication\29\)
-(Use CellRefs to share structure)
+(Self-Execution via ) (>block) >md.c >md.t >md.h3
+
+(The ) (>block) >md.c ( built-in can be combined with these patterns:) >md.t >md.p
+
+(With ) (>chain) >md.c ( \29\loops\29\:) >md.t >md.b >md.p
+
+({
+  counter 1 >+ !counter
+  counter >print
+  counter 10 ><
+    >block              ; Continue if counter < 10
+    Nil                 ; Stop otherwise
+  >choose
+} !count_to_ten
+
+0 !counter
+>count_to_ten) (soma) >md.code
+
+(How it works:) >md.b >md.p
+
+(The Block increments and prints ) (counter) >md.c >md.t >md.oli
+(Checks if ) (counter < 10) >md.c >md.t >md.oli
+(If true, ) (>choose) >md.c ( returns the current block \29\via ) (>block) >md.c (\29\) >md.t >md.oli
+(If false, ) (>choose) >md.c ( returns ) (Nil) >md.c >md.t >md.oli
+(>chain) >md.c ( continues if a Block is returned, stops on Nil) >md.t >md.oli
+>md.ol
+
+(Important:) >md.b ( ) (counter) >md.c ( must be in the ) (Store) >md.b ( \29\not Register\29\ because each recursive execution needs to see the updated value.) >md.t >md.p
+
+>md.hr
+
+(Complete Example: Overriding Built-ins) >md.h3
+
+(Because built-ins are just Store paths, you can override them:) >md.p
+
+(print !old_print                ; Save original print
+{ \29\LOUD: \29\ >old_print >old_print } !print    ; Override print
+
+\29\hello\29\ >print                  ; Prints: LOUD: hello) (soma) >md.code
+
+(What happens:) >md.b >md.p
+
+(Original ) (print) >md.c ( Block is saved at path "old_print") >md.t >md.oli
+(New Block is stored at path "print") >md.oli
+(New Block prints "LOUD: " then calls the original twice) >md.oli
+(>print) >md.c ( now executes the new behavior) >md.t >md.oli
+>md.ol
+
+>md.hr
+
+(7. Examples) >md.h2
+
+(Example 1: Executing Block Literals) >md.h3
+
+(Simple execution:) >md.b >md.p
+
+(>{ \29\Hello\29\ >print }) (soma) >md.code
+
+(Output:) >md.b ( ) (Hello) >md.c >md.t >md.p
+
+(The block literal is executed immediately with ) (>{ }) >md.c (.) >md.t >md.p
+
+(With computation:) >md.b >md.p
+
+(>{ 5 3 >+ }     ; AL: [8]) (soma) >md.code
+
+(With arguments from AL:) >md.b >md.p
+
+(5 >{ !_.x _.x 2 >* }    ; AL: [10]) (soma) >md.code
+
+>md.hr
+
+(Example 2: Executing Stored Blocks) >md.h3
+
+({ >dup >* } !square
+
+7 >square       ; Execute stored block, AL: [49]) (soma) >md.code
+
+(How it works:) >md.b >md.p
+
+(Block is stored at path "square") >md.oli
+(7) >md.c ( is pushed onto AL) >md.t >md.oli
+(>square) >md.c ( executes the block) >md.t >md.oli
+(Block duplicates 7 and multiplies: 7 x 7 = 49) >md.oli
+>md.ol
+
+>md.hr
+
+(Example 3: Block Consuming and Producing AL Values) >md.h3
+
+({ !_.x !_.y _.x _.y >+ } !add_named
+
+3 7 >add_named
+; AL = [10]) (soma) >md.code
+
+(How it works:) >md.b >md.p
+
+(Block starts execution -> Creates fresh Register) >md.oli
+(Pops 7 and stores in ) (_.y) >md.c ( \29\in this block's Register\29\) >md.t >md.oli
+(Pops 3 and stores in ) (_.x) >md.c ( \29\in this block's Register\29\) >md.t >md.oli
+(Pushes ) (_.x) >md.c ( \29\3\29\ back onto AL) >md.t >md.oli
+(Pushes ) (_.y) >md.c ( \29\7\29\ back onto AL) >md.t >md.oli
+(Adds them with ) (>+) >md.c >md.t >md.oli
+(Leaves result \29\10\29\ on AL) >md.oli
+(Block completes -> Register \29\with ) (_.x) >md.c ( and ) (_.y) >md.c (\29\ is destroyed) >md.t >md.oli
+>md.ol
+
+(Key insight:) >md.b ( The Register cells ) (_.x) >md.c ( and ) (_.y) >md.c ( are temporary and destroyed when the block ends. The result persists only because it was left on the AL.) >md.t >md.p
+
+>md.hr
+
+(Example 4: Block Passed as an Argument) >md.h3
+
+({ !_.action >_.action } !do_it
+
+{ \29\Action executed\29\ >print } >do_it) (soma) >md.code
+
+(Output:) >md.b ( ) (Action executed) >md.c >md.t >md.p
+
+(How it works:) >md.b >md.p
+
+(The action block is pushed onto AL) >md.oli
+(do_it) >md.c ( block executes:) >md.t >md.oli
+>md.ol
+
+(Pops the action block into ) (_.action) >md.c >md.t >md.uli
+(>_.action) >md.c ( executes it from Register) >md.t >md.uli
 >md.ul
 
-(Key Pattern: Nested Blocks Have Separate Registers) >md.h3
+>md.hr
 
-(soma) ({ 1 !_.x { 2 !_.x _.x >print } >chain _.x >print }) >md.code
+(Example 5: Loops with >chain \29\Correct Pattern\29\) >md.h3
 
-(Inner block creates its own Register. Both blocks use _.x but in completely different Registers. Inner block's Register is destroyed when it completes. Output: 2 then 1.) >md.p
+(Countdown loop:) >md.b >md.p
+
+(3 !count
+
+{
+  count >toString >print
+  count 1 >- !count
+
+  count 0 >=<
+    { \29\Liftoff\29\ >print }
+    countdown
+  >choose >^
+} !countdown
+
+countdown >chain) (soma) >md.code
+
+(Output:) >md.b ( ) (3 2 1 Liftoff) >md.c >md.t >md.p
+
+(How it works:) >md.b >md.p
+
+(Store counter in ) (Store) >md.b ( \29\not Register\29\) >md.t >md.oli
+(Each iteration prints and decrements) >md.oli
+(When count <= 0, executes liftoff block) >md.oli
+(Otherwise, executes countdown again \29\tail-call\29\) >md.oli
+>md.ol
+
+(Important:) >md.b ( The counter must be in the ) (Store) >md.b ( because each recursive execution needs to see the updated value. Register values are isolated between executions.) >md.t >md.p
+
+>md.hr
+
+) Section 50: Example 6: Tail-Call Optimized Factorial
+
+
+(Example 6: Tail-Call Optimized Factorial) >md.h3
+
+(5 !fact.n
+1 !fact.acc
+
+{
+  fact.n 0 >=<
+    fact.acc
+    {
+      fact.n 1 >- !fact.n
+      fact.acc fact.n 1 >+ >* !fact.acc
+      fact-step
+    }
+  >choose
+} !fact-step
+
+fact-step >chain) (soma) >md.code
+
+(Output:) >md.b ( AL = [120]) >md.t >md.p
+
+(How it works:) >md.b >md.p
+
+(Check if n <= 0:) >md.uli
+(Base case: return accumulator \29\stops chain\29\) >md.uli
+(Recursive case: update state, return fact-step block) >md.uli
+>md.ul
+(Each iteration multiplies accumulator by current n)
+(No stack growth--constant space!)
+(Uses ) (Store) >md.b ( for state \29\fact.n, fact.acc\29\ so values persist across iterations) >md.t
+>md.ol
+
+>md.hr
+
+) Section 51: Example 7: Finite State Machine
+
+
+(Example 7: Finite State Machine) >md.h3
+
+({
+  \29\State A\29\ >print
+  state-b
+} !state-a
+
+{
+  \29\State B\29\ >print
+  state-c
+} !state-b
+
+{
+  \29\State C\29\ >print
+  { \29\Done\29\ >print }
+} !state-c
+
+state-a >chain) (soma) >md.code
+
+(Output:) >md.b >md.p
+
+(State A
+State B
+State C
+Done) Nil >md.code
+
+(How it works:) >md.b >md.p
+
+(Each state block prints its message and returns the next state block)
+(>chain continues as long as Blocks are returned) >md.c
+(Final block completes and chain stops)
+>md.ol
+
+>md.hr
+
+) Section 52: Example 8: Register Isolation
+
+
+(Example 8: Register Isolation) >md.h3
+
+(Wrong: Trying to share Register between blocks) >md.b >md.p
+
+(\29\ This will FAIL
+{
+  42 !_.value
+  >{ _.value >print }  ; ERROR: _.value is Void in inner block
+}) (soma) >md.code
+
+(Right: Pass data via AL) >md.b >md.p
+
+({
+  42 !_.value
+  _.value              ; Push onto AL
+  >{ !_.y _.y >print } ; Inner block pops from AL
+}) (soma) >md.code
+
+(Output:) >md.b ( ) (42) >md.c >md.t >md.p
+
+(Right: Share data via Store) >md.b >md.p
+
+({
+  42 !shared_value     ; Store in Store \29\global\29\
+  >{
+    shared_value >print  ; Inner reads from Store
+  }
+}) (soma) >md.code
+
+(Output:) >md.b ( ) (42) >md.c >md.t >md.p
+
+(Key insight:) >md.b ( Registers are completely isolated between blocks. Use Store \29\global\29\ or AL \29\explicit passing\29\ to share data.) >md.t >md.p
+
+>md.hr
+
+) Section 53: 8. Register Lifetime and Isolation
+
+
+(8. Register Lifetime and Isolation) >md.h2
+
+) Section 54: The Fundamental Rule: Complete Isolation
+
+
+(The Fundamental Rule: Complete Isolation) >md.h3
+
+(Each block execution creates a fresh, empty Register that is destroyed when the block completes.) >md.b >md.p
+
+(Registers are ) (completely isolated) >md.b ( between blocks:) >md.t >md.p
+
+(Inner blocks ) (cannot) >md.b ( see outer block's Register cells) >md.t
+(Parent blocks ) (cannot) >md.b ( see child block's Register cells) >md.t
+(There is ) (no lexical scoping) >md.b ( of Registers) >md.t
+(There is ) (no Register nesting) >md.b ( or inheritance) >md.t
+>md.ul
+
+(If you want to share data between blocks, you must:) >md.b >md.p
+
+(Use the ) (Store) >md.b ( \29\global, persistent state\29\) >md.t
+(Pass values via the ) (AL) >md.b ( \29\stack-based communication\29\) >md.t
+(Use ) (CellRefs) >md.b ( to share structure) >md.t
+>md.ul
+
+) Section 55: Register Lifecycle
+
+
+(Register Lifecycle) >md.h3
+
+(When a block begins execution:) >md.p
+
+(Create) >md.b ( a fresh, empty Register) >md.t
+(Execute the block's tokens)
+(Destroy) >md.b ( the Register completely) >md.t
+>md.ol
+
+) Section 56: Register Properties
+
+
+(Register Properties) >md.h3
+
+(Isolated) >md.b (: No connection to parent/child block Registers) >md.dli
+(Temporary) >md.b (: Destroyed when block completes) >md.dli
+(Local) >md.b (: Only visible within the executing block) >md.dli
+(Fresh) >md.b (: Always starts empty) >md.dli
+>md.dul
+
+>md.hr
+
+) Section 57: Example 1: Nested Blocks Have Separate Registers
+
+
+(Example 1: Nested Blocks Have Separate Registers) >md.h3
+
+({
+  1 !_.x
+  { 2 !_.x _.x >print } >chain  ; Prints: 2
+  _.x >print                     ; Prints: 1
+}) (soma) >md.code
+
+(Execution trace:) >md.b >md.p
+
+(Outer block executes -> Creates ) (Register1) >md.b >md.t
+(1 !_.x) >md.c ( -> Store 1 in Register1 at path ) >md.t (_.x) >md.c >md.t
+({ 2 !_.x _.x >print }) >md.c ( -> Creates a Block value \29\not executed yet\29\) >md.t
+(>chain) >md.c ( -> Execute the inner block) >md.t
+>md.nest
+  (Inner block starts -> Creates ) (Register2) >md.b ( \29\empty, completely separate\29\) >md.t
+  (2 !_.x) >md.c ( -> Store 2 in Register2 at path ) >md.t (_.x) >md.c >md.t
+  (_.x) >md.c ( -> Read Register2 path ) >md.t (_.x) >md.c ( \29\value: 2\29\) >md.t
+  (>print) >md.c ( -> Prints ) >md.t (2) >md.c >md.t
+  (Inner block completes -> ) (Register2 is destroyed) >md.b >md.t
+  >md.ul
+(Back in outer block with Register1)
+(_.x) >md.c ( -> Read Register1 path ) >md.t (_.x) >md.c ( \29\still 1\29\) >md.t
+(>print) >md.c ( -> Prints ) >md.t (1) >md.c >md.t
+>md.ol
+
+(Key insight:) >md.b ( The inner block's ) >md.t (_.x) >md.c ( and outer block's ) >md.t (_.x) >md.c ( are in ) >md.t (completely different Registers) >md.b (. They don't interfere with each other at all.) >md.t >md.p
+
+(Output:) >md.b >md.p
+
+(2
+1) Nil >md.code
+
+>md.hr
+
+) Section 58: Example 2: Inner Block Cannot See Outer Register (ERROR\29\
+
+
+(Example 2: Inner Block Cannot See Outer Register \29\ERROR\29\) >md.h3
+
+(>{1 !_.n >{_.n >print}}  ; FATAL ERROR) (soma) >md.code
+
+(What happens:) >md.b >md.p
+
+(Outer block executes -> Creates Register1)
+(1 !_.n) >md.c ( -> Store 1 in Register1 at path ) >md.t (_.n) >md.c >md.t
+(>{_.n >print}) >md.c ( -> Execute inner block) >md.t
+>md.nest
+  (Inner block starts -> Creates ) (Register2) >md.b ( \29\fresh, empty\29\) >md.t
+  (_.n) >md.c ( -> Try to read Register2 at path ) >md.t (_.n) >md.c >md.t
+  (Register2 has no ) (_.n) >md.c ( -> Resolves to ) >md.t (Void) >md.b >md.t
+  (Push Void onto AL)
+  (>print) >md.c ( -> Try to execute the path "print" \29\not ) >md.t (>print) >md.c (!\29\) >md.t
+  (Wait, this example needs fixing...)
+  >md.ul
+>md.ol
+
+(Let me show the correct error case:) >md.p
+
+(>{1 !_.n >{_.n 10 >+}}  ; Inner block gets Void for _.n) (soma) >md.code
+
+(What happens:) >md.b >md.p
+
+(Outer block executes -> Creates Register1)
+(1 !_.n) >md.c ( -> Store 1 in Register1 at path ) >md.t (_.n) >md.c >md.t
+(>{_.n 10 >+}) >md.c ( -> Execute inner block) >md.t
+>md.nest
+  (Inner block starts -> Creates ) (Register2) >md.b ( \29\fresh, empty\29\) >md.t
+  (_.n) >md.c ( -> Read Register2 at path ) >md.t (_.n) >md.c >md.t
+  (Register2 has no ) (_.n) >md.c ( -> Resolves to ) >md.t (Void) >md.b >md.t
+  (Push Void onto AL)
+  (10) >md.c ( -> Push 10 onto AL) >md.t
+  (>+) >md.c ( -> Try to add Void and 10 -> ) >md.t (FATAL ERROR) >md.b >md.t
+  >md.ul
+>md.ol
+
+(Key insight:) >md.b ( Inner blocks cannot access outer block's Register cells. Each block sees ) >md.t (only its own Register) >md.b (.) >md.t >md.p
+
+>md.hr
+
+) Section 59: Example 3: Multiple Nested Blocks, Each Isolated
+
+
+(Example 3: Multiple Nested Blocks, Each Isolated) >md.h3
+
+({
+  1 !_.n                ; Outer Register: _.n = 1
+
+  { 2 !_.n } >chain     ; Inner1 Register: _.n = 2 \29\then destroyed\29\
+
+  _.n >print            ; Outer Register: _.n still = 1
+
+  { 3 !_.n } >chain     ; Inner2 Register: _.n = 3 \29\then destroyed\29\
+
+  _.n >print            ; Outer Register: _.n still = 1
+}) (soma) >md.code
+
+(Output:) >md.b >md.p
+
+(1
+1) Nil >md.code
+
+(Key insight:) >md.b ( Each inner block gets its own fresh Register. Neither inner block can affect the outer block's Register, and the two inner blocks don't share a Register either.) >md.t >md.p
+
+>md.hr
+
+(WRONG: Trying to Access Outer Register) >md.h3
+
+(; WRONG - Inner block can't see outer's _.value
+{
+  42 !_.value
+  >{_.value >print }  ; ERROR: _.value is Void in inner block
+}) (soma) >md.code
+
+(This ) (fails) >md.b ( because the inner block has its own empty Register.) >md.t >md.p
+
+>md.hr
 
 (RIGHT: Pass Data via AL) >md.h3
 
-(soma) ({ 42 !_.value _.value >{ >print } }) >md.code
+(; RIGHT - Pass value through the AL
+{
+  42 !_.value
+  _.value              ; Push onto AL
+  >{ >print }          ; Inner block pops from AL and prints
+}) (soma) >md.code
 
-(Outer block stores 42. Then pushes 42 onto AL. Inner block executes with AL containing [42], pops and prints.) >md.p
+(Output:) >md.b ( ) (42) >md.c >md.t >md.p
+
+(How it works:) >md.b >md.p
+
+(Outer block stores 42 in ) (_.value) >md.c >md.t >md.oli
+(Outer block pushes 42 onto AL) >md.oli
+(Inner block executes with AL containing [42]) >md.oli
+(Inner block pops 42 and prints it) >md.oli
+>md.ol
+
+(Key insight:) >md.b ( The AL is shared across all blocks. Use it to pass data explicitly.) >md.t >md.p
+
+>md.hr
 
 (RIGHT: Share Data via Store) >md.h3
 
-(soma) ({ 42 !shared_value >{ shared_value >print } }) >md.code
+(; RIGHT - Use Store for shared state
+{
+  42 !shared_value     ; Store in Store (global\29\
+  >{
+    shared_value >print  ; Inner reads from Store
+  }
+}) (soma) >md.code
 
-(Store is global and persistent. All blocks can access it.) >md.p
+(Output:) >md.b ( ) (42) >md.c >md.t >md.p
+
+(How it works:) >md.b >md.p
+
+(Outer block writes 42 to Store at path "shared_value") >md.oli
+(Inner block reads from Store at path "shared_value") >md.oli
+(Inner block prints 42) >md.oli
+>md.ol
+
+(Key insight:) >md.b ( The Store is global and persistent. All blocks can access it.) >md.t >md.p
+
+>md.hr
+
+(RIGHT: Return Data via AL) >md.h3
+
+({
+  >{ 5 !_.n _.n _.n >* } !_.square  ; Define helper in outer Register
+
+  7 >_.square          ; Call with 7
+  >print               ; Prints: 49
+}) (soma) >md.code
+
+(How it works:) >md.b >md.p
+
+(Define ) (_.square) >md.c ( block in outer Register) >md.t >md.oli
+(7) >md.c ( pushes 7 onto AL) >md.t >md.oli
+(>_.square) >md.c ( executes the block) >md.t >md.oli
+(Outer block continues with AL = [49]) >md.oli
+(>print) >md.c ( prints 49) >md.t >md.oli
+>md.ol
+
+(The block execution:) >md.p
+
+(Creates fresh Register3) >md.oli
+(!_.n) >md.c ( pops 7 from AL, stores in Register3) >md.t >md.oli
+(_.n _.n >*) >md.c ( computes 7 x 7 = 49) >md.t >md.oli
+(Leaves 49 on AL) >md.oli
+(Register3 is destroyed) >md.oli
+>md.ol
+
+(Key insight:) >md.b ( Blocks communicate via the AL. The inner block receives input from AL and returns output to AL.) >md.t >md.p
+
+>md.hr
+
+(Common Pattern: Nested Loop Counters) >md.h3
+
+({
+  0 !_.i                           ; Outer counter
+
+  {
+    0 !_.i                         ; Inner counter (different Register!\29\
+    _.i 5 ><
+      { _.i 1 >+ !_.i >block >chain }    ; Inner loop uses its own _.i
+      { }
+    >choose >chain
+  } !_.inner_loop
+
+  _.i 3 ><
+    {
+      >_.inner_loop                ; Call inner loop
+      _.i 1 >+ !_.i                ; Increment outer _.i
+      >block >chain
+    }
+    { }
+  >choose >chain
+}) (soma) >md.code
+
+(Key points:) >md.b >md.p
+
+(Outer block has ) (_.i) >md.c ( for outer counter) >md.t >md.uli
+(_.inner_loop) >md.c ( block (when executed\29\ has its own ) (_.i) >md.c ( for inner counter) >md.t >md.uli
+(They don't interfere because they're in different Registers) >md.uli
+(Each loop maintains its own counter independently) >md.uli
+>md.ul
+
+>md.hr
+
+(Common Pattern: Helper Functions with Local State) >md.h3
+
+({
+  { !_.x _.x _.x >* } !_.square    ; Helper: square a number
+  { !_.x _.x 2 >* } !_.double      ; Helper: double a number
+
+  5 >_.square >print               ; Prints: 25
+  5 >_.double >print               ; Prints: 10
+}) (soma) >md.code
+
+(Key points:) >md.b >md.p
+
+(Each helper function call gets a fresh Register) >md.uli
+(Both ) (_.square) >md.c ( and ) (_.double) >md.c ( use ) (_.x) >md.c ( in their own Registers) >md.t >md.uli
+(No interference even though both use the same path name) >md.uli
+(Complete isolation guarantees safety) >md.uli
+>md.ul
+
+>md.hr
 
 (Register vs Store vs AL: When to Use Each) >md.h3
 
@@ -150,13 +1432,110 @@
 (Sharing) (All blocks can access) (Isolated per block) (Explicit passing)
 >md.table.row
 (Purpose) (Shared state) (Local computation) (Data flow)
+>md.table.row
+(Example) (config.port) >md.c (_.temp) >md.c >md.t (Stack operations)
+>md.table.row
 >md.table
 
-(Blocks Are Not Functions) >md.h2
+(When to use Store:) >md.b >md.p
 
-(Functions hide state. Blocks expose state. They operate directly on the AL and Store, making every transformation visible.) >md.p
+(Shared configuration)
+(Persistent data)
+(Global state)
+(Communication between unrelated blocks)
+>md.ul
 
-(Functions \29\Traditional\29\) (Blocks \29\SOMA\29\)
+(When to use Register:) >md.b >md.p
+
+(Temporary computation () (_.temp) >md.c (, ) (_.result) >md.c (\29\) >md.t >md.uli
+(Loop counters in recursive blocks) >md.uli
+(Local variables that don't need to persist) >md.uli
+>md.ul
+
+(When to use AL:) >md.b >md.p
+
+(Function arguments (pass to inner blocks\29\) >md.uli
+(Return values (leave on stack\29\) >md.uli
+(Stack-based computation) >md.uli
+(Explicit data flow between blocks) >md.uli
+>md.ul
+
+>md.hr
+
+(Recursive Self-Reference) >md.h3
+
+(The ) (>block) >md.c ( built-in enables recursion. For tail-call optimization with ) (>chain) >md.c (, state should be stored in the ) (Store) >md.b ( (not Register\29\ so it persists across iterations:) >md.t >md.p
+
+(Tail-call optimized factorial (recommended pattern\29\:) >md.b >md.p
+
+(5 !fact.n
+1 !fact.acc
+
+{
+  fact.n 0 >=<
+    fact.acc                    ; Base case: return accumulator
+    {                           ; Recursive case: update and continue
+      fact.n 1 >- !fact.n
+      fact.acc fact.n 1 >+ >* !fact.acc
+      fact-step                 ; Return self for tail-call
+    }
+  >choose
+} !fact-step
+
+fact-step >chain) (soma) >md.code
+
+(Output:) >md.b ( AL = [120]) >md.t >md.p
+
+(How it works:) >md.b >md.p
+
+(State () (fact.n) >md.c (, ) (fact.acc) >md.c (\29\ is in the ) (Store) >md.b >md.t >md.oli
+(Each iteration updates Store values) >md.oli
+(Returns either ) (fact.acc) >md.c ( (stops\29\ or ) (fact-step) >md.c ( block (continues\29\) >md.t >md.oli
+(>chain) >md.c ( continues as long as a Block is returned) >md.t >md.oli
+(No stack growth—constant space tail-call optimization!) >md.oli
+>md.ol
+
+(Key insight:) >md.b ( Using Store for state enables true tail-call optimization. Each iteration sees the updated state without creating new stack frames.) >md.t >md.p
+
+>md.hr
+
+(Alternative: Register-Based Recursion via AL) >md.h3
+
+(If you want Register-local state, you must pass state via AL (this builds a traditional call stack\29\:) >md.p
+
+({
+  !_.n                           ; Pop initial value into Register
+  _.n 0 >==
+  { 1 }                          ; Base case: return 1
+  {
+    _.n 1 >-                     ; Compute n-1
+    >block >chain                ; Recursive call with n-1
+    _.n >*                       ; Multiply result by original n
+  }
+  >choose >^
+} !factorial
+
+5 >factorial) (soma) >md.code
+
+(Output:) >md.b ( AL = [120]) >md.t >md.p
+
+(This works because:) >md.b >md.p
+
+(Each recursive call gets its own Register with its own ) (_.n) >md.c >md.t >md.oli
+(The recursive call pops n-1 from AL and stores it in its own ) (_.n) >md.c >md.t >md.oli
+(Results are returned via AL) >md.oli
+(Each level of recursion has isolated state) >md.oli
+>md.ol
+
+(Warning:) >md.b ( This pattern builds a call stack and is NOT tail-call optimized. For loops and tail-calls, use the Store-based ) (>chain) >md.c ( pattern instead.) >md.t >md.p
+
+>md.hr
+
+(9. Blocks Are Not Functions) >md.h2
+
+(It is critical to understand that ) (blocks are fundamentally different from functions) >md.b (:) >md.t >md.p
+
+(Functions (Traditional\29\) >md.b (Blocks (SOMA\29\) >md.b
 >md.table.header
 (Declare parameters) (No declared parameters)
 >md.table.row
@@ -167,29 +1546,123 @@
 (Support recursion via call stack) (Support cycles via >block built-in)
 >md.table.row
 (Hidden execution machinery) (Explicit state transformation)
+>md.table.row
 >md.table
+
+(Functions hide state.) >md.b ( They abstract over arguments and returns.) >md.t >md.p
+
+(Blocks expose state.) >md.b ( They operate directly on the AL and Store, making every transformation visible.) >md.t >md.p
+
+>md.hr
 
 (Summary) >md.h2
 
 (Blocks in SOMA are:) >md.p
 
-(First-class values that can be stored, passed, and executed)
-(Arity-free – they don't declare how many values they consume or produce)
-(Return-free – they leave values on the AL)
-(Executed linearly – token by token, left to right)
-(Stack-free – no call frames, no return path)
-(State transformers)
-(Self-referential – every block can reference itself via >block)
+(First-class values) >md.b ( that can be stored, passed, and executed) >md.uli
+(Arity-free) >md.b ( – they don't declare how many values they consume or produce) >md.uli
+(Return-free) >md.b ( – they leave values on the AL, not via a return statement) >md.uli
+(Executed linearly) >md.b ( – token by token, left to right) >md.uli
+(Stack-free) >md.b ( – no call frames, no return path) >md.uli
+(State transformers) >md.b ( – they transform ) (AL, Store, Register\29\) >md.c ( into ) (AL', Store', Register'\29\) >md.c >md.uli
+(Self-referential) >md.b ( – every block can reference itself via the ) (>block) >md.c ( built-in) >md.uli
 >md.ul
 
-(Tail-Call Optimized Factorial \29\Recommended Pattern\29\) >md.h3
+(Execution Patterns Summary) >md.h3
 
-(soma) (5 !fact.n 1 !fact.acc { fact.n 0 >=< fact.acc { fact.n 1 >- !fact.n fact.acc fact.n 1 >+ >* !fact.acc fact-step } >choose } !fact-step fact-step >chain) >md.code
+(SOMA provides four primary ways to execute blocks:) >md.p
 
-(State \29\fact.n, fact.acc\29\ is in the Store. Each iteration updates Store values. Returns either fact.acc \29\stops\29\ or fact-step block \29\continues\29\. No stack growth—constant space tail-call optimization.) >md.p
+(>path) >md.c >md.b ( — Execute block from Store or Register path (like function calls\29\) >md.oli
+(>{ code }) >md.c >md.b ( — Execute block literal immediately (cleanest for ad-hoc code\29\) >md.oli
+(>chain) >md.c >md.b ( — Loop/tail-call execution (for iteration and state machines\29\) >md.oli
+(>^) >md.c >md.b ( — Execute block from AL (user-defined, for higher-order patterns\29\) >md.oli
+>md.ol
+
+(Register Isolation Summary) >md.h3
+
+(Critical rule:) >md.b ( Each block execution creates a ) (fresh, empty Register) >md.b ( that is destroyed when the block completes.) >md.t >md.p
+
+(Registers are ) (completely isolated) >md.b ( between parent and child blocks) >md.uli
+(No lexical scoping of Registers) >md.uli
+(To share data: use ) (Store) >md.b ( (global\29\ or ) (AL) >md.b ( (explicit passing\29\) >md.uli
+(For tail-calls and loops: use ) (Store) >md.b ( for state, ) (>chain) >md.c ( for execution) >md.uli
+>md.ul
+
+(The ) (>block) >md.c ( Built-in Summary) >md.t >md.h3
+
+(>block) >md.c >md.b ( is a built-in operation that pushes the currently executing block onto the AL.) >md.t ( This enables:) >md.t >md.p
+
+(Self-referential loops) >md.uli
+(Recursive computation) >md.uli
+(Finite state machines) >md.uli
+(Conditional continuation) >md.uli
+>md.ul
+
+(>block) >md.c ( is just another built-in (like ) (>choose) >md.c ( or ) (>chain) >md.c (\29\, which means it can be aliased to any name in any language, removing English-centric constraints.) >md.t >md.p
+
+(SOMA programs do not reduce. ) (They run.) >md.b >md.t >md.p
+
+>md.hr
+
+(Resolved Design Questions) >md.h2
+
+(1. ) (How are blocks executed?) >md.b >md.t >md.h3
+
+(Answer:) >md.b ( Blocks are executed in four primary ways (see Section 6\29\:) >md.t >md.p
+
+(>path) >md.c >md.b ( executes blocks at Store or Register paths (atomic read-and-execute\29\) >md.uli
+(>{ code }) >md.c >md.b ( executes block literals immediately (cleaner than ) ({ code } >chain) >md.c (\29\) >md.uli
+(>chain) >md.c >md.b ( executes blocks from AL repeatedly (for loops and tail-calls\29\) >md.uli
+(>^) >md.c >md.b ( executes blocks from AL (user-defined pattern\29\) >md.uli
+>md.ul
+
+(2. ) (Register Isolation) >md.b >md.t >md.h3
+
+(Answer:) >md.b ( Each block gets a ) (completely fresh, isolated Register) >md.b (. Parent Registers are completely inaccessible during nested execution.) >md.t >md.p
+
+({
+  >block !outer_self     ; Store in Store (not Register!\29\
+  >{ >block !inner_self }
+  outer_self             ; This works because outer_self is in Store
+}) (soma) >md.code
+
+(Key points:) >md.b >md.p
+
+(Store writes) >md.b ( during nested execution ARE visible after the nested block completes (Store is global\29\) >md.uli
+(Register writes) >md.b ( are lost when the nested block ends (Registers are block-local and destroyed\29\) >md.uli
+(Parent and child blocks have ) (completely separate Registers) >md.b ( with no sharing) >md.uli
+(To share data between blocks: use Store (global\29\ or AL (explicit passing\29\) >md.uli
+>md.ul
+
+(3. ) (Tail-Call Optimization) >md.b >md.t >md.h3
+
+(Answer:) >md.b ( Use ) (>chain) >md.c ( with Store-based state for true tail-call optimization:) >md.t >md.p
+
+(\29\ State in Store (persists across iterations\29\
+5 !fact.n
+1 !fact.acc
+
+{
+  fact.n 0 >=<
+    fact.acc
+    {
+      fact.n 1 >- !fact.n
+      fact.acc fact.n 1 >+ >* !fact.acc
+      fact-step
+    }
+  >choose
+} !fact-step
+
+fact-step >chain) (soma) >md.code
+
+(This pattern uses constant space—no stack growth.) >md.p
+
+>md.hr
 
 (Conclusion) >md.h2
 
-(Blocks are SOMA's answer to functions, procedures, and lambdas—but they reject the abstraction model entirely. They are values that transform state, nothing more and nothing less. Understanding blocks means understanding that SOMA doesn't hide mutation under the hood. It makes mutation the foundation of computation.) >md.p
+(Blocks are SOMA's answer to functions, procedures, and lambdas—but they reject the abstraction model entirely. They are ) (values that transform state) >md.b (, nothing more and nothing less. Understanding blocks means understanding that SOMA doesn't hide mutation under the hood. It makes mutation the foundation of computation.) >md.t >md.p
 
-Nil >md.print
+(The ) (>block) >md.c ( built-in is what makes blocks truly powerful, enabling self-reference without requiring external naming schemes or workarounds. Every block can access itself via ) (>block) >md.c (, and that capability is the foundation of control flow in SOMA.) >md.t >md.p
+
+>md.print

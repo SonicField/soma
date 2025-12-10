@@ -3,123 +3,1985 @@
 
 (10. Standard Library) >md.h1
 
-(The SOMA standard library demonstrates compositional power from simple primitives.) >md.p
+(The SOMA standard library demonstrates the power of building complex operations from simple primitives.) >md.b ( Every operation in ) (stdlib.soma) >md.c ( is built using only FFI \29\Foreign Function Interface\29\ primitives—the minimal set of built-ins that must be implemented by the runtime. This is SOMA's philosophy in action: start with a tiny kernel of irreducible operations, then build everything else as user-defined blocks.) >md.t >md.p
+
+(Status:) >md.b ( Normative) >md.t >md.p
+
+(Version:) >md.b ( SOMA v1.1) >md.t >md.p
+
+(Section:) >md.b ( 10) >md.t >md.p
+
+>md.hr
 
 (Overview) >md.h2
 
-(Boolean Logic) (Comparison Operators) (Stack Manipulation) (Arithmetic Helpers) (Control Flow Helpers) (Linked List Operations) (AL Draining) >md.ul
+(The standard library \29\) (stdlib.soma) >md.c (\29\ provides:) >md.t >md.p
+
+(Boolean Logic) ( — ) (not) >md.c (, ) (and) >md.c (, ) (or) >md.c >md.dli
+(Comparison Operators) ( — ) (>) >md.c (, ) (!=!) >md.c (, ) (==) >md.c (, ) (=<) >md.c (, ) (=>) >md.c >md.dli
+(Stack Manipulation) ( — ) (dup) >md.c (, ) (drop) >md.c (, ) (swap) >md.c (, ) (over) >md.c (, ) (rot) >md.c >md.dli
+(Arithmetic Helpers) ( — ) (inc) >md.c (, ) (dec) >md.c (, ) (abs) >md.c (, ) (min) >md.c (, ) (max) >md.c >md.dli
+(Control Flow Helpers) ( — ) (times) >md.c (, ) (if) >md.c (, ) (ifelse) >md.c (, ) (^) >md.c (, ) (while) >md.c (, ) (do) >md.c >md.dli
+(Linked List Operations) ( — ) (list.new) >md.c (, ) (list.cons) >md.c >md.dli
+(AL Draining) ( — ) (al.drain) >md.c >md.dli
+>md.dol
+
+(All of these are ) (user-defined blocks) >md.b (, not language primitives. They are stored at Store paths and executed with the ) (>) >md.c ( prefix, just like any user-defined operation.) >md.t >md.p
+
+(Key insight:) >md.b ( The stdlib is not special. You could rewrite it, extend it, or replace it entirely. It's just SOMA code.) >md.t >md.p
+
+>md.hr
+
+(Philosophy: FFI Primitives vs Derived Operations) >md.h2
+
+(What Are FFI Primitives?) >md.h3
+
+(FFI primitives are the minimal operations that ) (must) >md.b ( be implemented by the SOMA runtime. These cannot be defined in SOMA itself because they require access to the machine's underlying execution model.) >md.t >md.p
+
+(FFI primitives include:) >md.b >md.p
+
+(Stack operations: ) (>dup) >md.c (, ) (>drop) >md.c (, ) (>swap) >md.c (, ) (>over) >md.c ( \29\as built from Register operations\29\) >md.t
+(Arithmetic: ) (>+) >md.c (, ) (>-) >md.c (, ) (>*) >md.c (, ) (>/) >md.c >md.t
+(Comparison: ) (><) >md.c ( \29\less-than\29\, ) (>==) >md.c ( \29\equality\29\) >md.t
+(Control flow: ) (>choose) >md.c (, ) (>chain) >md.c (, ) (>block) >md.c >md.t
+(I/O: ) (>print) >md.c (, ) (>dump) >md.c >md.t
+(Type introspection: ) (>type) >md.c (, ) (>id) >md.c >md.t
+>md.ul
+
+(These are the ) (irreducible kernel) >md.b ( of SOMA. Everything else is emergent.) >md.t >md.p
+
+(What Are Derived Operations?) >md.h3
+
+(Derived operations are ) (user-defined blocks) >md.b ( built from FFI primitives. They feel like built-ins, but they're not. They're stored at Store paths and executed with ) (>) >md.c (.) >md.t >md.p
+
+(The stdlib provides derived operations like:) >md.b >md.p
+
+(>not) >md.c ( — Boolean negation \29\built from ) (>choose) >md.c (\29\) >md.t
+(>and) >md.c ( — Logical AND \29\built from ) (>choose) >md.c ( and ) (>drop) >md.c (\29\) >md.t
+(>>) >md.c ( — Greater-than \29\built from ) (>swap) >md.c ( and ) (><) >md.c (\29\) >md.t
+(>dup) >md.c ( — Duplicate top \29\built from Register operations\29\) >md.t
+(>times) >md.c ( — Execute block N times \29\built from ) (>chain) >md.c ( and ) (>choose) >md.c (\29\) >md.t
+>md.ul
+
+(This demonstrates SOMA's ) (compositional power) >md.b (: complex behavior emerges from simple primitives.) >md.t >md.p
+
+>md.hr
 
 (1. Boolean Logic) >md.h2
 
-(>not — Boolean Negation) >md.h3
-(Signature: \28\Bool\29\ -> Bool) >md.c >md.p
-({False True >choose} !not) >md.c >md.p
+(Boolean logic operations transform ) (True) >md.c (/) (False) >md.c ( values on the AL. All three operations \29\) (not) >md.c (, ) (and) >md.c (, ) (or) >md.c (\29\ are built using only ) (>choose) >md.c (.) >md.t >md.p
 
-(>and — Logical AND) >md.h3
-(Signature: \28\Bool, Bool\29\ -> Bool) >md.c >md.p
-({False >choose} !and) >md.c >md.p
+(1.1 ) (>not) >md.c ( — Boolean Negation) >md.t >md.h3
 
-(>or — Logical OR) >md.h3
-(Signature: \28\Bool, Bool\29\ -> Bool) >md.c >md.p
-({True >swap >choose} !or) >md.c >md.p
+(Signature:) >md.b ( ) ((Bool\29\ -> Bool) >md.c >md.t >md.p
+
+(Definition:) >md.h4
+({False True >choose} !not) (soma) >md.code
+
+(Semantics:) >md.h4
+(Pops a Boolean from the AL and pushes its negation.) >md.p
+
+(AL Transformation:) >md.h4
+(Before: [True, ...]
+After:  [False, ...]
+
+Before: [False, ...]
+After:  [True, ...]) Nil >md.code
+
+(How It Works:) >md.h4
+(The block ) ({False True >choose}) >md.c ( is stored at Store path ) (not) >md.c >md.oli
+(When executed via ) (>not) >md.c (:) >md.oli
+>md.nest
+  (The top value (a Boolean\29\ is on the AL) >md.uli
+  (False) >md.c ( is pushed onto AL) >md.uli
+  (True) >md.c ( is pushed onto AL) >md.uli
+  (>choose) >md.c ( pops the boolean and both values, selecting based on the boolean:) >md.uli
+  >md.nest
+    (If boolean was ) (True) >md.c (: selects ) (False) >md.c ( (the false-branch value\29\) >md.uli
+    (If boolean was ) (False) >md.c (: selects ) (True) >md.c ( (the true-branch value\29\) >md.uli
+  >md.ul
+  >md.ul
+(Result: the Boolean is inverted) >md.oli
+>md.ol
+
+(Example:) >md.h4
+(True >not     ; AL: [False]
+False >not    ; AL: [True]) (soma) >md.code
+
+(Usage Example:) >md.h4
+(\29\ Negate a condition
+user.logged_in >not
+  { "Please log in" >print }
+  { }
+>choose) (soma) >md.code
+
+(Note:) >md.b ( This is ) (direct value selection) >md.b ( — ) (>choose) >md.c ( selects between the two literal values ) (False) >md.c ( and ) (True) >md.c ( without executing them as blocks.) >md.t >md.p
+
+>md.hr
+
+(1.2 ) (>and) >md.c ( — Logical AND) >md.t >md.h3
+
+(Signature:) >md.b ( ) ((Bool, Bool\29\ -> Bool) >md.c >md.t >md.p
+
+(Definition:) >md.b >md.p
+
+({False >choose} !and
+) (soma) >md.code
+
+(Semantics:) >md.b >md.p
+
+(Pops two Booleans ) ((b, a\29\) >md.c ( and pushes ) (True) >md.c ( if both are ) (True) >md.c (, otherwise ) (False) >md.c (.) >md.t >md.p
+
+(AL Transformation:) >md.b >md.p
+
+(Before: [True, True, ...]
+After:  [True, ...]
+
+Before: [True, False, ...] or [False, True, ...] or [False, False, ...]
+After:  [False, ...]
+) Nil >md.code
+
+(How It Works:) >md.b >md.p
+
+(Two Booleans are on the AL: ) (b) >md.c ( (top\29\, ) (a) >md.c ( (second\29\) >md.oli
+(The ) (and) >md.c ( block executes:) >md.oli
+>md.nest
+(Pushes ) (False) >md.c ( onto AL: ) ([b, a, False]) >md.c >md.uli
+(>choose) >md.c ( pops ) (False) >md.c (, pops ) (b) >md.c (, pops ) (a) >md.c >md.uli
+(If ) (a) >md.c ( is ) (True) >md.c (: selects ) (b) >md.c ( (the false-branch value\29\) >md.uli
+>md.nest
+(Result: ) (True) >md.c ( if b is True, ) (False) >md.c ( if b is False) >md.uli
+>md.ul
+(If ) (a) >md.c ( is ) (False) >md.c (: selects ) (False) >md.c ( (the true-branch value\29\) >md.uli
+>md.nest
+(Result: ) (False) >md.c >md.uli
+>md.ul
+>md.ul
+>md.ol
+
+(Truth Table:) >md.b >md.p
+
+(a) (b) (Result)
+>md.table.header
+(True) (True) (True)
+>md.table.row
+(True) (False) (False)
+>md.table.row
+(False) (True) (False)
+>md.table.row
+(False) (False) (False)
+>md.table.row
+>md.table
+
+(Example:) >md.b >md.p
+
+(True True >and      ; AL: [True]
+True False >and     ; AL: [False]
+False True >and     ; AL: [False]
+False False >and    ; AL: [False]
+) (soma) >md.code
+
+(Usage Example:) >md.b >md.p
+
+(\29\ Check two conditions
+user.logged_in user.premium >and
+  { premium_feature >enable }
+  { "Premium required" >print }
+>choose
+) (soma) >md.code
+
+(Note on Short-Circuiting:) >md.b >md.p
+
+(SOMA's ) (>and) >md.c ( is ) (not short-circuiting) >md.b (. Both operands must be evaluated before calling ) (>and) >md.c (. For short-circuit behavior, use explicit ) (>choose) >md.c ( with ) (>^) >md.c (:) >md.t >md.p
+
+(\29\ Short-circuit AND
+condition_a
+  { condition_b { action } {} >choose >^ }
+  { }
+>choose >^
+) (soma) >md.code
+
+>md.hr
+
+(1.3 ) (>or) >md.c ( — Logical OR) >md.t >md.h3
+
+(Signature:) >md.b ( ) ((Bool, Bool\29\ -> Bool) >md.c >md.t >md.p
+
+(Definition:) >md.b >md.p
+
+({True >swap >choose} !or
+) (soma) >md.code
+
+(Semantics:) >md.b >md.p
+
+(Pops two Booleans ) ((b, a\29\) >md.c ( and pushes ) (True) >md.c ( if either is ) (True) >md.c (, otherwise ) (False) >md.c (.) >md.t >md.p
+
+(AL Transformation:) >md.b >md.p
+
+(Before: [False, False, ...]
+After:  [False, ...]
+
+Before: [True, False, ...] or [False, True, ...] or [True, True, ...]
+After:  [True, ...]
+) Nil >md.code
+
+(How It Works:) >md.b >md.p
+
+(Two Booleans are on the AL: ) (b) >md.c ( (top\29\, ) (a) >md.c ( (second\29\) >md.oli
+(The ) (or) >md.c ( block executes:) >md.oli
+>md.nest
+(Pushes ) (True) >md.c ( onto AL: ) ([b, a, True]) >md.c >md.uli
+(>swap) >md.c ( swaps top two: ) ([True, a, b]) >md.c >md.uli
+(>choose) >md.c ( pops ) (b) >md.c (, pops ) (a) >md.c (, pops ) (True) >md.c >md.uli
+(If ) (a) >md.c ( is ) (True) >md.c (: selects ) (True) >md.c ( (the true-branch value\29\) >md.uli
+>md.nest
+(Result: ) (True) >md.c >md.uli
+>md.ul
+(If ) (a) >md.c ( is ) (False) >md.c (: selects ) (b) >md.c ( (the false-branch value\29\) >md.uli
+>md.nest
+(Result: ) (True) >md.c ( if b is True, ) (False) >md.c ( if b is False) >md.uli
+>md.ul
+>md.ul
+>md.ol
+
+(Truth Table:) >md.b >md.p
+
+(a) (b) (Result)
+>md.table.header
+(True) (True) (True)
+>md.table.row
+(True) (False) (True)
+>md.table.row
+(False) (True) (True)
+>md.table.row
+(False) (False) (False)
+>md.table.row
+>md.table
+
+(Example:) >md.b >md.p
+
+(True True >or       ; AL: [True]
+True False >or      ; AL: [True]
+False True >or      ; AL: [True]
+False False >or     ; AL: [False]
+) (soma) >md.code
+
+(Usage Example:) >md.b >md.p
+
+(\29\ Check if either condition is true
+user.admin user.moderator >or
+  { admin_panel >show }
+  { }
+>choose
+) (soma) >md.code
+
+>md.hr
 
 (2. Comparison Operators) >md.h2
 
-(>> — Greater-Than) >md.h3
-(Signature: \28\Value, Value\29\ -> Bool) >md.c >md.p
-({>swap ><} !>) >md.c >md.p
+(The stdlib extends the FFI primitive ) (><) >md.c ( \29\less-than\29\ to provide a complete set of comparison operators.) >md.t >md.p
 
-(>!=! — Not Equal) >md.h3
-(Signature: \28\Value, Value\29\ -> Bool) >md.c >md.p
-({>over >over >swap >< >rot >rot >< >or} !=!) >md.c >md.p
+(2.1 ) (>>) >md.c ( — Greater-Than) >md.t >md.h3
 
-(>== — Equality) >md.h3
-(Signature: \28\Value, Value\29\ -> Bool) >md.c >md.p
-({>=! >not} !==) >md.c >md.p
+(Signature:) >md.b ( ) ((Value, Value\29\ -> Bool) >md.c >md.t >md.p
 
-(>=< — Less-Than-Or-Equal) >md.h3
-(Signature: \28\Value, Value\29\ -> Bool) >md.c >md.p
-({>swap >< >not} !=<) >md.c >md.p
+(Definition:) >md.h4
+({>swap ><} !>) (soma) >md.code
 
-(>=> — Greater-Than-Or-Equal) >md.h3
-(Signature: \28\Value, Value\29\ -> Bool) >md.c >md.p
-({>< >not} !=>) >md.c >md.p
+(Semantics:) >md.h4
+(Pops two values ) ((b, a\29\) >md.c ( and pushes ) (True) >md.c ( if ) (a > b) >md.c (, otherwise ) (False) >md.c (.) >md.t >md.p
+
+(AL Transformation:) >md.h4
+(Before: [5, 10, ...]
+After:  [True, ...]    ; 10 > 5
+
+Before: [10, 5, ...]
+After:  [False, ...]   ; 5 > 10) Nil >md.code
+
+(How It Works:) >md.h4
+(Two values on AL: ) (b) >md.c ( (top\29\, ) (a) >md.c ( (second\29\) >md.t
+(>swap) >md.c ( swaps them: AL becomes ) ([a, b, ...]) >md.c >md.t
+(><) >md.c ( computes ) (a < b) >md.c >md.t
+(Result: ) (a > b) >md.c ( is equivalent to ) (b < a) >md.c ( (which is what we computed\29\) >md.t
+>md.ol
+
+(Wait, that's backwards!) >md.b ( Let's trace this more carefully:) >md.t >md.p
+
+(Corrected trace:) >md.h4
+(Initial AL: ) ([b, a, ...]) >md.c ( where we want to test ) (a > b) >md.c >md.t
+(We want: ) (True) >md.c ( if ) (a > b) >md.c >md.t
+(Note: ) (a > b) >md.c ( is the same as ) (b < a) >md.c >md.t
+(>swap) >md.c ( gives us: ) ([a, b, ...]) >md.c >md.t
+(><) >md.c ( pops ) ((b, a\29\) >md.c ( and computes ) (a < b) >md.c >md.t
+>md.ol
+
+(Actually, this needs reconsideration.) >md.b ( Let's verify against the definition of ) (><) >md.c (:) >md.t >md.p
+
+(From ) (06-builtins.md) >md.c (: ) (><) >md.c ( pops ) ((b, a\29\) >md.c ( and pushes ) (True) >md.c ( if ) (a < b) >md.c (.) >md.t >md.p
+
+(So for ) (>>) >md.c (:) >md.t >md.p
+
+(Initial: ) ([b, a, ...]) >md.c >md.t
+(Want: ) (a > b) >md.c >md.t
+(>swap) >md.c (: ) ([a, b, ...]) >md.c >md.t
+(><) >md.c (: pops ) ((b, a\29\) >md.c ( (so now ) (a) >md.c ( is second, ) (b) >md.c ( is top after swap... wait, that's confusing\29\) >md.t
+>md.ul
+
+(Let me trace with concrete values:) >md.p
+
+(10 5        ; AL: [5, 10]   ; We want to test 10 > 5
+>>          ; Execute: {>swap ><}
+  >swap     ; AL: [10, 5]
+  ><        ; Pops (5, 10\29\, tests 10 < 5 → False) Nil >md.code
+
+(Hmm, that's wrong.) >md.b ( Let me re-read the FFI definition more carefully...) >md.t >md.p
+
+(Actually, the issue is operator order. In SOMA: ) (a b >op) >md.c ( means ) (op(b, a\29\) >md.c ( where the second-popped value is the left operand.) >md.t >md.p
+
+(So: ) (10 5 ><) >md.c ( means "pop 5, pop 10, compute 10 < 5" → ) (False) >md.c (.) >md.t >md.p
+
+(And: ) (10 5 >>) >md.c ( should mean "pop 5, pop 10, compute 10 > 5" → ) (True) >md.c (.) >md.t >md.p
+
+(Let's trace ) (>>) >md.c ( again:) >md.t >md.p
+(10 5        ; AL: [5, 10]
+>>          ; Execute: {>swap ><}
+  >swap     ; AL: [10, 5]
+  ><        ; Pop 5, pop 10, compute 10 < 5 → False) Nil >md.code
+
+(Still wrong!) >md.b ( The issue is: we want ) (10 > 5) >md.c ( to be ) (True) >md.c (, but we're getting ) (False) >md.c (.) >md.t >md.p
+
+(Let me check the stdlib source again... Ah! The definition is:) >md.p
+({>swap ><} !>) (soma) >md.code
+
+(So the Store path is ) (>) >md.c (, not ) (>>) >md.c (. Let me reconsider the notation.) >md.t >md.p
+
+(Operator Naming:) >md.h4
+(The built-in less-than is stored at path ) (<) >md.c >md.t
+(Executed as ) (><) >md.c >md.t
+(The stdlib greater-than is stored at path ) (>) >md.c >md.t
+(Executed as ) (>>) >md.c >md.t
+>md.ul
+
+(Let me trace again with the correct understanding:) >md.h4
+
+(To compute ) (10 > 5) >md.c (:) >md.t >md.p
+(10 5        ; AL: [5, 10]   (10 is second, 5 is top\29\
+>>          ; Execute block stored at `>`
+            ; Block is: {>swap ><}
+  >swap     ; AL: [10, 5]   (now 10 is top, 5 is second\29\
+  ><        ; Pop (5, 10\29\, compute: 10 < 5 → False) Nil >md.code
+
+(Still wrong!) >md.b ( Let me check if I'm understanding the pop order correctly.) >md.t >md.p
+
+(From ) (06-builtins.md) >md.c (: ) (><) >md.c ( pops ) ((b, a\29\) >md.c ( and tests ) (a < b) >md.c (.) >md.t >md.p
+
+(So ) (><) >md.c ( pops in this order: first pop is ) (b) >md.c (, second pop is ) (a) >md.c (, test is ) (a < b) >md.c (.) >md.t >md.p
+
+(10 5        ; AL: [5, 10]
+><          ; First pop: b = 5, second pop: a = 10, test: 10 < 5 → False) Nil >md.code
+
+(So ) (10 5 ><) >md.c ( tests if ) (10 < 5) >md.c ( → ) (False) >md.c (. Correct.) >md.t >md.p
+
+(Now for ) (>>) >md.c (:) >md.t >md.p
+(10 5        ; AL: [5, 10]
+>>          ; Execute: {>swap ><}
+  >swap     ; AL: [10, 5]  (swapped\29\
+  ><        ; First pop: b = 5, second pop: a = 10, test: 10 < 5 → False) Nil >md.code
+
+(This is still wrong!) >md.b ( I'm misunderstanding something.) >md.t >md.p
+
+(Let me think about what we want: ) (a > b) >md.c ( is equivalent to ) (b < a) >md.c (.) >md.t >md.p
+
+(Initial: a = 10, b = 5
+We want: a > b = 10 > 5 = True
+Equivalent to: b < a = 5 < 10 = True) Nil >md.code
+
+(So if initial AL is ) ([b, a, ...]) >md.c ( (i.e., ) ([5, 10, ...]) >md.c (\29\:) >md.t >md.p
+
+(After ) (>swap) >md.c (: AL is ) ([a, b, ...]) >md.c ( (i.e., ) ([10, 5, ...]) >md.c (\29\) >md.t
+(After ) (><) >md.c (: pops ) ((5, 10\29\) >md.c (, tests ) (10 < 5) >md.c ( → ) (False) >md.c >md.t
+>md.ul
+
+(I see the problem!) >md.b ( After swap, the AL is ) ([10, 5]) >md.c ( where ) (10) >md.c ( is top and ) (5) >md.c ( is second.) >md.t >md.p
+
+(When ) (><) >md.c ( pops ) ((b, a\29\) >md.c (:) >md.t >md.p
+
+(First pop: ) (b = 10) >md.c ( (the top\29\) >md.t
+(Second pop: ) (a = 5) >md.c ( (the second\29\) >md.t
+(Test: ) (a < b) >md.c ( = ) (5 < 10) >md.c ( = ) (True) >md.c >md.t
+>md.ul
+
+(Ah!) >md.b ( So:) >md.t >md.p
+(10 5        ; AL: [5, 10]  (10 is second, 5 is top\29\
+>>          ; Execute: {>swap ><}
+  >swap     ; AL: [10, 5]  (10 is top, 5 is second\29\
+  ><        ; Pop b=10 (top\29\, pop a=5 (second\29\, test: 5 < 10 → True) Nil >md.code
+
+(But wait, we wanted ) (10 > 5) >md.c (, and ) (5 < 10) >md.c ( is ) (True) >md.c (, so that's correct!) >md.t >md.p
+
+(Let me verify my understanding one more time:) >md.p
+
+(Stack notation:) >md.b ( ) ([top, second, third, ...]) >md.c ( (top is leftmost\29\) >md.t >md.p
+
+(10 5        ; Push 10, then push 5
+            ; AL: [5, 10, ...]  (5 is top, 10 is second\29\
+            ; We want to test: 10 > 5 (i.e., second > top\29\
+>>
+  >swap     ; AL: [10, 5, ...]  (10 is top, 5 is second\29\
+  ><        ; Pop top=10 into b, pop second=5 into a, test: a < b = 5 < 10 = True) Nil >md.code
+
+(Perfect!) >md.b ( So ) (10 5 >>) >md.c ( correctly tests ) (10 > 5) >md.c ( and returns ) (True) >md.c (.) >md.t >md.p
+
+(How It Works (corrected\29\:) >md.h4
+(AL has ) ([b, a, ...]) >md.c ( where we want to test ) (a > b) >md.c >md.t
+(Note: ) (a > b) >md.c ( ⟺ ) (b < a) >md.c >md.t
+(>swap) >md.c ( reverses the order: ) ([a, b, ...]) >md.c >md.t
+(><) >md.c ( pops top first (gets ) (a) >md.c (\29\, second (gets ) (b) >md.c (\29\, and tests ) (b < a) >md.c >md.t
+(Result: ) (b < a) >md.c ( which is equivalent to ) (a > b) >md.c >md.t
+>md.ol
+
+(Wait, I'm confusing myself again.) >md.b ( Let me use the stdlib's own naming:) >md.t >md.p
+
+(The stack in SOMA notation has the rightmost value as top:) >md.p
+(a b         ; AL: [..., a, b]  where b is top) Nil >md.code
+
+(When ) (><) >md.c ( pops ) ((b, a\29\) >md.c (:) >md.t >md.p
+
+(First value popped is top: ) (b) >md.c >md.t
+(Second value popped: ) (a) >md.c >md.t
+(Tests: ) (a < b) >md.c >md.t
+>md.ul
+
+(So ) (a b ><) >md.c ( tests ) (a < b) >md.c (.) >md.t >md.p
+
+(For ) (>>) >md.c (:) >md.t >md.p
+(a b         ; AL: [..., a, b]
+>>          ; Execute: {>swap ><}
+  >swap     ; AL: [..., b, a]
+  ><        ; Pop (a, b\29\, test: b < a) Nil >md.code
+
+(So ) (a b >>) >md.c ( tests ) (b < a) >md.c (, which is equivalent to ) (a > b) >md.c (. ) (Correct!) >md.b >md.t >md.p
+
+(Concrete example:) >md.p
+(10 5 >>     ; Test: 10 > 5
+            ; After swap: 5 10
+            ; Test: 5 < 10 → True ✓) Nil >md.code
+
+(Example:) >md.h4
+(10 5 >>         ; AL: [True]   (10 > 5\29\
+5 10 >>         ; AL: [False]  (5 > 10\29\
+5 5 >>          ; AL: [False]  (5 > 5\29\) (soma) >md.code
+
+(Usage Example:) >md.h4
+(score 100 >>
+  { "High score!" >print }
+  { }
+>choose) (soma) >md.code
+
+>md.hr
+
+(2.2 ) (>!=!) >md.c ( — Not Equal (Inequality\29\) >md.t >md.h3
+
+(Signature:) >md.b ( ) ((Value, Value\29\ -> Bool) >md.c >md.t >md.p
+
+(Definition:) >md.h4
+({>over >over >swap >< >rot >rot >< >or} !=!) (soma) >md.code
+
+(Semantics:) >md.h4
+(Pops two values ) ((b, a\29\) >md.c ( and pushes ) (True) >md.c ( if ) (a ≠ b) >md.c (, otherwise ) (False) >md.c (.) >md.t >md.p
+
+(AL Transformation:) >md.h4
+(Before: [5, 10, ...]
+After:  [True, ...]    ; 10 ≠ 5
+
+Before: [5, 5, ...]
+After:  [False, ...]   ; 5 = 5) Nil >md.code
+
+(How It Works:) >md.h4
+
+(The key insight: ) (a ≠ b) >md.c ( means ) ((a < b\29\ OR (b < a\29\) >md.c (.) >md.t >md.p
+
+(Step-by-step execution:) >md.p
+
+(a b             ; AL: [..., a, b]
+>over >over     ; AL: [..., a, b, a, b]
+>swap           ; AL: [..., a, b, b, a]
+><              ; AL: [..., a, b, (b < a\29\]  ; Call this X
+>rot            ; AL: [..., b, X, a]
+>rot            ; AL: [..., X, a, b]
+><              ; AL: [..., X, (a < b\29\]     ; Call this Y
+>or             ; AL: [..., X OR Y]) Nil >md.code
+
+(Final result: ) ((b < a\29\ OR (a < b\29\) >md.c ( which is ) (True) >md.c ( iff ) (a ≠ b) >md.c (.) >md.t >md.p
+
+(Example:) >md.h4
+(5 10 >!=!       ; AL: [True]   (5 ≠ 10\29\
+5 5 >!=!        ; AL: [False]  (5 = 5\29\) (soma) >md.code
+
+(Usage Example:) >md.h4
+(current_value expected_value >!=!
+  { "Values don't match!" >print }
+  { }
+>choose) (soma) >md.code
+
+(Note:) >md.b ( This implementation only works for types that support ) (><) >md.c (. For a more general inequality test, see ) (>==) >md.c ( and ) (>not) >md.c ( composition.) >md.t >md.p
+
+>md.hr
+
+(2.3 ) (>==) >md.c ( — Equality) >md.t >md.h3
+
+(Signature:) >md.b ( ) ((Value, Value\29\ -> Bool) >md.c >md.t >md.p
+
+(Definition:) >md.h4
+({>=! >not} !==) (soma) >md.code
+
+(Semantics:) >md.h4
+(Pops two values ) ((b, a\29\) >md.c ( and pushes ) (True) >md.c ( if ) (a = b) >md.c (, otherwise ) (False) >md.c (.) >md.t >md.p
+
+(AL Transformation:) >md.h4
+(Before: [5, 5, ...]
+After:  [True, ...]
+
+Before: [5, 10, ...]
+After:  [False, ...]) Nil >md.code
+
+(How It Works:) >md.h4
+(>=!) >md.c ( tests if values are not equal) >md.t
+(>not) >md.c ( negates the result) >md.t
+(Result: ) (NOT (a ≠ b\29\) >md.c ( = ) (a = b) >md.c >md.t
+>md.ol
+
+(Example:) >md.h4
+(5 5 >==         ; AL: [True]
+5 10 >==        ; AL: [False]
+"cat" "cat" >== ; AL: [True]) (soma) >md.code
+
+(Usage Example:) >md.h4
+(user.role "admin" >==
+  { admin_panel >show }
+  { }
+>choose) (soma) >md.code
+
+(Note:) >md.b ( This builds on ) (>=!) >md.c (, which uses ) (><) >md.c ( internally. For types without ordering (like some custom types\29\, you'd need a different implementation (possibly using FFI ) (>==) >md.c ( directly if available\29\.) >md.t >md.p
+
+>md.hr
+
+(2.4 ) (>=<) >md.c ( — Less-Than-Or-Equal) >md.t >md.h3
+
+(Signature:) >md.b ( ) ((Value, Value\29\ -> Bool) >md.c >md.t >md.p
+
+(Definition:) >md.h4
+({>swap >< >not} !=<) (soma) >md.code
+
+(Semantics:) >md.h4
+(Pops two values ) ((b, a\29\) >md.c ( and pushes ) (True) >md.c ( if ) (a ≤ b) >md.c (, otherwise ) (False) >md.c (.) >md.t >md.p
+
+(AL Transformation:) >md.h4
+(Before: [10, 5, ...]
+After:  [True, ...]    ; 5 ≤ 10
+
+Before: [5, 5, ...]
+After:  [True, ...]    ; 5 ≤ 5
+
+Before: [5, 10, ...]
+After:  [False, ...]   ; 10 ≤ 5) Nil >md.code
+
+(How It Works:) >md.h4
+(We want: ) (a ≤ b) >md.c >md.t
+(Equivalent to: ) (NOT (a > b\29\) >md.c >md.t
+(Equivalent to: ) (NOT (b < a\29\) >md.c >md.t
+(>swap) >md.c (: gives us ) ([a, b]) >md.c >md.t
+(><) >md.c (: tests ) (b < a) >md.c >md.t
+(>not) >md.c (: negates to get ) (NOT (b < a\29\) >md.c ( = ) (a ≤ b) >md.c >md.t
+>md.ol
+
+(Example:) >md.h4
+(5 10 >=<        ; AL: [True]   (5 ≤ 10\29\
+10 10 >=<       ; AL: [True]   (10 ≤ 10\29\
+10 5 >=<        ; AL: [False]  (10 ≤ 5\29\) (soma) >md.code
+
+(Usage Example:) >md.h4
+(temperature 32 >=<
+  { "Freezing or below" >print }
+  { }
+>choose) (soma) >md.code
+
+>md.hr
+
+(2.5 ) (>=>) >md.c ( — Greater-Than-Or-Equal) >md.t >md.h3
+
+(Signature:) >md.b ( ) ((Value, Value\29\ -> Bool) >md.c >md.t >md.p
+
+(Definition:) >md.h4
+({>< >not} !=>) (soma) >md.code
+
+(Semantics:) >md.h4
+(Pops two values ) ((b, a\29\) >md.c ( and pushes ) (True) >md.c ( if ) (a ≥ b) >md.c (, otherwise ) (False) >md.c (.) >md.t >md.p
+
+(AL Transformation:) >md.h4
+(Before: [5, 10, ...]
+After:  [True, ...]    ; 10 ≥ 5
+
+Before: [5, 5, ...]
+After:  [True, ...]    ; 5 ≥ 5
+
+Before: [10, 5, ...]
+After:  [False, ...]   ; 5 ≥ 10) Nil >md.code
+
+(How It Works:) >md.h4
+(We want: ) (a ≥ b) >md.c >md.t
+(Equivalent to: ) (NOT (a < b\29\) >md.c >md.t
+(><) >md.c (: tests ) (a < b) >md.c >md.t
+(>not) >md.c (: negates to get ) (NOT (a < b\29\) >md.c ( = ) (a ≥ b) >md.c >md.t
+>md.ol
+
+(Example:) >md.h4
+(10 5 >=>        ; AL: [True]   (10 ≥ 5\29\
+5 5 >=>         ; AL: [True]   (5 ≥ 5\29\
+5 10 >=>        ; AL: [False]  (5 ≥ 10\29\) (soma) >md.code
+
+(Usage Example:) >md.h4
+(user.age 18 >=>
+  { "Access granted" >print }
+  { "Must be 18 or older" >print }
+>choose) (soma) >md.code
+
+>md.hr
 
 (3. Stack Manipulation) >md.h2
 
-(>dup — Duplicate Top) >md.h3
-(Signature: \28\Value\29\ -> \28\Value, Value\29\) >md.c >md.p
-({!_.value _.value _.value} !dup) >md.c >md.p
+(Stack operations are built using the Register as temporary storage. This demonstrates how AL manipulation can be implemented using Register paths.) >md.p
 
-(>drop — Remove Top) >md.h3
-(Signature: \28\Value\29\ -> \28\\29\) >md.c >md.p
-({!_} !drop) >md.c >md.p
+(3.1 ) (>dup) >md.c ( — Duplicate Top) >md.t >md.h3
 
-(>swap — Swap Top Two) >md.h3
-(Signature: \28\a, b\29\ -> \28\b, a\29\) >md.c >md.p
-({!_.a !_.b _.a _.b} !swap) >md.c >md.p
+(Signature:) >md.b ( ) ((Value\29\ -> (Value, Value\29\) >md.c >md.t >md.p
 
-(>over — Copy Second to Top) >md.h3
-(Signature: \28\a, b\29\ -> \28\a, b, a\29\) >md.c >md.p
-({!_.a !_.b _.b _.a _.b} !over) >md.c >md.p
+(Definition:) >md.h4
+({!_.value _.value _.value} !dup) (soma) >md.code
 
-(>rot — Rotate Top Three) >md.h3
-(Signature: \28\a, b, c\29\ -> \28\b, a, c\29\) >md.c >md.p
-({!_.a !_.b !_.c _.b _.a _.c} !rot) >md.c >md.p
+(Semantics:) >md.h4
+(Duplicates the top value on the AL.) >md.p
+
+(AL Transformation:) >md.h4
+(Before: [x, ...]
+After:  [x, x, ...]) Nil >md.code
+
+(How It Works:) >md.h4
+(!_.value) >md.c (: Pop top value, store at Register path ) (value) >md.c >md.t
+(_.value) >md.c (: Read from Register, push onto AL) >md.t
+(_.value) >md.c (: Read from Register again, push onto AL) >md.t
+(Result: two copies of the original value) >md.t
+>md.ol
+
+(Example:) >md.h4
+(42 >dup         ; AL: [42, 42]
+"hello" >dup    ; AL: ["hello", "hello"]) (soma) >md.code
+
+(Usage Example:) >md.h4
+(\29\ Duplicate a value for multiple uses
+x >dup >dup >* >*    ; Compute x³ (x * x * x\29\)) (soma) >md.code
+
+(Note:) >md.b ( Each execution of ) (>dup) >md.c ( gets its own isolated Register, so ) (_.value) >md.c ( is local to that execution.) >md.t >md.p
+
+>md.hr
+
+(3.2 ) (>drop) >md.c ( — Remove Top) >md.t >md.h3
+
+(Signature:) >md.b ( ) ((Value\29\ -> (\29\) >md.c >md.t >md.p
+
+(Definition:) >md.h4
+({!_} !drop) (soma) >md.code
+
+(Semantics:) >md.h4
+(Removes the top value from the AL.) >md.p
+
+(AL Transformation:) >md.h4
+(Before: [x, ...]
+After:  [...]) Nil >md.code
+
+(How It Works:) >md.h4
+(!_) >md.c (: Pop top value and store at Register root) >md.t
+(Block ends without pushing anything back) >md.t
+(Result: value is discarded) >md.t
+>md.ol
+
+(Example:) >md.h4
+(1 2 3 >drop     ; AL: [1, 2]) (soma) >md.code
+
+(Usage Example:) >md.h4
+(\29\ Discard unwanted computation result
+compute_value >drop)) (soma) >md.code
+
+>md.hr
+
+(3.3 ) (>swap) >md.c ( — Swap Top Two) >md.t >md.h3
+
+(Signature:) >md.b ( ) ((a, b\29\ -> (b, a\29\) >md.c >md.t >md.p
+
+(Definition:) >md.h4
+({!_.a !_.b _.a _.b} !swap) (soma) >md.code
+
+(Semantics:) >md.h4
+(Swaps the top two values on the AL.) >md.p
+
+(AL Transformation:) >md.h4
+(Before: [b, a, ...]
+After:  [a, b, ...]) Nil >md.code
+
+(How It Works:) >md.h4
+(!_.a) >md.c (: Pop top (b\29\, store as ) (_.a) >md.c >md.t
+(!_.b) >md.c (: Pop second (a\29\, store as ) (_.b) >md.c >md.t
+(_.a) >md.c (: Push b) >md.t
+(_.b) >md.c (: Push a) >md.t
+(Result: order reversed) >md.t
+>md.ol
+
+(Example:) >md.h4
+(1 2 >swap       ; AL: [2, 1]
+"a" "b" >swap   ; AL: ["b", "a"]) (soma) >md.code
+
+(Usage Example:) >md.h4
+(\29\ Reverse operand order for subtraction
+10 3 >swap >-   ; Compute 3 - 10 = -7)) (soma) >md.code
+
+>md.hr
+
+(3.4 ) (>over) >md.c ( — Copy Second to Top) >md.t >md.h3
+
+(Signature:) >md.b ( ) ((a, b\29\ -> (a, b, a\29\) >md.c >md.t >md.p
+
+(Definition:) >md.h4
+({!_.a !_.b _.b _.a _.b} !over) (soma) >md.code
+
+(Semantics:) >md.h4
+(Copies the second value and pushes it on top.) >md.p
+
+(AL Transformation:) >md.h4
+(Before: [b, a, ...]
+After:  [b, a, b, ...]) Nil >md.code
+
+(How It Works:) >md.h4
+(!_.a) >md.c (: Pop top (b\29\, store as ) (_.a) >md.c >md.t
+(!_.b) >md.c (: Pop second (a\29\, store as ) (_.b) >md.c >md.t
+(_.b) >md.c (: Push a) >md.t
+(_.a) >md.c (: Push b) >md.t
+(_.b) >md.c (: Push a again) >md.t
+(Result: ) ([b, a, b]) >md.c ( with second value duplicated on top) >md.t
+>md.ol
+
+(Example:) >md.h4
+(1 2 >over       ; AL: [1, 2, 1]) (soma) >md.code
+
+(Usage Example:) >md.h4
+(\29\ Duplicate second value for comparison
+a b >over >over ><    ; Test a < b while keeping a and b on stack)) (soma) >md.code
+
+>md.hr
+
+(3.5 ) (>rot) >md.c ( — Rotate Top Three) >md.t >md.h3
+
+(Signature:) >md.b ( ) ((a, b, c\29\ -> (b, a, c\29\) >md.c >md.t >md.p
+
+(Definition:) >md.b >md.p
+
+({!_.a !_.b !_.c _.b _.a _.c} !rot) (soma) >md.code
+
+(Semantics:) >md.b
+(Rotates the top three values, moving the third value to the top.) >md.p
+
+(AL Transformation:) >md.b >md.p
+
+(Before: [c, b, a, ...]
+After:  [b, a, c, ...]) Nil >md.code
+
+(How It Works:) >md.b >md.p
+
+(!_.a) >md.c (Pop top (c\29\) >md.dli
+(!_.b) >md.c (Pop second (b\29\) >md.dli
+(!_.c) >md.c (Pop third (a\29\) >md.dli
+(_.b) >md.c (Push b) >md.dli
+(_.a) >md.c (Push c) >md.dli
+(_.c) >md.c (Push a) >md.dli
+(Result) (rotated order) >md.dli
+>md.dol
+
+(Example:) >md.b >md.p
+
+(1 2 3 >rot      ; AL: [2, 1, 3]) (soma) >md.code
+
+(Usage Example:) >md.b >md.p
+
+(\29\ Rearrange three values
+a b c >rot      ; Bring third value to top) (soma) >md.code
+
+>md.hr
 
 (4. Arithmetic Helpers) >md.h2
 
-(>inc — Increment by 1) >md.h3
-(Signature: \28\Int\29\ -> Int) >md.c >md.p
-({1 >+} !inc) >md.c >md.p
+(Arithmetic helpers build on the FFI primitives ) (>+) >md.c (, ) (>-) >md.c (, ) (>*) >md.c (, ) (>/) >md.c ( to provide common operations.) >md.t >md.p
 
-(>dec — Decrement by 1) >md.h3
-(Signature: \28\Int\29\ -> Int) >md.c >md.p
-({1 >-} !dec) >md.c >md.p
+(4.1 ) (>inc) >md.c ( — Increment by 1) >md.t >md.h3
 
-(>abs — Absolute Value) >md.h3
-(Signature: \28\Int\29\ -> Int) >md.c >md.p
-({>dup 0 >< {0 >swap >-} {} >choose >^} !abs) >md.c >md.p
+(Signature:) >md.b ( ) ((Int\29\ -> Int) >md.c >md.t >md.p
 
-(>min — Minimum of Two) >md.h3
-(Signature: \28\Int, Int\29\ -> Int) >md.c >md.p
-({>over >over >< {>drop} {>swap >drop} >choose >^} !min) >md.c >md.p
+(Definition:) >md.b >md.p
 
-(>max — Maximum of Two) >md.h3
-(Signature: \28\Int, Int\29\ -> Int) >md.c >md.p
-({>over >over >> {>drop} {>swap >drop} >choose >^} !max) >md.c >md.p
+({1 >+} !inc) (soma) >md.code
 
-(5. Control Flow) >md.h2
+(Semantics:) >md.b
+(Pops an integer and pushes its value plus 1.) >md.p
 
-(>if — Conditional Execution) >md.h3
-(Signature: \28\condition, block\29\ -> \28\...\29\) >md.c >md.p
-({{} >choose >^} !if) >md.c >md.p
+(AL Transformation:) >md.b >md.p
 
-(>ifelse — Conditional with Both Branches) >md.h3
-(Signature: \28\condition, true_block, false_block\29\ -> \28\...\29\) >md.c >md.p
-({>choose >^} !ifelse) >md.c >md.p
+(Before: [n, ...]
+After:  [n+1, ...]) Nil >md.code
 
-(>^ — Execute from AL) >md.h3
-(Signature: \28\block\29\ -> \28\result\29\) >md.c >md.p
-({!_ >_} !^) >md.c >md.p
+(How It Works:) >md.b >md.p
 
-(6. Linked Lists) >md.h2
+(Push ) (1) >md.c ( onto AL) >md.t >md.oli
+(>+) >md.c ( adds top two values) >md.t >md.oli
+(Result: original value incremented) >md.oli
+>md.ol
 
-(>list.new — Create Empty List) >md.h3
-(Returns Nil representing empty list.) >md.p
+(Example:) >md.b >md.p
 
-(>list.cons — Prepend Value to List) >md.h3
-(Signature: \28\Value, List\29\ -> CellRef) >md.c >md.p
+(5 >inc          ; AL: [6]
+0 >inc          ; AL: [1]
+-1 >inc         ; AL: [0]) (soma) >md.code
 
-(Design Philosophy) >md.h2
+(Usage Example:) >md.b >md.p
 
-(All operations are user-defined blocks, not primitives.) >md.p
+(\29\ Increment a counter
+counter >inc !counter) (soma) >md.code
 
-(Boolean logic builds from ) (>choose) >md.c (.) >md.t >md.p
-(Comparisons build from ) (><) >md.c ( and boolean ops.) >md.t >md.p
-(Stack operations use Register paths for local state.) >md.p
-(Control flow uses ) (>chain) >md.c ( for iteration.) >md.t >md.p
+>md.hr
 
-(The FFI kernel is tiny; everything else is composable.) >md.p
+(4.2 ) (>dec) >md.c ( — Decrement by 1) >md.t >md.h3
 
-(stdlib.md) >md.render
+(Signature:) >md.b ( ) ((Int\29\ -> Int) >md.c >md.t >md.p
+
+(Definition:) >md.b >md.p
+
+({1 >-} !dec) (soma) >md.code
+
+(Semantics:) >md.b
+(Pops an integer and pushes its value minus 1.) >md.p
+
+(AL Transformation:) >md.b >md.p
+
+(Before: [n, ...]
+After:  [n-1, ...]) Nil >md.code
+
+(How It Works:) >md.b >md.p
+
+(Push ) (1) >md.c ( onto AL) >md.t >md.oli
+(>-) >md.c ( subtracts: computes ) (n - 1) >md.c >md.t >md.oli
+(Result: original value decremented) >md.oli
+>md.ol
+
+(Example:) >md.b >md.p
+
+(5 >dec          ; AL: [4]
+0 >dec          ; AL: [-1]) (soma) >md.code
+
+(Usage Example:) >md.b >md.p
+
+(\29\ Decrement a counter
+counter >dec !counter) (soma) >md.code
+
+>md.hr
+
+(4.3 ) (>abs) >md.c ( — Absolute Value) >md.t >md.h3
+
+(Signature:) >md.b ( ) ((Int\29\ -> Int) >md.c >md.t >md.p
+
+(Definition:) >md.b >md.p
+
+({>dup 0 >< {0 >swap >-} {} >choose >^} !abs) (soma) >md.code
+
+(Semantics:) >md.b
+(Pops an integer and pushes its absolute value.) >md.p
+
+(AL Transformation:) >md.b >md.p
+
+(Before: [n, ...]
+After:  [|n|, ...]) Nil >md.code
+
+(How It Works:) >md.b >md.p
+
+(>dup) >md.c (: Duplicate the value → ) ([n, n]) >md.c >md.t >md.oli
+(0 ><) >md.c (: Test if ) (n < 0) >md.c ( → ) ([n, bool]) >md.c >md.t >md.oli
+({0 >swap >-} {}) >md.c (: Push the two branch blocks) >md.t >md.oli
+(>choose) >md.c (: Selects based on bool:) >md.t >md.oli
+>md.nest
+(If ) (True) >md.c ( (n is negative\29\: selects ) ({0 >swap >-}) >md.c >md.t >md.uli
+(If ) (False) >md.c ( (n is non-negative\29\: selects ) ({}) >md.c ( (empty block\29\) >md.t >md.uli
+>md.ul
+(>^) >md.c (: Executes the selected block) >md.t >md.oli
+>md.nest
+(If negative: computes ) (0 - n) >md.c ( = ) (-n) >md.c ( (positive\29\) >md.t >md.uli
+(If non-negative: does nothing, value remains) >md.uli
+>md.ul
+(Result: non-negative value) >md.oli
+>md.ol
+
+(Example:) >md.b >md.p
+
+(-5 >abs         ; AL: [5]
+5 >abs          ; AL: [5]
+0 >abs          ; AL: [0]) (soma) >md.code
+
+(Usage Example:) >md.b >md.p
+
+(\29\ Compute distance
+a b >- >abs     ; |a - b|) (soma) >md.code
+
+>md.hr
+
+(4.4 ) (>min) >md.c ( — Minimum of Two Values) >md.t >md.h3
+
+(Signature:) >md.b ( ) ((Int, Int\29\ -> Int) >md.c >md.t >md.p
+
+(Definition:) >md.b >md.p
+
+({>over >over >< {>drop} {>swap >drop} >choose >^} !min) (soma) >md.code
+
+(Semantics:) >md.b >md.p
+
+(Pops two integers ) ((b, a\29\) >md.c ( and pushes the smaller value.) >md.t >md.p
+
+(AL Transformation:) >md.b >md.p
+
+(Before: [b, a, ...]
+After:  [min(a, b\29\, ...]) Nil >md.code
+
+(How It Works:) >md.b >md.p
+
+(>over >over) >md.c (: Duplicate both values → ) ([b, a, b, a]) >md.c >md.t >md.oli
+(><) >md.c (: Test ) (a < b) >md.c ( → ) ([b, a, bool]) >md.c >md.t >md.oli
+({>drop} {>swap >drop}) >md.c (: Push the two branch blocks) >md.t >md.oli
+(>choose) >md.c (: Selects based on bool:) >md.t >md.oli
+>md.nest
+(If ) (True) >md.c ( (a < b\29\: selects ) ({>drop}) >md.c >md.t >md.uli
+(If ) (False) >md.c ( (a ≥ b\29\: selects ) ({>swap >drop}) >md.c >md.t >md.uli
+>md.ul
+(>^) >md.c (: Executes the selected block) >md.t >md.oli
+>md.nest
+(If a < b: drops top (b\29\, keeps a) >md.uli
+(If a ≥ b: swaps then drops, keeps b) >md.uli
+>md.ul
+>md.ol
+
+(Step-by-step execution with concrete values:) >md.p
+
+(3 7                    ; AL: [7, 3]    (want min = 3\29\
+>over                  ; AL: [7, 3, 7]
+>over                  ; AL: [7, 3, 7, 3]
+><                     ; Pop (3, 7\29\, test: 7 < 3 → False
+                       ; AL: [7, 3, False]
+{>drop} {>swap >drop} >choose
+                       ; Pops: {>swap >drop}, {>drop}, False
+                       ; Leaves: [7, 3]
+                       ; Selects: {>swap >drop} (false branch\29\
+>^                     ; Executes the selected block
+  >swap                ; AL: [3, 7]
+  >drop                ; AL: [3]
+                       ; Result: 3 ✓) Nil >md.code
+
+(Verify with opposite order:) >md.p
+
+(7 3                    ; AL: [3, 7]    (want min = 3\29\
+>over                  ; AL: [3, 7, 3]
+>over                  ; AL: [3, 7, 3, 7]
+><                     ; Pop (7, 3\29\, test: 3 < 7 → True
+                       ; AL: [3, 7, True]
+{>drop} {>swap >drop} >choose
+                       ; Selects: {>drop} (true branch\29\
+                       ; AL: [3, 7]
+>^                     ; Executes the selected block
+  >drop                ; AL: [3]
+                       ; Result: 3 ✓) Nil >md.code
+
+(Example:) >md.b >md.p
+
+(5 3 >min        ; AL: [3]
+3 5 >min        ; AL: [3]
+5 5 >min        ; AL: [5]) (soma) >md.code
+
+(Usage Example:) >md.b >md.p
+
+(\29\ Clamp value to maximum
+value limit >min) (soma) >md.code
+
+>md.hr
+
+(4.5 ) (>max) >md.c ( — Maximum of Two Values) >md.t >md.h3
+
+(Signature:) >md.b ( ) ((Int, Int\29\ -> Int) >md.c >md.t >md.p
+
+(Definition:) >md.b >md.p
+
+({>over >over >> {>drop} {>swap >drop} >choose >^} !max) (soma) >md.code
+
+(Semantics:) >md.b >md.p
+
+(Pops two integers ) ((b, a\29\) >md.c ( and pushes the larger value.) >md.t >md.p
+
+(AL Transformation:) >md.b >md.p
+
+(Before: [b, a, ...]
+After:  [max(a, b\29\, ...]) Nil >md.code
+
+(How It Works:) >md.b >md.p
+
+(Similar to ) (>min) >md.c (, but uses ) (>>) >md.c ( (greater-than\29\ instead of ) (><) >md.c (:) >md.t >md.p
+
+(>over >over) >md.c (: Duplicate both → ) ([b, a, b, a]) >md.c >md.t >md.oli
+(>>) >md.c (: Test ) (a > b) >md.c ( → ) ([b, a, bool]) >md.c >md.t >md.oli
+({>drop} {>swap >drop}) >md.c (: Push the two branch blocks) >md.t >md.oli
+(>choose) >md.c (: Selects based on bool:) >md.t >md.oli
+>md.nest
+(If ) (True) >md.c ( (a > b\29\: selects ) ({>drop}) >md.c ( → keep a) >md.t >md.uli
+(If ) (False) >md.c ( (a ≤ b\29\: selects ) ({>swap >drop}) >md.c ( → keep b) >md.t >md.uli
+>md.ul
+(>^) >md.c (: Executes the selected block) >md.t >md.oli
+>md.ol
+
+(Example:) >md.b >md.p
+
+(5 3 >max        ; AL: [5]
+3 5 >max        ; AL: [5]
+5 5 >max        ; AL: [5]) (soma) >md.code
+
+(Usage Example:) >md.b >md.p
+
+(\29\ Ensure minimum value
+value minimum >max) (soma) >md.code
+
+>md.hr
+
+(5. Control Flow Helpers) >md.h2
+
+(These are high-level control flow abstractions built on top of ) (>choose) >md.c ( and ) (>chain) >md.c (.) >md.t >md.p
+
+(5.1 ) (>times) >md.c ( — Execute Block N Times) >md.t >md.h3
+
+(Signature:) >md.b ( ) ([n, block, ...] -> [...]) >md.c >md.t >md.p
+
+(Definition:) >md.b >md.p
+
+({
+  {
+    !_.user_blk !_.cnt
+    >_.user_blk
+    _.cnt 1 >-
+    !_.new_cnt
+    _.new_cnt _.user_blk
+    >block
+    0 _.new_cnt ><
+    {}
+    {>drop >drop >drop Nil}
+    >choose
+  } >chain
+  >drop
+} !times) (soma) >md.code
+
+(Semantics:) >md.b >md.p
+
+(Executes a block N times. Consumes count and block from AL.) >md.p
+
+(AL Transformation:) >md.b >md.p
+
+(Before: [N, {body}, ...]
+After:  [...]) Nil >md.code
+
+(How It Works:) >md.b >md.p
+
+(This is a sophisticated loop built using ) (>chain) >md.c ( and ) (>choose) >md.c (. Let's trace it:) >md.t >md.p
+
+(Outer block executes an inner block via ) (>chain) >md.c (, then drops result) >md.t >md.oli
+(Inner block (the loop body\29\:) >md.oli
+>md.nest
+(Pops block and count from AL, stores in Register) >md.uli
+(Executes user block () (>_.user_blk) >md.c (\29\) >md.t >md.uli
+(Decrements count () (_.cnt 1 >-) >md.c (\29\) >md.t >md.uli
+(Stores new count) >md.uli
+(Pushes new count and block back onto AL) >md.uli
+(Pushes self () (>block) >md.c (\29\ onto AL) >md.t >md.uli
+(Tests if count > 0 () (0 _.new_cnt ><) >md.c (\29\) >md.t >md.uli
+(Pushes empty block ) ({}) >md.c ( and cleanup block ) ({>drop >drop >drop Nil}) >md.c >md.t >md.uli
+(>choose) >md.c ( selects based on the test:) >md.t >md.uli
+>md.nest
+(If true: selects empty block (continue loop via ) (>chain) >md.c (\29\) >md.t >md.uli
+(If false: selects cleanup block) >md.uli
+>md.ul
+(>^) >md.c ( executes the selected block) >md.t >md.uli
+>md.ul
+(Loop continues until count reaches 0) >md.oli
+>md.ol
+
+(Example:) >md.b >md.p
+
+(3 { "Hello" >print } >times) (soma) >md.code
+
+(Output:) >md.p
+
+(Hello
+Hello
+Hello) Nil >md.code
+
+(Usage Example:) >md.b >md.p
+
+(\29\ Print numbers 1 to 10
+10 { counter >print counter >inc !counter } >times) (soma) >md.code
+
+(Note:) >md.b ( Variables referenced in the block body must be in the Store (like ) (counter) >md.c (\29\, not in Register paths, due to Register isolation between block executions.) >md.t >md.p
+
+>md.hr
+
+(5.2 ) (>if) >md.c ( — Conditional Execution) >md.t >md.h3
+
+(Signature:) >md.b ( ) ([condition, block, ...] -> [...]) >md.c >md.t >md.p
+
+(Definition:) >md.b >md.p
+
+({{} >choose >^} !if) (soma) >md.code
+
+(Semantics:) >md.b >md.p
+
+(Executes a block if condition is true, otherwise does nothing.) >md.p
+
+(AL Transformation:) >md.b >md.p
+
+(Before: [True, {body}, ...]
+After:  [<result of body>, ...]
+
+Before: [False, {body}, ...]
+After:  [...]) Nil >md.code
+
+(How It Works:) >md.b >md.p
+
+(AL has: ) ([block, bool]) >md.c >md.t >md.oli
+(Push empty block: ) ([block, bool, {}]) >md.c >md.t >md.oli
+(>choose) >md.c ( selects:) >md.t >md.oli
+>md.nest
+(If ) (bool) >md.c ( is ) (True) >md.c (: pushes ) (block) >md.c ( onto AL) >md.t >md.uli
+(If ) (bool) >md.c ( is ) (False) >md.c (: pushes ) ({}) >md.c ( (empty block\29\ onto AL) >md.t >md.uli
+>md.ul
+(>^) >md.c ( executes the selected block from the AL) >md.t >md.oli
+>md.ol
+
+(Example:) >md.b >md.p
+
+(True { "Executed" >print } >if     ; Prints: Executed
+False { "Not executed" >print } >if ; Prints nothing) (soma) >md.code
+
+(Usage Example:) >md.b >md.p
+
+(user.authenticated { show_dashboard } >if) (soma) >md.code
+
+>md.hr
+
+(5.3 ) (>ifelse) >md.c ( — Conditional with Both Branches) >md.t >md.h3
+
+(Signature:) ([(condition, true_block, false_block, ...] -> [...]) >md.c >md.dli
+>md.dul
+
+(Definition:) >md.p
+
+({>choose >^} !ifelse) (soma) >md.code
+
+(Semantics:) >md.p
+
+(Executes one of two blocks based on a boolean. This is the select-then-execute pattern.) >md.p
+
+(AL Transformation:) >md.p
+
+(Before: [True, {true_body}, {false_body}, ...]
+After:  [<result of true_body>, ...]
+
+Before: [False, {true_body}, {false_body}, ...]
+After:  [<result of false_body>, ...]) Nil >md.code
+
+(How It Works:) >md.p
+
+(AL has: ) ([false_block, true_block, bool]) >md.c >md.oli
+(>choose) >md.c ( selects based on bool:) >md.oli
+>md.nest
+(If ) (True) >md.c (: pushes ) (true_block) >md.c ( onto AL) >md.uli
+(If ) (False) >md.c (: pushes ) (false_block) >md.c ( onto AL) >md.uli
+>md.ul
+(>^) >md.c ( executes the selected block from the AL) >md.oli
+>md.ol
+
+(Example:) >md.p
+
+(x 0 >< { "positive" } { "not positive" } >ifelse) (soma) >md.code
+
+(Usage Example:) >md.p
+
+(score 60 >=>
+  { "Pass" >print }
+  { "Fail" >print }
+>ifelse) (soma) >md.code
+
+>md.hr
+
+(5.4 ) (>^) >md.c ( — Execute from AL) >md.t >md.h3
+
+(Signature:) ([block, ...] -> [<result of block>, ...]) >md.c >md.dli
+>md.dul
+
+(Definition:) >md.p
+
+({!_ >_} !^) (soma) >md.code
+
+(Semantics:) >md.p
+
+(Pops a block from the AL and executes it. Like Forth's ) (EXECUTE) >md.c (.) >md.t >md.p
+
+(AL Transformation:) >md.p
+
+(Before: [{body}, ...]
+After:  [<result of body>, ...]) Nil >md.code
+
+(How It Works:) >md.p
+
+(!_) >md.c (: Pop block from AL, store at Register root) >md.oli
+(>_) >md.c (: Execute block from Register root) >md.oli
+(Result: block's effects on AL) >md.oli
+>md.ol
+
+(Example:) >md.p
+
+({ 2 3 >+ } >^       ; AL: [5]
+print >^            ; Executes print block (pops and prints value\29\) (soma) >md.code
+
+(Usage Example:) >md.p
+
+(\29\ Store operation in variable and execute later
+add !_.operation
+5 3 _.operation >^  ; AL: [8]) (soma) >md.code
+
+(Dynamic Dispatch:) >md.p
+
+(\29\ Define operations
+{ 10 >+ } !ops.add_ten
+{ 2 >* } !ops.double
+
+\29\ Dispatch based on name
+"add_ten" !_.op_name
+"ops." _.op_name >concat >Store.get >^) (soma) >md.code
+
+(This is ) (user-defined execution) >md.b ( — SOMA has no built-in ) (EXECUTE) >md.c ( primitive!) >md.t >md.p
+
+>md.hr
+
+(5.5 ) (>while) >md.c ( — Loop While Condition Is True) >md.t >md.h3
+
+(Signature:) ([cond_block, body_block, ...] -> [...]) >md.c >md.dli
+>md.dul
+
+(Definition:) >md.p
+
+({
+  {
+    !_.body !_.cond
+    _.cond _.body                 \29\ Push state back onto AL
+    >block                        \29\ Push loop block
+    >_.cond                       \29\ Execute condition LAST so bool is on top
+    {
+      !_.loop !_.body !_.cond     \29\ Pop state from AL (choose already popped\29\
+      >_.body                     \29\ Execute body
+      _.cond _.body _.loop        \29\ Push state back for next iteration
+    }
+    {>drop >drop >drop Nil}       \29\ False: cleanup
+    >choose
+  } >chain
+  >drop
+} !while) (soma) >md.code
+
+(Semantics:) >md.p
+
+(Loops while a condition block returns ) (True) >md.c (.) >md.t >md.p
+
+(AL Transformation:) >md.p
+
+(Before: [{condition}, {body}, ...]
+After:  [...]) Nil >md.code
+
+(How It Works:) >md.p
+
+(This is a sophisticated while loop that:) >md.p
+
+(Stores condition and body blocks in the loop's Register) >md.oli
+(On each iteration:) >md.oli
+>md.nest
+(Pushes condition and body back onto AL) >md.uli
+(Pushes self-reference () (>block) >md.c (\29\) >md.uli
+(Executes condition block (leaving boolean on AL\29\) >md.uli
+(Pushes continuation block and cleanup block) >md.uli
+(>choose) >md.c ( selects based on boolean:) >md.uli
+>md.nest
+(If ) (True) >md.c (: selects continuation block (executes body and continues\29\) >md.uli
+(If ) (False) >md.c (: selects cleanup block) >md.uli
+>md.ul
+(>^) >md.c ( executes the selected block) >md.uli
+>md.ul
+>md.ol
+
+(Example:) >md.p
+
+(0 !counter
+{ counter 5 >< }           ; condition
+{ counter >print counter >inc !counter }  ; body
+>while) (soma) >md.code
+
+(Output:) >md.p
+
+(0
+1
+2
+3
+4) Nil >md.code
+
+(Usage Example:) >md.p
+
+(\29\ Read until sentinel
+{ input "quit" >== >not }
+{ user_input >read !input input >process }
+>while) (soma) >md.code
+
+(Note) (Variables like ) (counter) >md.c ( and ) (input) >md.c ( must be Store paths (not Register paths\29\ so that the condition and body blocks can access them.) >md.dli
+>md.dul
+
+>md.hr
+
+(5.6 ) (>do) >md.c ( — Execute Body First, Then Loop While True) >md.t >md.h3
+
+(Signature:) ([body_block, cond_block, ...] -> [...]) >md.c >md.dli
+>md.dul
+
+(Definition:) >md.p
+
+({
+  {
+    !_.cond !_.body
+    >_.body                       \29\ Execute body first
+    _.body _.cond                 \29\ Push state back onto AL
+    >block                        \29\ Push loop block
+    >_.cond                       \29\ Execute condition LAST so bool is on top
+    {}                            \29\ True: empty (state already on AL\29\
+    {>drop >drop >drop Nil}       \29\ False: cleanup
+    >choose
+  } >chain
+  >drop
+} !do) (soma) >md.code
+
+(Semantics:) >md.p
+
+(Executes body, then loops while condition is true. Body always executes at least once.) >md.p
+
+(AL Transformation:) >md.p
+
+(Before: [{body}, {condition}, ...]
+After:  [...]) Nil >md.code
+
+(How It Works:) >md.p
+
+(Similar to ) (>while) >md.c (, but executes body ) (before) >md.b ( testing condition:) >md.t >md.p
+
+(Stores body and condition in Register) >md.oli
+(Executes body immediately) >md.oli
+(Pushes state and self-reference) >md.oli
+(Tests condition (leaving boolean on AL\29\) >md.oli
+(Pushes empty block and cleanup block) >md.oli
+(>choose) >md.c ( selects based on boolean:) >md.oli
+>md.nest
+(If ) (True) >md.c (: selects empty block (continues loop\29\) >md.uli
+(If ) (False) >md.c (: selects cleanup block) >md.uli
+>md.ul
+(>^) >md.c ( executes the selected block) >md.oli
+>md.ol
+
+(Example:) >md.p
+
+(0 !count
+{ count >print count >inc !count }  ; body (executed first\29\
+{ count 3 >< }                      ; condition
+>do) (soma) >md.code
+
+(Output:) >md.p
+
+(0
+1
+2) Nil >md.code
+
+(Usage Example:) >md.p
+
+(\29\ Prompt until valid input
+{ "Enter password: " >print user_input >read !password }
+{ password >validate }
+>do) (soma) >md.code
+
+(Key Difference from ) (>while) >md.c (The body executes ) (at least once) >md.b (, even if condition is initially false.) >md.dli
+>md.dul
+
+>md.hr
+
+(6. Linked List Operations) >md.h2
+
+(SOMA's linked list operations demonstrate the power of CellRefs and the context-passing pattern. Lists are built using pure CellRef structures stored in block Registers, yet they persist after the block exits because CellRefs are first-class values.) >md.p
+
+(6.1 ) (>list.new) >md.c ( — Create Empty List) >md.t >md.h3
+
+(Signature:) ((\29\ -> Nil) >md.c >md.dli
+>md.dul
+
+(Definition:) >md.p
+
+({
+  Nil
+} !list.new) (soma) >md.code
+
+(Semantics:) >md.p
+
+(Creates an empty list, represented by ) (Nil) >md.c (.) >md.t >md.p
+
+(AL Transformation:) >md.p
+
+(Before: [...]
+After:  [Nil, ...]) Nil >md.code
+
+(How It Works:) >md.p
+
+(Simply pushes ) (Nil) >md.c ( onto the AL to represent an empty list.) >md.t >md.p
+
+(Example:) >md.p
+
+(>list.new        ; AL: [Nil]
+!my_list         ; Store empty list) (soma) >md.code
+
+(Usage Example:) >md.p
+
+(\29\ Start with empty list
+>list.new !items) (soma) >md.code
+
+>md.hr
+
+(6.2 ) (>list.cons) >md.c ( — Prepend Value to List) >md.t >md.h3
+
+(Signature:) ((Value, List\29\ -> CellRef) >md.c >md.dli
+>md.dul
+
+(Definition:) >md.p
+
+({
+  !_.list !_.value  \29\ Pop list first (top\29\, then value
+  _.value !_.node.value
+  _.list !_.node.next
+  _.node.  \29\ Return CellRef to the node (persists after block!\29\
+} !list.cons) (soma) >md.code
+
+(Semantics:) >md.p
+
+(Creates a new list node containing ) (value) >md.c ( with ) (next) >md.c ( pointing to the existing ) (list) >md.c (. This is the classic functional programming ) (cons) >md.c ( operation—prepending a value to the front of a list (like pushing onto a stack\29\.) >md.t >md.p
+
+(AL Transformation:) >md.p
+
+(Before: [list, value, ...]
+After:  [new_node_ref, ...]) Nil >md.code
+
+(List Structure:) >md.p
+
+(Each node is a CellRef with two fields:) >md.p
+
+(.value) >md.c (The data stored in this node) >md.dli
+(.next) >md.c (CellRef to the next node (or ) (Nil) >md.c ( for end of list\29\) >md.dli
+>md.dul
+
+(How It Works:) >md.p
+
+(The block receives ) (value) >md.c ( and ) (list) >md.c ( on the AL) >md.oli
+(Stores both in the block's Register) >md.oli
+(Creates a new node structure: ) (_.node.value) >md.c ( and ) (_.node.next) >md.c >md.oli
+(Returns ) (_.node.) >md.c ( (CellRef to the node root\29\) >md.oli
+(Key insight:) >md.b ( The CellRef persists even after the block exits!) >md.oli
+>md.ol
+
+(Example:) >md.p
+
+(\29\ Build list: (a, b, c\29\
+Nil
+(c\29\ >swap >list.cons
+!list1
+
+(b\29\ list1 >list.cons
+!list2
+
+(a\29\ list2 >list.cons
+!my_list
+
+\29\ Access list elements
+my_list.value         ; AL: [(a\29\]
+my_list.next.value    ; AL: [(b\29\]
+my_list.next.next.value ; AL: [(c\29\]
+my_list.next.next.next >isNil ; AL: [True]) (soma) >md.code
+
+(Usage Example:) >md.p
+
+(\29\ Build a list of numbers
+>list.new
+3 >swap >list.cons
+2 >swap >list.cons
+1 >swap >list.cons
+!numbers
+; numbers represents: 1 -> 2 -> 3 -> Nil) (soma) >md.code
+
+(Stack-Based Operation:) >md.p
+
+(Notice that ) (list.cons) >md.c ( operates like a stack push: each new value goes to the front. This makes it perfect for accumulating items in reverse order, which is exactly what ) (al.drain) >md.c ( does.) >md.t >md.p
+
+(Why CellRefs Persist:) >md.p
+
+(When a block returns ) (_.node.) >md.c (, it's returning a ) (reference) >md.b ( to a Cell in its Register. Even though the Register is local to the block execution, the CellRef itself is a first-class value that can be stored and passed around. The referenced Cell continues to exist as long as there's a reference to it.) >md.t >md.p
+
+>md.hr
+
+(7. AL Draining Operations) >md.h2
+
+(AL draining is a powerful pattern for processing all values on the AL using a user-supplied action block. It demonstrates advanced context-passing and state transformation.) >md.p
+
+(7.1 ) (>al.drain) >md.c ( — Drain AL with Action Block) >md.t >md.h3
+
+(Signature:) ([Void, item1, item2, ..., itemN, persistent, action_block, ...] -> [...]) >md.c >md.dli
+>md.dul
+
+(Definition:) >md.p
+
+({
+  {
+    !_.todo !_.persistent !_.current    \29\ Pop action, persistent, current
+
+    \29\ Put context on AL for choose blocks
+    _.
+    _.current >isVoid                   \29\ Check: AL=[bool, CTX, ...rest]
+    {
+      \29\ Void - cleanup and stop
+      >drop                             \29\ Drop context
+      Nil                               \29\ Stop chain
+    }
+    {
+      \29\ Not void - process and continue
+      !_.                               \29\ Pop context
+      _.current _.persistent _.todo >^  \29\ Execute action with args
+      _.persistent _.todo               \29\ Push state for next iteration
+      loop                              \29\ AL=[loop, todo, persistent, ...rest]
+    }
+    >choose
+  } !loop
+
+  loop >^
+  >chain
+  >drop
+} !al.drain) (soma) >md.code
+
+(Semantics:) >md.p
+
+(Pops values from the AL one at a time until encountering ) (Void) >md.c (, executing an action block for each value. The action block receives the current item and a persistent accumulator value.) >md.t >md.p
+
+(AL Transformation:) >md.p
+
+(Before: [Void, item1, item2, ..., itemN, persistent_init, {action}, ...]
+After:  [...]) Nil >md.code
+
+(Action Block Signature:) >md.p
+
+(The action block receives: ) ([current_item, persistent, ...]) >md.c ( on the AL.) >md.t >md.p
+
+(The action block should:) >md.p
+
+(Pop ) (current_item) >md.c ( and ) (persistent) >md.c ( from AL) >md.t >md.uli
+(Perform any desired operation (print, accumulate, etc.\29\) >md.uli
+(Push updated ) (persistent) >md.c ( value back onto AL) >md.t >md.uli
+>md.ul
+
+(How It Works:) >md.p
+
+(The drainer pops ) (action_block) >md.c (, ) (persistent) >md.c (, and ) (current) >md.c ( from AL) >md.t >md.oli
+(Tests if ) (current) >md.c ( is ) (Void) >md.c (:) >md.t >md.oli
+>md.nest
+(If ) (Void) >md.c (: cleanup and stop (end of items\29\) >md.t >md.uli
+(If not ) (Void) >md.c (: execute action block with ) (current) >md.c ( and ) (persistent) >md.c >md.t >md.uli
+>md.ul
+(The loop continues via ) (>chain) >md.c (, processing each item from the AL) >md.t >md.oli
+(The ) (persistent) >md.c ( value flows through each iteration) >md.t >md.oli
+>md.ol
+
+(Example 1: Simple Print) >md.p
+
+(Void (a\29\ (b\29\ (c\29\ Nil { !_.persistent !_.current _.current >print } >al.drain) (soma) >md.code
+
+(Output:) >md.p
+
+(a
+b
+c) Nil >md.code
+
+(The action block just pops both arguments and prints ) (current) >md.c (. The ) (persistent) >md.c ( value (Nil\29\ is unused but must be managed.) >md.t >md.p
+
+(Example 2: Collect into List) >md.p
+
+(Void (a\29\ (b\29\ (c\29\ Nil { !_.persistent !_.current _.current _.persistent >list.cons } >al.drain
+!my_list
+
+my_list.value                ; AL: [(c\29\]
+my_list.next.value           ; AL: [(b\29\]
+my_list.next.next.value      ; AL: [(a\29\]) (soma) >md.code
+
+(This collects all items into a linked list. Note that the list is built in reverse order (last item first\29\ because ) (list.cons) >md.c ( prepends to the front.) >md.t >md.p
+
+(Example 3: Count Items) >md.p
+
+(Void (a\29\ (b\29\ (c\29\ 0 { !_.persistent !_.current _.persistent >inc } >al.drain
+; AL: [3]) (soma) >md.code
+
+(The action block ignores ) (current) >md.c ( and just increments the persistent counter.) >md.t >md.p
+
+(Example 4: Action with Side Effects) >md.p
+
+(Void (x\29\ (y\29\ (z\29\ (PREFIX:\29\ {
+  !_.persistent !_.current
+  _.persistent >print
+  _.current >print
+} >al.drain) (soma) >md.code
+
+(Output:) >md.p
+
+(PREFIX:
+x
+PREFIX:
+y
+PREFIX:
+z) Nil >md.code
+
+(The persistent value is used as a prefix for each printed item.) >md.p
+
+(Usage Pattern:) >md.p
+
+(\29\ Setup: Mark end of items with Void, push items, push initial state, push action
+Void
+item1
+item2
+item3
+initial_persistent_value
+{
+  !_.persistent !_.current
+  \29\ Process current and persistent
+  \29\ Push updated persistent back
+  updated_persistent
+}
+>al.drain) (soma) >md.code
+
+(Why This Pattern Matters:) >md.p
+
+(The ) (al.drain) >md.c ( operation is a generalized ) (iterator) >md.b ( that can:) >md.t >md.p
+
+(Collect items into data structures (lists, counts, etc.\29\) >md.uli
+(Perform side effects for each item (print, store, etc.\29\) >md.uli
+(Transform sequences with persistent state) >md.uli
+(Work with any AL content, regardless of type) >md.uli
+>md.ul
+
+(Relationship to Functional Programming:) >md.p
+
+(This is similar to a ) (foldl) >md.c ( or ) (reduce) >md.c ( operation:) >md.t >md.p
+
+(persistent) >md.c (is the accumulator) >md.dli
+(current) >md.c (is the current element) >md.dli
+(The action block) (is the combining function) >md.dli
+(The AL contents) (are the sequence being reduced) >md.dli
+>md.dul
+
+(Common Mistake:) >md.p
+
+(\29\ WRONG - forgetting to push persistent back
+Void (a\29\ (b\29\ 0 {
+  !_.persistent !_.current
+  _.persistent >inc
+  \29\ Missing: push updated value!
+} >al.drain
+; AL: [] (persistent value was lost!\29\
+
+\29\ RIGHT - always push persistent back
+Void (a\29\ (b\29\ 0 {
+  !_.persistent !_.current
+  _.persistent >inc
+} >al.drain
+; AL: [2]) (soma) >md.code
+
+(Design Note:) >md.p
+
+(The ) (al.drain) >md.c ( operation uses the Store for the ) (loop) >md.c ( block (not Register\29\ because the loop needs to reference itself by name for self-recursion. This is the standard pattern for any self-referencing block in SOMA.) >md.t >md.p
+
+>md.hr
+
+(Composing Operations) >md.h2
+
+(The real power of the stdlib comes from ) (composing) >md.b ( these operations to build more complex behaviors.) >md.t >md.p
+
+(Example 1: Clamp Value to Range) >md.h3
+
+(Clamp value to [min, max]
+{ !_.max !_.min !_.val
+  _.val _.min >max _.max >min
+} !clamp
+
+Usage: clamp value to [0, 100]
+-5 0 100 >clamp     ; AL: [0]
+150 0 100 >clamp    ; AL: [100]
+50 0 100 >clamp     ; AL: [50]) (soma) >md.code
+
+(Example 2: Boolean XOR) >md.h3
+
+(XOR: (a AND NOT b\29\ OR (NOT a AND b\29\
+{
+  >over >over        ; Duplicate both bools
+  >swap >not >and    ; a AND NOT b
+  >rot >rot          ; Bring copies back
+  >not >and          ; NOT a AND b
+  >or                ; Combine
+} !xor
+
+True False >xor      ; AL: [True]
+True True >xor       ; AL: [False]) (soma) >md.code
+
+(Example 3: Factorial Using ) (>times) >md.c >md.t >md.h3
+
+(1 !result
+5 !n
+
+n {
+  result counter >* !result
+  counter >dec !counter
+} >times
+
+result >print        ; Output: 120) (soma) >md.code
+
+(Example 4: Conditional Loop with Multiple Tests) >md.h3
+
+(0 !x
+
+{
+  x 100 ><           ; Test 1: x < 100
+  x 2 >/ 2 >* x >==  ; Test 2: x is even
+  >and               ; Both must be true
+}
+{
+  x >toString >print
+  x 2 >+ !x
+}
+>while
+
+Output: 0, 2, 4, 6, ..., 98) (soma) >md.code
+
+(Example 5: Find Maximum in Sequence) >md.h3
+
+(Assumes values are on AL, count in variable
+first_value !current_max
+
+count 1 >- {
+  value                    ; Get next value
+  current_max >over >over  ; Duplicate for comparison
+  >>                       ; Is value > current_max?
+  { !current_max }         ; If yes, update
+  { >drop }                ; If no, discard
+  >choose >^
+} >times
+
+current_max              ; Result on AL) (soma) >md.code
+
+>md.hr
+
+(Design Patterns) >md.h2
+
+(Pattern 1: Using Register for Local State) >md.h3
+
+(Stack manipulation operations use the Register as temporary storage:) >md.p
+
+({!_.a !_.b _.b _.a _.b} !over) (soma) >md.code
+
+(Why?) >md.b ( The Register provides named, isolated storage for each block execution. This is more readable than pure stack manipulation.) >md.t >md.p
+
+(Pattern 2: Building New Comparisons from ) (><) >md.c >md.t >md.h3
+
+(All comparison operators are built from ) (><) >md.c ( and boolean logic:) >md.t >md.p
+
+(>>) >md.c (Swap then ) (><) >md.c >md.dli
+(!=!) >md.c (Test both ) (<) >md.c ( directions, ) (OR) >md.c ( results) >md.dli
+(==) >md.c (NOT (!=!\29\) >md.dli
+(=<) >md.c (NOT (>\29\) >md.dli
+(=>) >md.c (NOT (<\29\) >md.dli
+>md.dul
+
+(Why?) >md.b ( Minimizes FFI primitives while providing full comparison suite.) >md.t >md.p
+
+(Pattern 3: Loops as Self-Referencing Blocks) >md.h3
+
+(Complex loops use ) (>block) >md.c ( to push self-reference:) >md.t >md.p
+
+({
+  <body>
+  <test>
+  { >block }           ; Continue loop block
+  { }                  ; Exit loop block
+  >choose              ; Select block
+  >^                   ; Execute selected block
+} >chain) (soma) >md.code
+
+(Why?) >md.b ( This creates iterative loops without recursion or call stack growth. The ) (>^) >md.c ( operator executes the selected block from the AL.) >md.t >md.p
+
+(Pattern 4: Storing Loop State in Store) >md.h3
+
+(Loops that need shared state use Store paths, not Register paths:) >md.p
+
+(0 !counter             ; Store, not _.counter
+{
+  counter 10 ><
+  {
+    counter >print
+    counter >inc !counter
+    >block
+  }
+  {}
+  >choose >^
+} >chain) (soma) >md.code
+
+(Why?) >md.b ( Nested blocks have isolated Registers, but all blocks share the Store. The ) (>^) >md.c ( executes the selected continuation or exit block.) >md.t >md.p
+
+>md.hr
+
+(Implementation Insights) >md.h2
+
+(Why Use Register Paths?) >md.h3
+
+(Operations like ) (>dup) >md.c (, ) (>swap) >md.c (, ) (>over) >md.c ( could theoretically be FFI primitives. But defining them in SOMA using Register operations:) >md.t >md.p
+
+(Proves the model is complete) (AL manipulation doesn't need special primitives)
+(Demonstrates composability) (everything builds from paths and blocks)
+(Enables user extension) (users can define custom stack operations the same way)
+>md.dol
+
+(Why Build Comparisons from ) (><) >md.c (?) >md.t >md.h3
+
+(The FFI only provides ) (><) >md.c ( \29\less-than\29\. All other comparisons are derived:) >md.t >md.p
+
+(Minimizes runtime burden) (fewer primitives to implement)
+(Shows algebraic relationships) (a > b is b < a, etc.)
+(Encourages composition) (users think in terms of building blocks)
+>md.dol
+
+(Why Provide Both ) (>while) >md.c ( and ) (>do) >md.c (?) >md.t >md.h3
+
+(These are ) (patterns) >md.b (, not primitives. They demonstrate:) >md.t >md.p
+
+(Pre-condition vs post-condition loops) (fundamental algorithmic patterns)
+(Template for user loops) (users can copy and modify for custom loops)
+(Documentation value) (shows how to build loops with ) (>chain) >md.c >md.dli
+>md.dol
+
+(Why the ) (>^) >md.c ( Operator?) >md.t >md.h3
+
+(>^) >md.c ( is the ) (showcase of SOMA's power) >md.b (:) >md.t >md.p
+
+(User-defined execution) (something other languages provide as a primitive)
+(Enables dynamic dispatch) (build operation tables and execute dynamically)
+(Demonstrates path semantics) (> is not special syntax, it's uniform)
+>md.dol
+
+>md.hr
+
+(Extending the Standard Library) >md.h2
+
+(You can add your own operations following the same patterns:) >md.p
+
+(Custom Stack Operation: ) (tuck) >md.c >md.t >md.h3
+
+(\29\ Insert second value at third position
+{!_.a !_.b !_.c _.a _.c _.b} !tuck
+
+1 2 3 >tuck     ; AL: [3, 1, 2, 3]
+) (soma) >md.code
+
+(Custom Comparison: ) (between) >md.c >md.t >md.h3
+
+(\29\ Test if value is in range [min, max]
+{
+  !_.max !_.min !_.val
+  _.val _.min >=>        ; val >= min
+  _.val _.max >=<        ; val <= max
+  >and
+} !between
+
+50 0 100 >between        ; AL: [True]
+150 0 100 >between       ; AL: [False]
+) (soma) >md.code
+
+(Custom Control Flow: ) (unless) >md.c >md.t >md.h3
+
+(\29\ Execute block if condition is false
+{>swap >not >swap >if} !unless
+
+False { "Executed" >print } >unless   ; Prints: Executed
+) (soma) >md.code
+
+(Custom Loop: ) (repeat_until) >md.c >md.t >md.h3
+
+(\29\ Execute body repeatedly until condition is true
+{
+  {
+    !_.cond !_.body
+    >_.body
+    _.body _.cond >block
+    >_.cond
+    { >drop >drop Nil }    ; Exit if true
+    {}                     ; Continue if false
+    >choose >^
+  } >chain
+  >drop
+} !repeat_until
+) (soma) >md.code
+
+>md.hr
+
+(Summary) >md.h2
+
+(The SOMA standard library demonstrates that ) (most operations you think of as primitives are actually composable from simpler parts) >md.b (:) >md.t >md.p
+
+(Boolean logic) >md.b ( builds from ) (>choose) >md.c >md.dli
+(Comparisons) >md.b ( build from ) (><) >md.c ( and boolean ops) >md.dli
+(Stack operations) >md.b ( build from Register paths) >md.dli
+(Arithmetic helpers) >md.b ( build from ) (>+) >md.c (, ) (>-) >md.c (, ) (><) >md.c >md.dli
+(Control flow) >md.b ( builds from ) (>choose) >md.c (, ) (>chain) >md.c (, ) (>block) >md.c >md.dli
+(Linked lists) >md.b ( build from CellRefs and context-passing) >md.dli
+(AL draining) >md.b ( builds from ) (>chain) >md.c (, ) (>choose) >md.c (, and action blocks) >md.dli
+>md.dul
+
+(Key insights:) >md.b >md.p
+
+(Everything is a block) (Even "operators" are just blocks at Store paths)
+(Execution is explicit) (The > prefix makes computation visible)
+(Composition is natural) (Complex operations emerge from simple ones)
+(The FFI is tiny) (Minimal primitives, maximal expressiveness)
+(Users are equals) (You can extend stdlib using the same primitives)
+(CellRefs enable persistent structures) (Register-local data can outlive the block)
+(Context-passing enables iteration) (Persistent state flows through loops)
+>md.dol
+
+(The elegance of SOMA:) >md.b ( A small kernel of irreducible operations, and everything else built transparently in user space. No magic. No hidden machinery. Just paths, blocks, and explicit state transformation.) >md.t >md.p
+
+>md.hr
+
+(Next:) >md.b ( See ) (08-examples.md) >md.c ( for complete programs using stdlib operations.) >md.t >md.p
+
+>md.print

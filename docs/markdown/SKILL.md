@@ -66,6 +66,34 @@ SOMA is stack-based. You **push items onto stack, then call a formatter once** t
 >md.ul
 ```
 
+**Per-item nesting:** Each outer item can have its own nested sublist
+```soma
+(Project Alpha)
+>md.nest
+  (Status) (Active) >md.dli
+  (Lead) (Alice) >md.dli
+  >md.dul
+(Project Beta)
+>md.nest
+  (Status) (Planning) >md.dli
+  (Lead) (Bob) >md.dli
+  >md.dul
+(Project Gamma)
+>md.ol
+```
+Produces:
+```markdown
+1. Project Alpha
+  - **Status**: Active
+  - **Lead**: Alice
+2. Project Beta
+  - **Status**: Planning
+  - **Lead**: Bob
+3. Project Gamma
+```
+
+**Supported nested formatters:** `>md.ul`, `>md.ol`, `>md.dul`, `>md.dol`
+
 ### Inline Formatting (chainable, immediate)
 - `>md.b` - **bold**
 - `>md.i` - _italic_
@@ -83,6 +111,17 @@ SOMA is stack-based. You **push items onto stack, then call a formatter once** t
 ### Complex List Items (when items need inline formatting)
 - `>md.oli` - accumulate into ordered list item (auto-concatenates, no `>md.t` needed)
 - `>md.uli` - accumulate into unordered list item (auto-concatenates, no `>md.t` needed)
+
+**IMPORTANT:** When ANY item in a list needs inline formatting, use `>md.uli` (or `>md.oli`) for ALL items in that list - including plain items. Do not mix plain stacked items with `>md.uli` items - the plain items will be absorbed into the next `>md.uli` call, corrupting your output.
+
+```soma
+) Mixed list where some items have formatting - use >md.uli for ALL items
+(Clone the repository) >md.uli
+(Install dependencies) >md.uli
+(Run ) (make build) >md.c >md.uli
+(Run ) (make test) >md.c >md.uli
+>md.ul
+```
 
 ```soma
 (Step: ) (Install) >md.b ( dependencies) >md.oli
@@ -154,6 +193,7 @@ Nil >md.code         ) no language (preferred over empty string)
 | `(x)>md.ul (y)>md.ul` | `(x) (y) >md.ul` | Stack first, format once |
 | `(**bold**)` | `(bold) >md.b` | Never use markdown syntax in strings |
 | `(a)(b)>md.t >md.oli` | `(a)(b) >md.oli` | `>md.oli`/`>md.uli`/`>md.dli` auto-concatenate |
+| `(a) (b) (c) >md.c >md.uli >md.ul` | `(a) >md.uli (b) >md.uli (c) >md.c >md.uli >md.ul` | Plain items get absorbed by next `>md.uli` |
 
 ## Critical Rules
 

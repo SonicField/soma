@@ -2715,5 +2715,239 @@ class TestEmitterSwitching(unittest.TestCase):
                             "htmlEmitter should be available in store as HtmlEmitter instance")
 
 
+class TestPerItemNesting(unittest.TestCase):
+    """Test cases for per-item nesting with definition lists (>md.dul, >md.dol)."""
+
+    def test_ol_with_nested_dul(self):
+        """Test outer ordered list with nested definition unordered list per item."""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False) as f:
+            temp_path = f.name
+
+        try:
+            code = f"""
+            (python) >use
+            (markdown) >use
+
+            >md.start
+            (Parallel GC)
+            >md.nest
+              (Proposal) (Proposed porting parallel gc) >md.dli
+              (Acceptance) (Got this agreed at Cambridge) >md.dli
+              >md.dul
+            (vLLM Optimisation)
+            >md.ol
+            ({temp_path}) >md.render
+            """
+            run_soma_program(code)
+
+            content = Path(temp_path).read_text()
+            expected = (
+                "1. Parallel GC\n"
+                "  - **Proposal**: Proposed porting parallel gc\n"
+                "  - **Acceptance**: Got this agreed at Cambridge\n"
+                "2. vLLM Optimisation\n\n"
+            )
+            self.assertEqual(content, expected)
+        finally:
+            os.unlink(temp_path)
+
+    def test_ul_with_nested_dol(self):
+        """Test outer unordered list with nested definition ordered list per item."""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False) as f:
+            temp_path = f.name
+
+        try:
+            code = f"""
+            (python) >use
+            (markdown) >use
+
+            >md.start
+            (Category A)
+            >md.nest
+              (Step 1) (Do this first) >md.dli
+              (Step 2) (Then do this) >md.dli
+              >md.dol
+            (Category B)
+            >md.ul
+            ({temp_path}) >md.render
+            """
+            run_soma_program(code)
+
+            content = Path(temp_path).read_text()
+            expected = (
+                "- Category A\n"
+                "  1. **Step 1**: Do this first\n"
+                "  2. **Step 2**: Then do this\n"
+                "- Category B\n\n"
+            )
+            self.assertEqual(content, expected)
+        finally:
+            os.unlink(temp_path)
+
+    def test_multiple_per_item_dul_nesting(self):
+        """Test multiple outer items each with their own nested >md.dul."""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False) as f:
+            temp_path = f.name
+
+        try:
+            code = f"""
+            (python) >use
+            (markdown) >use
+
+            >md.start
+            (First Project)
+            >md.nest
+              (Status) (Active) >md.dli
+              (Lead) (Alice) >md.dli
+              >md.dul
+            (Second Project)
+            >md.nest
+              (Status) (Planning) >md.dli
+              (Lead) (Bob) >md.dli
+              >md.dul
+            (Third Project)
+            >md.ol
+            ({temp_path}) >md.render
+            """
+            run_soma_program(code)
+
+            content = Path(temp_path).read_text()
+            expected = (
+                "1. First Project\n"
+                "  - **Status**: Active\n"
+                "  - **Lead**: Alice\n"
+                "2. Second Project\n"
+                "  - **Status**: Planning\n"
+                "  - **Lead**: Bob\n"
+                "3. Third Project\n\n"
+            )
+            self.assertEqual(content, expected)
+        finally:
+            os.unlink(temp_path)
+
+    def test_dul_at_top_level_still_works(self):
+        """Ensure non-nested >md.dul continues to work at top level."""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False) as f:
+            temp_path = f.name
+
+        try:
+            code = f"""
+            (python) >use
+            (markdown) >use
+
+            >md.start
+            (API) (Application Programming Interface) >md.dli
+            (CLI) (Command Line Interface) >md.dli
+            >md.dul
+            ({temp_path}) >md.render
+            """
+            run_soma_program(code)
+
+            content = Path(temp_path).read_text()
+            expected = (
+                "- **API**: Application Programming Interface\n"
+                "- **CLI**: Command Line Interface\n\n"
+            )
+            self.assertEqual(content, expected)
+        finally:
+            os.unlink(temp_path)
+
+    def test_dol_at_top_level_still_works(self):
+        """Ensure non-nested >md.dol continues to work at top level."""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False) as f:
+            temp_path = f.name
+
+        try:
+            code = f"""
+            (python) >use
+            (markdown) >use
+
+            >md.start
+            (First) (The beginning) >md.dli
+            (Second) (The middle) >md.dli
+            >md.dol
+            ({temp_path}) >md.render
+            """
+            run_soma_program(code)
+
+            content = Path(temp_path).read_text()
+            expected = (
+                "1. **First**: The beginning\n"
+                "2. **Second**: The middle\n\n"
+            )
+            self.assertEqual(content, expected)
+        finally:
+            os.unlink(temp_path)
+
+    def test_triple_nesting_with_dul(self):
+        """Test three levels of nesting: ol > nest > ul with dul inside."""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False) as f:
+            temp_path = f.name
+
+        try:
+            code = f"""
+            (python) >use
+            (markdown) >use
+
+            >md.start
+            (Level 1)
+            >md.nest
+              (Level 2 Item)
+              >md.nest
+                (Key) (Value) >md.dli
+                >md.dul
+              >md.ul
+            (Level 1 Again)
+            >md.ol
+            ({temp_path}) >md.render
+            """
+            run_soma_program(code)
+
+            content = Path(temp_path).read_text()
+            expected = (
+                "1. Level 1\n"
+                "  - Level 2 Item\n"
+                "    - **Key**: Value\n"
+                "2. Level 1 Again\n\n"
+            )
+            self.assertEqual(content, expected)
+        finally:
+            os.unlink(temp_path)
+
+    def test_ul_rejects_dli_placeholders(self):
+        """Test that >md.ul raises helpful error when given >md.dli items."""
+        code = """
+        (python) >use
+        (markdown) >use
+
+        >md.start
+        (Label) (Value) >md.dli
+        >md.ul
+        >md.print
+        """
+        with self.assertRaises(RuntimeError) as context:
+            run_soma_program(code)
+
+        self.assertIn("DliPlaceholder", str(context.exception))
+        self.assertIn(">md.dul", str(context.exception))
+
+    def test_ol_rejects_dli_placeholders(self):
+        """Test that >md.ol raises helpful error when given >md.dli items."""
+        code = """
+        (python) >use
+        (markdown) >use
+
+        >md.start
+        (Label) (Value) >md.dli
+        >md.ol
+        >md.print
+        """
+        with self.assertRaises(RuntimeError) as context:
+            run_soma_program(code)
+
+        self.assertIn("DliPlaceholder", str(context.exception))
+        self.assertIn(">md.dol", str(context.exception))
+
+
 if __name__ == '__main__':
     unittest.main()

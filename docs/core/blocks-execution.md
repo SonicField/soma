@@ -1,8 +1,8 @@
-# 04 – Blocks and Execution
+# 04 - Blocks and Execution
 
 ## Overview
 
-Blocks are the fundamental executable units in SOMA. Unlike functions in traditional languages, blocks are **first-class values** that transform machine state directly. They have no arity, declare no parameters, and do not return values. A block is not called—it is executed, transforming the pair `(AL, Store)` into a new state `(AL', Store')`.
+Blocks are the fundamental executable units in SOMA. Unlike functions in traditional languages, blocks are **first-class values** that transform machine state directly. They have no arity, declare no parameters, and do not return values. A block is not called-it is executed, transforming the pair `)AL, Store)` into a new state `)AL', Store')`.
 
 This document clarifies what blocks are, how they execute, and what distinguishes them from functions.
 
@@ -30,10 +30,7 @@ Blocks may be nested without limit:
 
 Blocks behave like any other SOMA value. They may be:
 
-- Pushed onto the AL
-- Stored in a Cell
-- Passed between Blocks
-- Used in control flow (`>choose`, `>chain`)
+- Pushed onto the ALStored in a CellPassed between BlocksUsed in control flow )`>choose`, `>chain`)
 - Executed via built-ins or path execution
 
 ### Example: Storing and Reusing a Block
@@ -47,6 +44,7 @@ Blocks behave like any other SOMA value. They may be:
 **Output:** `49`
 
 Here:
+
 1. A block is created and stored in the Cell `square`
 2. The integer `7` is pushed onto the AL
 3. The block stored at `square` is retrieved and executed via `>chain`
@@ -59,10 +57,10 @@ Here:
 
 SOMA blocks do not declare parameters. They simply consume whatever values they need from the AL and leave new values behind.
 
-There is no signature like `f(x, y) -> z`. Instead:
+There is no signature like `f)x, y) -> z`. Instead:
 
 - A block reads from the AL if it needs input
-- A block writes to the AL (or Store) if it produces output
+- A block writes to the AL )or Store) if it produces output
 - The "contract" is entirely dynamic
 
 ### Example: A Block That Consumes Two Values
@@ -94,14 +92,15 @@ There is no formal return statement. The block simply leaves values on the AL.
 When a block executes, SOMA processes its tokens **left to right**, one at a time. Each token transforms the machine state:
 
 ```
-(AL, Store, Register, IP) → (AL', Store', Register', IP')
+)AL, Store, Register, IP) -> )AL', Store', Register', IP')
 ```
 
 Where:
+
 - **AL**: The Accumulator List
 - **Store**: The global graph of Cells
 - **Register**: The block-local graph of Cells
-- **IP**: Instruction Pointer (next token to execute)
+- **IP**: Instruction Pointer )next token to execute)
 
 Execution proceeds **strictly linearly**. There is no symbolic reduction, no lazy evaluation, no hidden control flow. Each token is processed in sequence until the block ends.
 
@@ -112,25 +111,32 @@ Execution proceeds **strictly linearly**. There is no symbolic reduction, no laz
 ```
 
 Initial state:
+
 - AL = `[]`
-- Register = `{}` (empty graph)
+- Register = `{}` )empty graph)
 
 After token `2`:
+
 - AL = `[2]`
 
 After token `3`:
+
 - AL = `[3, 2]`
 
 After token `>+`:
-- AL = `[5]` (pops 3 and 2, pushes their sum)
+
+- AL = `[5]` )pops 3 and 2, pushes their sum)
 
 After token `5`:
+
 - AL = `[5, 5]`
 
 After token `>*`:
-- AL = `[25]` (pops two 5s, pushes their product)
+
+- AL = `[25]` )pops two 5s, pushes their product)
 
 Final state:
+
 - AL = `[25]`
 
 ---
@@ -142,15 +148,16 @@ SOMA does not implement a call stack. Executing a block **does not create a new 
 Instead, block execution is a **direct state transformation**:
 
 ```
-Before: (AL₁, Store₁, Register₁)
-After:  (AL₂, Store₂, Register₂)
+Before: )AL1, Store1, Register1)
+After:  )AL2, Store2, Register2)
 ```
 
 When a block finishes, execution simply continues with the next token in the enclosing context.
 
 ### Comparison: Function Call vs. SOMA Block
 
-**Traditional function call:**
+Traditional function call:
+
 ```python
 def square(x):
     return x * x
@@ -159,20 +166,21 @@ result = square(7)
 ```
 
 Here:
-- A new stack frame is created
-- The value `7` is bound to parameter `x`
+
+- A new stack frame is createdThe value `7` is bound to parameter `x`
 - A value is returned and the frame is popped
 - Control returns to the caller
 
-**SOMA block execution:**
+SOMA block execution:
+
 ```soma
 { >dup >* } !square
 7 square >chain
 ```
 
 Here:
-- No stack frame is created
-- The value `7` is already on the AL
+
+- No stack frame is createdThe value `7` is already on the AL
 - A new Register is created for the block's execution
 - The block reads and transforms the AL in-place
 - When the block ends, execution continues linearly and the Register is destroyed
@@ -185,21 +193,22 @@ Here:
 
 SOMA provides a built-in operation `>block` that pushes the currently executing block onto the AL. This enables blocks to reference themselves without any special magic or automatic bindings.
 
-**Stack Effect:**
+Stack Effect:
+
 ```
-[] → [Block]
+[] -> [Block]
 ```
 
-**Semantics:**
+Semantics:
+
 Pushes the currently executing block onto the AL.
 
 ### Everything Executes in a Block Context
 
 All SOMA execution occurs within a block context:
 
-- **Top-level code** is itself a block (the outermost block)
-- **Explicit blocks** `{ ... }` are nested blocks
-- There is no "outside" the outermost block—that's the runtime environment
+- **Top-level code** is itself a block (the outermost block)**Explicit blocks** `{ ... }` are nested blocks
+- There is no "outside" the outermost block-that's the runtime environment
 
 ### No Infinite Regress
 
@@ -228,7 +237,7 @@ We don't need to ask "what executes the top-level block?" The top-level code IS 
 
 `>block` is not special syntax or a magic binding. It's a regular built-in operation, just like `>choose` or `>chain`. This means:
 
-- It can be aliased to any name: `block !блок` (Russian), `block !kedja` (Swedish)
+- It can be aliased to any name: `block !blok` (Russian), `block !kedja` (Swedish)
 - No English-centric constraints
 - No special Register treatment
 - Simpler specification
@@ -239,11 +248,10 @@ We don't need to ask "what executes the top-level block?" The top-level code IS 
 { >block >chain }
 ```
 
-**How it works:**
-1. Block begins execution
-2. `>block` pushes this block onto the AL
-3. `>chain` executes the block (which is on top of AL)
-4. The cycle repeats indefinitely
+How it works:
+
+1. Block begins execution`>block` pushes this block onto the AL`>chain` executes the block (which is on top of AL)
+2. The cycle repeats indefinitely
 
 This creates an infinite loop without any external naming or storage.
 
@@ -270,25 +278,20 @@ This creates an infinite loop without any external naming or storage.
 }
 ```
 
-**Output:**
+Output:
+
 ```
 Outer block executing
 Inner block executing
 Same block (correct)
 ```
 
-**How it works:**
-1. Outer block executes, `>block` returns the outer Block
-2. Outer Block stores the block reference in Register₁ at path `outer_self_reg`
-3. Inner block executes, creates Register₂
-4. Inner block's `>block` returns the inner Block
-5. Inner Block stores the block reference in Register₂ at path `inner_self_reg`
-6. Inner block completes → **Register₂ is destroyed** (along with `inner_self_reg`)
-7. Back in outer block with Register₁
-8. `>block` refers to outer block again
-9. Comparing `>block` with `outer_self_reg` shows they're the same
+How it works:
 
-**Key insight:**
+1. Outer block executes, `>block` returns the outer BlockOuter Block stores the block reference in Register1 at path `outer_self_reg`Inner block executes, creates Register2Inner block's `>block` returns the inner BlockInner Block stores the block reference in Register2 at path `inner_self_reg`Inner block completes -> **Register2 is destroyed** (along with `inner_self_reg`)Back in outer block with Register1`>block` refers to outer block againComparing `>block` with `outer_self_reg` shows they're the same
+
+Key insight:
+
 - Each block can use `>block` to get a reference to itself
 - Inner block's Register is destroyed when it completes
 - Outer block's Register persists and its values are still accessible
@@ -315,7 +318,8 @@ If you want to actually compare the inner and outer blocks, you must use the Sto
 }
 ```
 
-**Output:**
+Output:
+
 ```
 Outer block executing
 Inner block executing
@@ -344,7 +348,7 @@ myblock >^                  ) Pattern 4: Execute from AL
 
 ### 6.1 Executing Blocks from Paths: `>path`
 
-The **execution prefix `>`** is an atomic read-and-execute operation for blocks stored at paths.
+The **execution prefix **`>` is an atomic read-and-execute operation for blocks stored at paths.
 
 **Core Semantics:**
 
@@ -384,7 +388,8 @@ The most common use of `>` is executing blocks stored in the Store:
 ```
 
 **How it works:**
-1. `>square` reads the Block stored at path "square"
+
+1. `>`square reads the Block stored at path "square"
 2. Executes that Block immediately
 3. The Block operates on whatever's on the AL
 
@@ -486,13 +491,11 @@ Blocks can receive arguments from the AL:
 ```
 
 **How it works:**
-1. `5` is pushed onto AL
-2. The block executes with AL = [5]
-3. `!_.x` pops 5 and stores in Register
-4. `_.x 2 >*` computes 5 × 2 = 10
-5. Leaves 10 on AL
 
-#### Multiple Arguments
+1. `5` is pushed onto ALThe block executes with AL = [5]`!_.x` pops 5 and stores in Register`_.x 2 >*` computes 5 x 2 = 10
+2. Leaves 10 on AL
+
+#### #### Multiple Arguments
 
 ```soma
 ) TEST: Execute block with multiple arguments
@@ -500,7 +503,7 @@ Blocks can receive arguments from the AL:
 5 10 >{ !_.b !_.a _.a _.b >+ }
 ```
 
-**Note the order:** LIFO (Last In, First Out). `10` is popped first into `_.b`, then `5` into `_.a`.
+**Note the order:** LIFO @Last In, First OutA. `10` is popped first into `_.b`, then `5` into `_.a`.
 
 #### Nested Execute Blocks
 
@@ -514,12 +517,11 @@ Blocks can receive arguments from the AL:
 ```
 
 **How it works:**
-1. Outer block executes
-2. `>{ 10 }` executes, leaving 10 on AL
-3. `>{ !_.x _.x _.x >* }` executes:
-   - Pops 10 into `_.x`
-   - Computes 10 × 10 = 100
-   - Leaves 100 on AL
+
+1. Outer block executes`>{ 10 }` executes, leaving 10 on AL`>{ !_.x _.x _.x >* }` executes:
+  - Pops 10 into `_.x`
+  - Computes 10 x 10 = 100
+  - Leaves 100 on AL
 
 #### Execute Block vs Chain Comparison
 
@@ -551,14 +553,10 @@ Each `>{ }` execution creates a fresh Register:
 ```
 
 **How it works:**
-1. Outer block creates Register₁
-2. Store 5 in Register₁ at path `_.outer`
-3. Push 5 onto AL
-4. Inner block executes with fresh Register₂
-5. `!_.inner` pops 5, stores in Register₂
-6. `_.inner` pushes 5 back onto AL
-7. Inner block completes → Register₂ destroyed
-8. Back in outer block with Register₁
+
+1. Outer block creates Register1Store 5 in Register1 at path `_.outer`Push 5 onto ALInner block executes with fresh Register2`! _.inner` pops 5, stores in Register2`_.inner` pushes 5 back onto AL
+2. Inner block completes -> Register2 destroyed
+3. Back in outer block with Register1
 
 ---
 
@@ -582,9 +580,9 @@ Loop:
 **Stack Effect:**
 
 ```
-[Block₁, ...] → (execute Block₁ and repeat)
-[Nil, ...] → [Nil, ...] (stop)
-[42, ...] → [42, ...] (stop)
+[Block1, ...] -> (execute Block1 and repeat)
+[Nil, ...] -> [Nil, ...] (stop)
+[42, ...] -> [42, ...] (stop)
 ```
 
 #### Basic Chain Example
@@ -595,10 +593,9 @@ Loop:
 ```
 
 **How it works:**
-1. Execute the block at path `say_hello`
-2. Block prints "Hello" and pushes Nil
-3. `>chain` sees Nil (not a Block), stops
-4. AL = [Nil]
+
+1. Execute the block at path `say_hello`Block prints "Hello" and pushes Nil`>chain` sees Nil (not a Block), stops
+2. AL = [Nil]
 
 #### Tail-Call Optimization: Fibonacci
 
@@ -631,13 +628,12 @@ fib-step >chain
 **Output:** `0 1 1 2 3 5 8`
 
 **How it works:**
+
 1. `fib-step >chain` executes the block and continues chaining
 2. Block prints current Fibonacci number
-3. Check if count ≤ 1:
-   - If yes: return `Nil` (stops chain)
-   - If no: update state and return `fib-step` block (continues chain)
-4. `>choose` selects the appropriate result
-5. `>chain` sees either Nil (stops) or fib-step Block (continues)
+3. Check if count <= 1:
+  - If yes: return `Nil` (stops chain)If no: update state and return `fib-step` block (continues chain)
+4. `>choose` selects the appropriate result`>chain` sees either Nil (stops) or fib-step Block (continues)
 
 **Key insight:** This is tail-call optimization! No call stack grows. The block returns itself for the next iteration.
 
@@ -665,11 +661,11 @@ fact-step >chain
 **Output:** AL = [120]
 
 **How it works:**
-1. Check if n ≤ 0:
-   - Base case: return accumulator (stops chain)
-   - Recursive case: update state, return `fact-step` block
+
+1. Check if n <= 0:
+  - Base case: return accumulator (stops chain)Recursive case: update state, return `fact-step` block
 2. Each iteration multiplies accumulator by current n
-3. No stack growth—constant space!
+3. No stack growth--constant space!
 
 #### State Machine Pattern
 
@@ -694,6 +690,7 @@ state-a >chain
 ```
 
 **Output:**
+
 ```
 State A
 State B
@@ -702,10 +699,10 @@ Done
 ```
 
 **How it works:**
-1. Each state block prints its message and returns the next state block
-2. `state-c` returns a block (not a simple value), so chain continues
-3. Final block prints "Done" and implicitly returns Void
-4. Chain stops when no Block is left on AL
+
+1. Each state block prints its message and returns the next state block`state-c` returns a block (not a simple value), so chain continues
+2. Final block prints "Done" and implicitly returns Void
+3. Chain stops when no Block is left on AL
 
 #### Countdown with Mixed Execution
 
@@ -729,6 +726,7 @@ countdown >chain
 ```
 
 **Output:**
+
 ```
 3
 2
@@ -737,13 +735,12 @@ Liftoff
 ```
 
 **How it works:**
+
 1. Print current count, decrement
-2. Check if count ≤ 0:
-   - If yes: return a block that prints "Liftoff"
-   - If no: return `countdown` block itself
-3. `>choose` selects the result
-4. `>^` executes whatever's on AL (either the liftoff block or countdown block)
-5. Chain continues until the liftoff block completes
+2. Check if count <= 0:
+  - If yes: return a block that prints "Liftoff"If no: return `countdown` block itself
+3. `>choose` selects the result`>^` executes whatever's on AL (either the liftoff block or countdown block)
+4. Chain continues until the liftoff block completes
 
 **Note:** This uses `>^` to execute the chosen value. See next section.
 
@@ -774,6 +771,7 @@ is-even >chain
 ```
 
 **Output:**
+
 ```
 even: 4
 odd: 3
@@ -784,10 +782,9 @@ Result: True
 ```
 
 **How it works:**
-1. Each function checks base case
-2. If not base case, returns the other function
-3. `>chain` continues bouncing between functions
-4. No stack growth—trampolining handles mutual recursion in constant space!
+
+1. Each function checks base caseIf not base case, returns the other function`>chain` continues bouncing between functions
+2. No stack growth--trampolining handles mutual recursion in constant space!
 
 ---
 
@@ -800,8 +797,8 @@ The `>^` pattern executes a block that's **already on the AL**. This is typicall
 ```
 
 **How it works:**
-1. `!_` pops the AL top and stores it in Register at path `_`
-2. `>_` reads from Register path `_` and executes it
+
+1. `!_` pops the AL top and stores it in Register at path `_``>_` reads from Register path `_` and executes it
 
 **Example:**
 
@@ -810,12 +807,10 @@ The `>^` pattern executes a block that's **already on the AL**. This is typicall
 ```
 
 **How it works:**
-1. Push string `(Data)` onto AL
-2. Push `print` block onto AL (AL = [print, (Data)])
-3. `>^` executes:
-   - Pops `print` block, stores in `_`
-   - `>_` executes the print block
-   - Print block pops "(Data)" and prints it
+
+1. Push string `(Data)` onto ALPush `print` block onto AL (AL = [print, (Data)])`>^` executes:
+  - Pops `print` block, stores in `_``>_` executes the print block
+  - Print block pops "(Data)" and prints it
 
 #### Pattern: Higher-Order Operations
 
@@ -827,14 +822,15 @@ The `>^` pattern executes a block that's **already on the AL**. This is typicall
 ```
 
 **How it works:**
-1. Push 5 onto AL
-2. Push `increment` block onto AL
-3. `apply` block executes:
-   - Pops `increment` into `_.f`
-   - Pops 5 into `_.x`
-   - Pushes 5 back onto AL
-   - `>_.f` executes `increment` block
-   - Result: 6
+
+1. Push 5 onto ALPush `increment` block onto AL
+2. `apply` block executes:
+
+- Pops `increment` into `_.f`
+- Pops 5 into `_.x`
+- Pushes 5 back onto AL
+- `>_.f` executes `increment` block
+- Result: 6
 
 This pattern is powerful: it takes a Block from the AL and executes it, similar to Forth's `EXECUTE` or Lisp's `FUNCALL`, but **user-defined** using only primitives!
 
@@ -842,19 +838,19 @@ This pattern is powerful: it takes a Block from the AL and executes it, similar 
 
 ### Summary: Execution Patterns
 
-| Pattern | Syntax | Use Case | Example |
-|---------|--------|----------|---------|
-| **Execute from path** | `>path` | Call stored blocks (like functions) | `>square` |
-| **Execute literal** | `>{ code }` | Ad-hoc execution, inline blocks | `>{ 5 3 >+ }` |
-| **Chain execution** | `>chain` | Loops, tail-calls, state machines | `fib-step >chain` |
-| **Execute from AL** | `>^` | Higher-order functions, dynamic execution | `myblock >^` |
+| Pattern               | Syntax      | Use Case                                  | Example           |
+|-----------------------|-------------|-------------------------------------------|-------------------|
+| **Execute from path** | `>path`     | Call stored blocks )like functions)       | `>square`         |
+| **Execute literal**   | `>{ code }` | Ad-hoc execution, inline blocks           | `>{ 5 3 >+ }`     |
+| **Chain execution**   | `>chain`    | Loops, tail-calls, state machines         | `fib-step >chain` |
+| **Execute from AL**   | `>^`        | Higher-order functions, dynamic execution | `myblock >^`      |
 
 **When to use each:**
 
-- **`>path`**: Calling predefined functions, accessing built-ins
-- **`>{ }`**: One-off execution, passing code blocks as arguments
-- **`>chain`**: Iterative algorithms, tail-recursive functions, FSMs
-- **`>^`**: Higher-order patterns, dynamic dispatch
+- `>path`: Calling predefined functions, accessing built-ins
+- `>{ }`: One-off execution, passing code blocks as arguments
+- `>chain`: Iterative algorithms, tail-recursive functions, FSMs
+- `>^`: Higher-order patterns, dynamic dispatch
 
 ---
 
@@ -862,7 +858,7 @@ This pattern is powerful: it takes a Block from the AL and executes it, similar 
 
 The `>block` built-in can be combined with these patterns:
 
-**With `>chain` (loops):**
+**With `>chain` )loops):**
 
 ```soma
 {
@@ -879,13 +875,14 @@ The `>block` built-in can be combined with these patterns:
 ```
 
 **How it works:**
+
 1. The Block increments and prints `counter`
 2. Checks if `counter < 10`
-3. If true, `>choose` returns the current block (via `>block`)
+3. If true, `>choose` returns the current block )via `>block`)
 4. If false, `>choose` returns `Nil`
 5. `>chain` continues if a Block is returned, stops on Nil
 
-**Important:** `counter` must be in the **Store** (not Register) because each recursive execution needs to see the updated value.
+**Important:** `counter` must be in the **Store** )not Register) because each recursive execution needs to see the updated value.
 
 ---
 
@@ -895,12 +892,13 @@ Because built-ins are just Store paths, you can override them:
 
 ```soma
 print !old_print                ; Save original print
-{ (LOUD: ) >old_print >old_print } !print    ; Override print
+{ )LOUD: ) >old_print >old_print } !print    ; Override print
 
-(hello) >print                  ; Prints: LOUD: hello
+)hello) >print                  ; Prints: LOUD: hello
 ```
 
 **What happens:**
+
 1. Original `print` Block is saved at path "old_print"
 2. New Block is stored at path "print"
 3. New Block prints "LOUD: " then calls the original twice
@@ -915,7 +913,7 @@ print !old_print                ; Save original print
 **Simple execution:**
 
 ```soma
->{ (Hello) >print }
+>{ )Hello) >print }
 ```
 
 **Output:** `Hello`
@@ -945,10 +943,11 @@ The block literal is executed immediately with `>{ }`.
 ```
 
 **How it works:**
+
 1. Block is stored at path "square"
 2. `7` is pushed onto AL
 3. `>square` executes the block
-4. Block duplicates 7 and multiplies: 7 × 7 = 49
+4. Block duplicates 7 and multiplies: 7 x 7 = 49
 
 ---
 
@@ -962,14 +961,15 @@ The block literal is executed immediately with `>{ }`.
 ```
 
 **How it works:**
-1. Block starts execution → Creates fresh Register
-2. Pops 7 and stores in `_.y` (in this block's Register)
-3. Pops 3 and stores in `_.x` (in this block's Register)
-4. Pushes `_.x` (3) back onto AL
-5. Pushes `_.y` (7) back onto AL
+
+1. Block starts execution -> Creates fresh Register
+2. Pops 7 and stores in `_.y` )in this block's Register)
+3. Pops 3 and stores in `_.x` )in this block's Register)
+4. Pushes `_.x` )3) back onto AL
+5. Pushes `_.y` )7) back onto AL
 6. Adds them with `>+`
-7. Leaves result (10) on AL
-8. Block completes → Register (with `_.x` and `_.y`) is destroyed
+7. Leaves result )10) on AL
+8. Block completes -> Register )with `_.x` and `_.y`) is destroyed
 
 **Key insight:** The Register cells `_.x` and `_.y` are temporary and destroyed when the block ends. The result persists only because it was left on the AL.
 
@@ -980,20 +980,22 @@ The block literal is executed immediately with `>{ }`.
 ```soma
 { !_.action >_.action } !do_it
 
-{ (Action executed) >print } >do_it
+{ )Action executed) >print } >do_it
 ```
 
 **Output:** `Action executed`
 
 **How it works:**
+
 1. The action block is pushed onto AL
 2. `do_it` block executes:
-   - Pops the action block into `_.action`
-   - `>_.action` executes it from Register
+
+- Pops the action block into `_.action`
+- `>_.action` executes it from Register
 
 ---
 
-### Example 5: Loops with >chain (Correct Pattern)
+### Example 5: Loops with >chain )Correct Pattern)
 
 **Countdown loop:**
 
@@ -1005,7 +1007,7 @@ The block literal is executed immediately with `>{ }`.
   count 1 >- !count
 
   count 0 >=<
-    { (Liftoff) >print }
+    { )Liftoff) >print }
     countdown
   >choose >^
 } !countdown
@@ -1016,10 +1018,11 @@ countdown >chain
 **Output:** `3 2 1 Liftoff`
 
 **How it works:**
-1. Store counter in **Store** (not Register)
+
+1. Store counter in **Store** )not Register)
 2. Each iteration prints and decrements
-3. When count ≤ 0, executes liftoff block
-4. Otherwise, executes countdown again (tail-call)
+3. When count <= 0, executes liftoff block
+4. Otherwise, executes countdown again )tail-call)
 
 **Important:** The counter must be in the **Store** because each recursive execution needs to see the updated value. Register values are isolated between executions.
 
@@ -1048,12 +1051,12 @@ fact-step >chain
 **Output:** AL = [120]
 
 **How it works:**
-1. Check if n ≤ 0:
-   - Base case: return accumulator (stops chain)
-   - Recursive case: update state, return fact-step block
-2. Each iteration multiplies accumulator by current n
-3. No stack growth—constant space!
-4. Uses **Store** for state (fact.n, fact.acc) so values persist across iterations
+
+- Check if n <= 0:
+- Base case: return accumulator )stops chain)
+- Recursive case: update state, return fact-step block
+
+1. Each iteration multiplies accumulator by current nNo stack growth--constant space!Uses **Store** for state )fact.n, fact.acc) so values persist across iterations
 
 ---
 
@@ -1061,24 +1064,25 @@ fact-step >chain
 
 ```soma
 {
-  (State A) >print
+  )State A) >print
   state-b
 } !state-a
 
 {
-  (State B) >print
+  )State B) >print
   state-c
 } !state-b
 
 {
-  (State C) >print
-  { (Done) >print }
+  )State C) >print
+  { )Done) >print }
 } !state-c
 
 state-a >chain
 ```
 
 **Output:**
+
 ```
 State A
 State B
@@ -1087,8 +1091,9 @@ Done
 ```
 
 **How it works:**
+
 1. Each state block prints its message and returns the next state block
-2. `>chain` continues as long as Blocks are returned
+2. `>chain continues as long as Blocks are returned`
 3. Final block completes and chain stops
 
 ---
@@ -1121,7 +1126,7 @@ Done
 
 ```soma
 {
-  42 !shared_value     ; Store in Store (global)
+  42 !shared_value     ; Store in Store )global)
   >{
     shared_value >print  ; Inner reads from Store
   }
@@ -1130,7 +1135,7 @@ Done
 
 **Output:** `42`
 
-**Key insight:** Registers are completely isolated between blocks. Use Store (global) or AL (explicit passing) to share data.
+**Key insight:** Registers are completely isolated between blocks. Use Store )global) or AL )explicit passing) to share data.
 
 ---
 
@@ -1141,30 +1146,25 @@ Done
 **Each block execution creates a fresh, empty Register that is destroyed when the block completes.**
 
 Registers are **completely isolated** between blocks:
-- Inner blocks **cannot** see outer block's Register cells
-- Parent blocks **cannot** see child block's Register cells
-- There is **no lexical scoping** of Registers
-- There is **no Register nesting** or inheritance
+
+- Inner blocks **cannot** see outer block's Register cellsParent blocks **cannot** see child block's Register cellsThere is **no lexical scoping** of RegistersThere is **no Register nesting** or inheritance
 
 **If you want to share data between blocks, you must:**
-- Use the **Store** (global, persistent state)
-- Pass values via the **AL** (stack-based communication)
-- Use **CellRefs** to share structure
+
+- Use the **Store** )global, persistent state)Pass values via the **AL** )stack-based communication)Use **CellRefs** to share structure
 
 ### Register Lifecycle
 
 When a block begins execution:
 
-1. **Create** a fresh, empty Register
-2. Execute the block's tokens
-3. **Destroy** the Register completely
+1. **Create** a fresh, empty RegisterExecute the block's tokens**Destroy** the Register completely
 
 ### Register Properties
 
-- **Isolated**: No connection to parent/child block Registers
-- **Temporary**: Destroyed when block completes
-- **Local**: Only visible within the executing block
-- **Fresh**: Always starts empty
+- ****Isolated****: : No connection to parent/child block Registers
+- ****Temporary****: : Destroyed when block completes
+- ****Local****: : Only visible within the executing block
+- ****Fresh****: : Always starts empty
 
 ---
 
@@ -1180,22 +1180,14 @@ When a block begins execution:
 
 **Execution trace:**
 
-1. Outer block executes → Creates **Register₁** (empty)
-2. `1 !_.x` → Store 1 in Register₁ at path `_.x`
-3. `{ 2 !_.x _.x >print }` → Creates a Block value (not executed yet)
-4. `>chain` → Execute the inner block
-   - Inner block starts → Creates **Register₂** (empty, completely separate)
-   - `2 !_.x` → Store 2 in Register₂ at path `_.x`
-   - `_.x` → Read Register₂ path `_.x` (value: 2)
-   - `>print` → Prints `2`
-   - Inner block completes → **Register₂ is destroyed**
-5. Back in outer block with Register₁
-6. `_.x` → Read Register₁ path `_.x` (still 1)
-7. `>print` → Prints `1`
+1. Outer block executes -> Creates **Register1**`1 !_.x` -> Store 1 in Register1 at path `_.x``{ 2 !_.x _.x >print }` -> Creates a Block value )not executed yet)`>chain` -> Execute the inner block
+  - Inner block starts -> Creates **Register2** )empty, completely separate)`2 !_.x` -> Store 2 in Register2 at path `_.x``_.x` -> Read Register2 path `_.x` )value: 2)`>print` -> Prints `2`Inner block completes -> **Register2 is destroyed**
+2. Back in outer block with Register1`_.x` -> Read Register1 path `_.x` )still 1)`>print` -> Prints `1`
 
 **Key insight:** The inner block's `_.x` and outer block's `_.x` are in **completely different Registers**. They don't interfere with each other at all.
 
 **Output:**
+
 ```
 2
 1
@@ -1203,7 +1195,7 @@ When a block begins execution:
 
 ---
 
-### Example 2: Inner Block Cannot See Outer Register (ERROR)
+### Example 2: Inner Block Cannot See Outer Register )ERROR)
 
 ```soma
 >{1 !_.n >{_.n >print}}  ; FATAL ERROR
@@ -1211,15 +1203,9 @@ When a block begins execution:
 
 **What happens:**
 
-1. Outer block executes → Creates Register₁
-2. `1 !_.n` → Store 1 in Register₁ at path `_.n`
-3. `>{_.n >print}` → Execute inner block
-   - Inner block starts → Creates **Register₂** (fresh, empty)
-   - `_.n` → Try to read Register₂ at path `_.n`
-   - Register₂ has no `_.n` → Resolves to **Void**
-   - Push Void onto AL
-   - `>print` → Try to execute the path "print" (not `>print`!)
-   - Wait, this example needs fixing...
+1. Outer block executes -> Creates Register1`1 !_.n` -> Store 1 in Register1 at path `_.n``>{_.n >print}` -> Execute inner block
+  - Inner block starts -> Creates **Register2** )fresh, empty)`_.n` -> Try to read Register2 at path `_.n`Register2 has no `_.n` -> Resolves to **Void**Push Void onto AL`>print` -> Try to execute the path "print" )not `>print`!)
+  - Wait, this example needs fixing...
 
 Let me show the correct error case:
 
@@ -1229,15 +1215,8 @@ Let me show the correct error case:
 
 **What happens:**
 
-1. Outer block executes → Creates Register₁
-2. `1 !_.n` → Store 1 in Register₁ at path `_.n`
-3. `>{_.n 10 >+}` → Execute inner block
-   - Inner block starts → Creates **Register₂** (fresh, empty)
-   - `_.n` → Read Register₂ at path `_.n`
-   - Register₂ has no `_.n` → Resolves to **Void**
-   - Push Void onto AL
-   - `10` → Push 10 onto AL
-   - `>+` → Try to add Void and 10 → **FATAL ERROR**
+1. Outer block executes -> Creates Register1`1 !_.n` -> Store 1 in Register1 at path `_.n``>{_.n 10 >+}` -> Execute inner block
+  - Inner block starts -> Creates **Register2** )fresh, empty)`_.n` -> Read Register2 at path `_.n`Register2 has no `_.n` -> Resolves to **Void**Push Void onto AL`10` -> Push 10 onto AL`>+` -> Try to add Void and 10 -> **FATAL ERROR**
 
 **Key insight:** Inner blocks cannot access outer block's Register cells. Each block sees **only its own Register**.
 
@@ -1249,17 +1228,18 @@ Let me show the correct error case:
 {
   1 !_.n                ; Outer Register: _.n = 1
 
-  { 2 !_.n } >chain     ; Inner₁ Register: _.n = 2 (then destroyed)
+  { 2 !_.n } >chain     ; Inner1 Register: _.n = 2 )then destroyed)
 
   _.n >print            ; Outer Register: _.n still = 1
 
-  { 3 !_.n } >chain     ; Inner₂ Register: _.n = 3 (then destroyed)
+  { 3 !_.n } >chain     ; Inner2 Register: _.n = 3 )then destroyed)
 
   _.n >print            ; Outer Register: _.n still = 1
 }
 ```
 
 **Output:**
+
 ```
 1
 1
@@ -1269,13 +1249,13 @@ Let me show the correct error case:
 
 ---
 
-### ❌ WRONG: Trying to Access Outer Register
+### WRONG: Trying to Access Outer Register
 
 ```soma
 ; WRONG - Inner block can't see outer's _.value
 {
   42 !_.value
-  >{ _.value >print }  ; ERROR: _.value is Void in inner block
+  >{_.value >print }  ; ERROR: _.value is Void in inner block
 }
 ```
 
@@ -1283,7 +1263,7 @@ This **fails** because the inner block has its own empty Register.
 
 ---
 
-### ✅ RIGHT: Pass Data via AL
+### RIGHT: Pass Data via AL
 
 ```soma
 ; RIGHT - Pass value through the AL
@@ -1297,6 +1277,7 @@ This **fails** because the inner block has its own empty Register.
 **Output:** `42`
 
 **How it works:**
+
 1. Outer block stores 42 in `_.value`
 2. Outer block pushes 42 onto AL
 3. Inner block executes with AL containing [42]
@@ -1306,7 +1287,7 @@ This **fails** because the inner block has its own empty Register.
 
 ---
 
-### ✅ RIGHT: Share Data via Store
+### RIGHT: Share Data via Store
 
 ```soma
 ; RIGHT - Use Store for shared state
@@ -1321,6 +1302,7 @@ This **fails** because the inner block has its own empty Register.
 **Output:** `42`
 
 **How it works:**
+
 1. Outer block writes 42 to Store at path "shared_value"
 2. Inner block reads from Store at path "shared_value"
 3. Inner block prints 42
@@ -1329,7 +1311,7 @@ This **fails** because the inner block has its own empty Register.
 
 ---
 
-### ✅ RIGHT: Return Data via AL
+### RIGHT: Return Data via AL
 
 ```soma
 {
@@ -1341,16 +1323,20 @@ This **fails** because the inner block has its own empty Register.
 ```
 
 **How it works:**
+
 1. Define `_.square` block in outer Register
 2. `7` pushes 7 onto AL
 3. `>_.square` executes the block
-   - Creates fresh Register₃
-   - `!_.n` pops 7 from AL, stores in Register₃
-   - `_.n _.n >*` computes 7 × 7 = 49
-   - Leaves 49 on AL
-   - Register₃ is destroyed
 4. Outer block continues with AL = [49]
 5. `>print` prints 49
+
+The block execution:
+
+1. Creates fresh Register3
+2. `!_.n` pops 7 from AL, stores in Register3
+3. `_.n _.n >*` computes 7 x 7 = 49
+4. Leaves 49 on AL
+5. Register3 is destroyed
 
 **Key insight:** Blocks communicate via the AL. The inner block receives input from AL and returns output to AL.
 
@@ -1382,6 +1368,7 @@ This **fails** because the inner block has its own empty Register.
 ```
 
 **Key points:**
+
 - Outer block has `_.i` for outer counter
 - `_.inner_loop` block (when executed) has its own `_.i` for inner counter
 - They don't interfere because they're in different Registers
@@ -1402,6 +1389,7 @@ This **fails** because the inner block has its own empty Register.
 ```
 
 **Key points:**
+
 - Each helper function call gets a fresh Register
 - Both `_.square` and `_.double` use `_.x` in their own Registers
 - No interference even though both use the same path name
@@ -1411,26 +1399,29 @@ This **fails** because the inner block has its own empty Register.
 
 ### Register vs Store vs AL: When to Use Each
 
-| Aspect | Store | Register | AL |
-|--------|-------|----------|-----|
-| **Scope** | Global | Block-local | Flow-based |
-| **Lifetime** | Persistent | Block execution only | Transient |
-| **Sharing** | All blocks can access | Isolated per block | Explicit passing |
-| **Purpose** | Shared state | Local computation | Data flow |
-| **Example** | `config.port` | `_.temp` | Stack operations |
+| Aspect                       | Store                 | Register             | AL               |
+|------------------------------|-----------------------|----------------------|------------------|
+| Scope                        | Global                | Block-local          | Flow-based       |
+| Lifetime                     | Persistent            | Block execution only | Transient        |
+| Sharing                      | All blocks can access | Isolated per block   | Explicit passing |
+| Purpose                      | Shared state          | Local computation    | Data flow        |
+| Example`config.port``_.temp` | Stack operations      |                      |                  |
 
 **When to use Store:**
+
 - Shared configuration
 - Persistent data
 - Global state
 - Communication between unrelated blocks
 
 **When to use Register:**
+
 - Temporary computation (`_.temp`, `_.result`)
 - Loop counters in recursive blocks
 - Local variables that don't need to persist
 
 **When to use AL:**
+
 - Function arguments (pass to inner blocks)
 - Return values (leave on stack)
 - Stack-based computation
@@ -1465,6 +1456,7 @@ fact-step >chain
 **Output:** AL = [120]
 
 **How it works:**
+
 1. State (`fact.n`, `fact.acc`) is in the **Store**
 2. Each iteration updates Store values
 3. Returns either `fact.acc` (stops) or `fact-step` block (continues)
@@ -1498,6 +1490,7 @@ If you want Register-local state, you must pass state via AL (this builds a trad
 **Output:** AL = [120]
 
 **This works because:**
+
 1. Each recursive call gets its own Register with its own `_.n`
 2. The recursive call pops n-1 from AL and stores it in its own `_.n`
 3. Results are returned via AL
@@ -1511,13 +1504,13 @@ If you want Register-local state, you must pass state via AL (this builds a trad
 
 It is critical to understand that **blocks are fundamentally different from functions**:
 
-| **Functions (Traditional)**       | **Blocks (SOMA)**                    |
-|-----------------------------------|--------------------------------------|
-| Declare parameters                | No declared parameters               |
-| Return a value                    | Leave values on AL                   |
-| Create stack frames               | Transform state in-place             |
-| Support recursion via call stack  | Support cycles via >block built-in   |
-| Hidden execution machinery        | Explicit state transformation        |
+| **Functions (Traditional)**      | **Blocks (SOMA)**                  |
+|----------------------------------|------------------------------------|
+| Declare parameters               | No declared parameters             |
+| Return a value                   | Leave values on AL                 |
+| Create stack frames              | Transform state in-place           |
+| Support recursion via call stack | Support cycles via >block built-in |
+| Hidden execution machinery       | Explicit state transformation      |
 
 **Functions hide state.** They abstract over arguments and returns.
 
@@ -1534,7 +1527,7 @@ Blocks in SOMA are:
 - **Return-free** – they leave values on the AL, not via a return statement
 - **Executed linearly** – token by token, left to right
 - **Stack-free** – no call frames, no return path
-- **State transformers** – they transform `(AL, Store, Register)` into `(AL', Store', Register')`
+- **State transformers** – they transform `AL, Store, Register)` into `AL', Store', Register')`
 - **Self-referential** – every block can reference itself via the `>block` built-in
 
 ### Execution Patterns Summary
@@ -1553,11 +1546,11 @@ SOMA provides four primary ways to execute blocks:
 - Registers are **completely isolated** between parent and child blocks
 - No lexical scoping of Registers
 - To share data: use **Store** (global) or **AL** (explicit passing)
-- For tail-calls and loops: use **Store** for state, **`>chain`** for execution
+- For tail-calls and loops: use **Store** for state, `>chain` for execution
 
 ### The `>block` Built-in Summary
 
-**`>block` is a built-in operation that pushes the currently executing block onto the AL.** This enables:
+**`>block`** is a built-in operation that pushes the currently executing block onto the AL. This enables:
 
 - Self-referential loops
 - Recursive computation
@@ -1594,6 +1587,7 @@ SOMA programs do not reduce. **They run.**
 ```
 
 **Key points:**
+
 - **Store writes** during nested execution ARE visible after the nested block completes (Store is global)
 - **Register writes** are lost when the nested block ends (Registers are block-local and destroyed)
 - Parent and child blocks have **completely separate Registers** with no sharing
@@ -1631,3 +1625,5 @@ This pattern uses constant space—no stack growth.
 Blocks are SOMA's answer to functions, procedures, and lambdas—but they reject the abstraction model entirely. They are **values that transform state**, nothing more and nothing less. Understanding blocks means understanding that SOMA doesn't hide mutation under the hood. It makes mutation the foundation of computation.
 
 The `>block` built-in is what makes blocks truly powerful, enabling self-reference without requiring external naming schemes or workarounds. Every block can access itself via `>block`, and that capability is the foundation of control flow in SOMA.
+
+

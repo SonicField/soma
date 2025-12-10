@@ -6,7 +6,7 @@
 # This script finds all .soma files in docs/ and renders them to .md
 # using the soma runner (python3 -m soma).
 
-set -euo pipefail
+set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
@@ -40,30 +40,13 @@ render_soma_files() {
 
         if python3 -m soma < "$soma_file" > "$md_file.tmp" 2>&1; then
             mv "$md_file.tmp" "$md_file"
-            ((count++))
+            count=$((count + 1))
         else
             echo "ERROR: Failed to render $soma_file" >&2
             rm -f "$md_file.tmp"
-            ((failed++))
+            failed=$((failed + 1))
         fi
     done < <(find docs -name "*.soma" -type f)
-
-    # Also render top-level markdown/ examples if they exist
-    if [[ -d markdown ]]; then
-        while IFS= read -r soma_file; do
-            md_file="${soma_file%.soma}.md"
-            log "Rendering: $soma_file -> $md_file"
-
-            if python3 -m soma < "$soma_file" > "$md_file.tmp" 2>&1; then
-                mv "$md_file.tmp" "$md_file"
-                ((count++))
-            else
-                echo "ERROR: Failed to render $soma_file" >&2
-                rm -f "$md_file.tmp"
-                ((failed++))
-            fi
-        done < <(find markdown -name "*.soma" -type f)
-    fi
 
     echo "Rendered $count files successfully"
     if [[ $failed -gt 0 ]]; then
@@ -81,7 +64,7 @@ clean_generated() {
         if [[ -f "$md_file" ]]; then
             log "Removing: $md_file"
             rm "$md_file"
-            ((count++))
+            count=$((count + 1))
         fi
     done < <(find docs -name "*.soma" -type f)
 
