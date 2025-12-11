@@ -424,3 +424,380 @@
   >choose >^
 } !debug.assert
 
+) ==================== Dictionary (Association List) ====================
+) Key-value dictionary implemented as association list
+) Structure: Nil | node where node.key, node.value, node.next
+) Supports any key type that works with >< and >==
+
+) dict.new: Create empty dictionary
+) AL: [...] -> [dict, ...]
+{
+  Nil
+} !dict.new
+
+) dict.has: Check if key exists
+) AL: [key, dict, ...] -> [bool, ...]
+{
+  !_.dict !_.key
+
+  {
+    !_.node !_.key
+    _.                                   ) Push context for choose
+    _.node >isNil
+    {
+      !_.                                ) Pop context
+      False                              ) Key not found
+      Nil                                ) Stop chain
+    }
+    {
+      !_.                                ) Pop context
+      _.                                 ) Push context for inner choose
+      _.node.key _.key >==
+      {
+        !_.                              ) Pop context
+        True                             ) Key found
+        Nil                              ) Stop chain
+      }
+      {
+        !_.                              ) Pop context
+        _.key _.node.next                ) Continue searching
+        dict.has.#loop
+      }
+      >choose >^
+    }
+    >choose >^
+  } !dict.has.#loop
+
+  _.key _.dict
+  dict.has.#loop
+  >chain
+  >drop
+} !dict.has
+
+) dict.get: Get value by key (errors if not found)
+) AL: [key, dict, ...] -> [value, ...]
+{
+  !_.dict !_.key
+
+  {
+    !_.node !_.key
+    _.                                   ) Push context for choose
+    _.node >isNil
+    {
+      !_.                                ) Pop context
+      (Key not found in dictionary) >debug.error
+    }
+    {
+      !_.                                ) Pop context
+      _.                                 ) Push context for inner choose
+      _.node.key _.key >==
+      {
+        !_.                              ) Pop context
+        _.node.value                     ) Return value
+        Nil                              ) Stop chain
+      }
+      {
+        !_.                              ) Pop context
+        _.key _.node.next                ) Continue searching
+        dict.get.#loop
+      }
+      >choose >^
+    }
+    >choose >^
+  } !dict.get.#loop
+
+  _.key _.dict
+  dict.get.#loop
+  >chain
+  >drop
+} !dict.get
+
+) dict.get_or: Get value by key, or return default if not found
+) AL: [key, default, dict, ...] -> [value, ...]
+{
+  !_.dict !_.default !_.key
+
+  {
+    !_.node !_.key !_.default
+    _.                                   ) Push context for choose
+    _.node >isNil
+    {
+      !_.                                ) Pop context
+      _.default                          ) Return default
+      Nil                                ) Stop chain
+    }
+    {
+      !_.                                ) Pop context
+      _.                                 ) Push context for inner choose
+      _.node.key _.key >==
+      {
+        !_.                              ) Pop context
+        _.node.value                     ) Return value
+        Nil                              ) Stop chain
+      }
+      {
+        !_.                              ) Pop context
+        _.default _.key _.node.next      ) Continue searching
+        dict.get_or.#loop
+      }
+      >choose >^
+    }
+    >choose >^
+  } !dict.get_or.#loop
+
+  _.default _.key _.dict
+  dict.get_or.#loop
+  >chain
+  >drop
+} !dict.get_or
+
+) dict.put: Insert or update key-value pair
+) AL: [dict, value, key, ...] -> [new_dict, ...]
+{
+  !_.dict !_.value !_.key
+
+  ) Helper to update existing key (traverses and rebuilds list)
+  {
+    !_.node !_.key !_.value !_.acc
+    _.                                 ) Push context for choose
+    _.node >isNil
+    {
+      !_.                              ) Pop context
+      _.acc                            ) Return accumulated list
+      Nil                              ) Stop chain
+    }
+    {
+      !_.                              ) Pop context
+      _.                               ) Push context for inner choose
+      _.node.key _.key >==
+      {
+        !_.                            ) Pop context - found matching key!
+        ) Replace this entry with new value, prepend rest of list
+        _.key !_.new.key
+        _.value !_.new.value
+        _.node.next !_.new.next        ) Link to rest of original list
+        ) Now prepend accumulated entries
+        _.acc _.new.                   ) Push acc and new node
+        dict.put.#prepend
+      }
+      {
+        !_.                            ) Pop context
+        ) Keep this entry unchanged, continue searching
+        _.node.key !_.copy.key
+        _.node.value !_.copy.value
+        _.acc !_.copy.next
+        _.copy. _.value _.key _.node.next  ) Push new acc and continue
+        dict.put.#update
+      }
+      >choose >^
+    }
+    >choose >^
+  } !dict.put.#update
+
+  ) Helper to prepend accumulated entries onto result
+  {
+    !_.result !_.acc
+    _.                                 ) Push context
+    _.acc >isNil
+    {
+      !_.                              ) Pop context
+      _.result                         ) Return result
+      Nil                              ) Stop chain
+    }
+    {
+      !_.                              ) Pop context
+      _.acc.key !_.entry.key
+      _.acc.value !_.entry.value
+      _.result !_.entry.next
+      _.acc.next _.entry.              ) Continue with rest of acc
+      dict.put.#prepend
+    }
+    >choose >^
+  } !dict.put.#prepend
+
+  ) Check if key exists and branch
+  _.key _.dict >dict.has
+  !_.exists
+  _.                                   ) Push context for choose
+  _.exists
+  {
+    !_.                                ) Pop context - key exists, update
+    Nil _.value _.key _.dict
+    dict.put.#update
+    >chain
+    dict.put.#prepend
+    >chain
+    >drop
+  }
+  {
+    !_.                                ) Pop context - key doesn't exist, prepend
+    _.key !_.new.key
+    _.value !_.new.value
+    _.dict !_.new.next
+    _.new.
+  }
+  >choose >^
+} !dict.put
+
+) dict.remove: Remove key from dictionary
+) AL: [key, dict, ...] -> [new_dict, ...]
+{
+  !_.dict !_.key
+
+  {
+    !_.node !_.key !_.acc
+    _.                                   ) Push context for choose
+    _.node >isNil
+    {
+      !_.                                ) Pop context
+      _.acc                              ) Return accumulated list
+      Nil                                ) Stop chain
+    }
+    {
+      !_.                                ) Pop context
+      _.                                 ) Push context for inner choose
+      _.node.key _.key >==
+      {
+        !_.                              ) Pop context
+        ) Skip this entry (remove it)
+        _.acc _.key _.node.next          ) Continue with rest
+        dict.remove.#loop
+      }
+      {
+        !_.                              ) Pop context
+        ) Keep this entry
+        _.node.key !_.copy.key
+        _.node.value !_.copy.value
+        _.acc !_.copy.next
+        _.copy. _.key _.node.next        ) Push updated acc and continue
+        dict.remove.#loop
+      }
+      >choose >^
+    }
+    >choose >^
+  } !dict.remove.#loop
+
+  Nil _.key _.dict
+  dict.remove.#loop
+  >chain
+  >drop
+} !dict.remove
+
+) dict.size: Count entries in dictionary
+) AL: [dict, ...] -> [count, ...]
+{
+  !_.dict
+
+  {
+    !_.node !_.count
+    _.                                   ) Push context for choose
+    _.node >isNil
+    {
+      !_.                                ) Pop context
+      _.count                            ) Return count
+      Nil                                ) Stop chain
+    }
+    {
+      !_.                                ) Pop context
+      _.count 1 >+ _.node.next           ) Increment and continue
+      dict.size.#loop
+    }
+    >choose >^
+  } !dict.size.#loop
+
+  0 _.dict
+  dict.size.#loop
+  >chain
+  >drop
+} !dict.size
+
+) dict.keys: Get list of all keys
+) AL: [dict, ...] -> [list, ...]
+{
+  !_.dict
+
+  {
+    !_.node !_.acc
+    _.                                   ) Push context for choose
+    _.node >isNil
+    {
+      !_.                                ) Pop context
+      _.acc                              ) Return accumulated list
+      Nil                                ) Stop chain
+    }
+    {
+      !_.                                ) Pop context
+      _.node.key _.acc >list.cons        ) Cons key onto accumulator
+      _.node.next                        ) Continue
+      dict.keys.#loop
+    }
+    >choose >^
+  } !dict.keys.#loop
+
+  Nil _.dict
+  dict.keys.#loop
+  >chain
+  >drop
+} !dict.keys
+
+) dict.values: Get list of all values
+) AL: [dict, ...] -> [list, ...]
+{
+  !_.dict
+
+  {
+    !_.node !_.acc
+    _.                                   ) Push context for choose
+    _.node >isNil
+    {
+      !_.                                ) Pop context
+      _.acc                              ) Return accumulated list
+      Nil                                ) Stop chain
+    }
+    {
+      !_.                                ) Pop context
+      _.node.value _.acc >list.cons      ) Cons value onto accumulator
+      _.node.next                        ) Continue
+      dict.values.#loop
+    }
+    >choose >^
+  } !dict.values.#loop
+
+  Nil _.dict
+  dict.values.#loop
+  >chain
+  >drop
+} !dict.values
+
+) dict.fold: Fold over dictionary entries
+) AL: [folder, init, dict, ...] -> [result, ...]
+) folder receives [key, value, acc, ...] and returns new acc
+{
+  !_.dict !_.init !_.folder
+  _.folder !temp.dict_fold_fn
+
+  {
+    !_.node !_.acc
+    _.                                   ) Push context for choose
+    _.node >isNil
+    {
+      !_.                                ) Pop context
+      _.acc                              ) Return accumulator
+      Nil                                ) Stop chain
+    }
+    {
+      !_.                                ) Pop context
+      _.node.key _.node.value _.acc temp.dict_fold_fn >^
+      !_.new_acc
+      _.new_acc _.node.next              ) Continue with new accumulator
+      dict.fold.#loop
+    }
+    >choose >^
+  } !dict.fold.#loop
+
+  _.init _.dict
+  dict.fold.#loop
+  >chain
+  >drop
+} !dict.fold
+

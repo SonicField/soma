@@ -1,0 +1,224 @@
+) ============================================================================
+) Dictionary Tests
+) Testing dict.new, dict.put, dict.get, dict.has, dict.remove, etc.
+) Phase 1: API tests (implementation-agnostic)
+) ============================================================================
+
+) ==================== dict.new and dict.size ====================
+
+) TEST: New dict is empty
+) EXPECT_AL: [True]
+>dict.new >dict.size 0 >==
+
+) ==================== dict.put and dict.get ====================
+
+) TEST: Put one entry, size is 1
+) EXPECT_AL: [True]
+1 (one) >dict.new >dict.put >dict.size 1 >==
+
+) TEST: Put and get integer key
+) EXPECT_AL: [True]
+1 (one) >dict.new >dict.put !d
+1 d >dict.get (one) >==
+
+) TEST: Put and get string key
+) EXPECT_AL: [True]
+(foo) 42 >dict.new >dict.put !d
+(foo) d >dict.get 42 >==
+
+) TEST: Put and get multiple keys
+) EXPECT_AL: [True, True, True]
+1 (one) >dict.new >dict.put
+2 (two) >rot >dict.put
+3 (three) >rot >dict.put
+!d
+1 d >dict.get (one) >==
+2 d >dict.get (two) >==
+3 d >dict.get (three) >==
+
+) TEST: Multiple puts, correct size
+) EXPECT_AL: [True]
+1 (a) >dict.new >dict.put
+2 (b) >rot >dict.put
+3 (c) >rot >dict.put
+>dict.size 3 >==
+
+) ==================== dict.put update existing ====================
+
+) TEST: Put same key twice updates value
+) EXPECT_AL: [True]
+1 (one) >dict.new >dict.put
+1 (ONE) >rot >dict.put
+!d
+1 d >dict.get (ONE) >==
+
+) TEST: Update does not increase size
+) EXPECT_AL: [True]
+1 (one) >dict.new >dict.put
+1 (ONE) >rot >dict.put
+>dict.size 1 >==
+
+) TEST: Update one of many keys
+) EXPECT_AL: [True, True, True]
+1 (a) >dict.new >dict.put
+2 (b) >rot >dict.put
+3 (c) >rot >dict.put
+2 (B) >rot >dict.put
+!d
+1 d >dict.get (a) >==
+2 d >dict.get (B) >==
+3 d >dict.get (c) >==
+
+) ==================== dict.has ====================
+
+) TEST: Empty dict has nothing
+) EXPECT_AL: [True]
+42 >dict.new >dict.has >not
+
+) TEST: Has key that exists
+) EXPECT_AL: [True]
+1 (one) >dict.new >dict.put !d
+1 d >dict.has
+
+) TEST: Does not have key that doesn't exist
+) EXPECT_AL: [True]
+1 (one) >dict.new >dict.put !d
+2 d >dict.has >not
+
+) TEST: Has with string keys
+) EXPECT_AL: [True, True]
+(foo) 1 >dict.new >dict.put
+(bar) 2 >rot >dict.put
+!d
+(foo) d >dict.has
+(baz) d >dict.has >not
+
+) ==================== dict.get_or ====================
+
+) TEST: get_or returns value when key exists
+) EXPECT_AL: [True]
+1 (one) >dict.new >dict.put !d
+1 (default) d >dict.get_or (one) >==
+
+) TEST: get_or returns default when key missing
+) EXPECT_AL: [True]
+1 (one) >dict.new >dict.put !d
+99 (default) d >dict.get_or (default) >==
+
+) TEST: get_or on empty dict returns default
+) EXPECT_AL: [True]
+42 (fallback) >dict.new >dict.get_or (fallback) >==
+
+) ==================== dict.remove ====================
+
+) TEST: Remove from empty dict is no-op
+) EXPECT_AL: [True]
+1 >dict.new >dict.remove >dict.size 0 >==
+
+) TEST: Remove existing key
+) EXPECT_AL: [True, True]
+1 (one) >dict.new >dict.put
+2 (two) >rot >dict.put
+!d
+2 d >dict.remove !d2
+d2 >dict.size 1 >==
+1 d2 >dict.has
+
+) TEST: Remove makes key not found
+) EXPECT_AL: [True]
+1 (one) >dict.new >dict.put !d
+1 d >dict.remove !d2
+1 d2 >dict.has >not
+
+) TEST: Remove non-existent key is no-op
+) EXPECT_AL: [True]
+1 (one) >dict.new >dict.put !d
+99 d >dict.remove !d2
+d2 >dict.size 1 >==
+
+) ==================== dict.keys and dict.values ====================
+
+) TEST: Keys of empty dict is empty list
+) EXPECT_AL: [True]
+>dict.new >dict.keys >isNil
+
+) TEST: Values of empty dict is empty list
+) EXPECT_AL: [True]
+>dict.new >dict.values >isNil
+
+) TEST: Keys returns all keys
+) EXPECT_AL: [True]
+1 (a) >dict.new >dict.put
+2 (b) >rot >dict.put
+3 (c) >rot >dict.put
+>dict.keys >list.length 3 >==
+
+) TEST: Values returns all values
+) EXPECT_AL: [True]
+1 (a) >dict.new >dict.put
+2 (b) >rot >dict.put
+3 (c) >rot >dict.put
+>dict.values >list.length 3 >==
+
+) ==================== dict.fold ====================
+
+) TEST: Fold empty dict returns init
+) EXPECT_AL: [True]
+{ >drop >drop } 0 >dict.new >dict.fold 0 >==
+
+) TEST: Fold sum of values (integer values)
+) EXPECT_AL: [True]
+(a) 1 >dict.new >dict.put
+(b) 2 >rot >dict.put
+(c) 3 >rot >dict.put
+!d
+) folder receives [key, value, acc] -> new_acc
+{ !_.acc !_.val !_.key _.val _.acc >+ } 0 d >dict.fold
+6 >==
+
+) TEST: Fold count entries
+) EXPECT_AL: [True]
+1 (a) >dict.new >dict.put
+2 (b) >rot >dict.put
+3 (c) >rot >dict.put
+!d
+{ >drop >drop 1 >+ } 0 d >dict.fold
+3 >==
+
+) ==================== Mixed key types ====================
+) Note: Integer and string keys cannot be mixed in same dict
+) because comparison operators don't support cross-type comparison
+
+) TEST: All string keys work
+) EXPECT_AL: [True, True]
+(a) 1 >dict.new >dict.put
+(b) 2 >rot >dict.put
+!d
+(a) d >dict.get 1 >==
+(b) d >dict.get 2 >==
+
+) TEST: All integer keys work
+) EXPECT_AL: [True, True]
+1 (one) >dict.new >dict.put
+2 (two) >rot >dict.put
+!d
+1 d >dict.get (one) >==
+2 d >dict.get (two) >==
+
+) ==================== Edge cases ====================
+
+) TEST: Zero as key
+) EXPECT_AL: [True]
+0 (zero) >dict.new >dict.put !d
+0 d >dict.get (zero) >==
+
+) TEST: Empty string as key
+) EXPECT_AL: [True]
+() (empty) >dict.new >dict.put !d
+() d >dict.get (empty) >==
+
+) TEST: Nil as value
+) EXPECT_AL: [True]
+1 Nil >dict.new >dict.put !d
+1 d >dict.get >isNil
+
