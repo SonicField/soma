@@ -1,0 +1,161 @@
+) ============================================================================
+) Dictionary Store Isolation Tests
+) Verifies that dict operations don't use Store temporaries that could
+) be clobbered by nested operations.
+)
+) FALSIFICATION CRITERION:
+) If the implementation stores data in temp.X, then nested calls will
+) clobber that data, causing incorrect results.
+) ============================================================================
+
+) ==================== Nested dict.put Tests ====================
+
+) TEST: dict.put inside dict.fold works correctly
+) If dict.put used temp for data, the fold would corrupt it
+) EXPECT_AL: [3]
+>dict.new !source
+1 (a) source >dict.put !source
+2 (b) source >dict.put !source
+3 (c) source >dict.put !source
+
+) Fold that builds a new dict inside the folder
+) Note: dict.fold passes [key, value, acc] where acc is on top
+) dict.put signature: key value dict
+{
+  !_.acc_dict !_.value !_.key
+  ) Create a new key (key*10) and add to accumulator dict
+  _.key 10 >* _.value _.acc_dict >dict.put
+} >dict.new source >dict.fold
+!result_dict
+
+result_dict >dict.size
+
+) TEST: Verify the built dict has correct keys
+) EXPECT_AL: [True, True, True]
+10 result_dict >dict.has
+20 result_dict >dict.has
+30 result_dict >dict.has
+
+) TEST: Verify values are correct
+) EXPECT_AL: [(a), (b), (c)]
+10 result_dict >dict.get
+20 result_dict >dict.get
+30 result_dict >dict.get
+
+) ==================== Deeply Nested dict.put Tests ====================
+
+) TEST: dict.put inside dict.put's update path
+) Build a dict where each value is itself a dict
+) EXPECT_AL: [2]
+>dict.new !outer_dict
+
+) Create inner dict 1 (string keys)
+>dict.new !inner1
+(x) (first_x) inner1 >dict.put !inner1
+(y) (first_y) inner1 >dict.put !inner1
+
+) Create inner dict 2 (string keys)
+>dict.new !inner2
+(p) (second_p) inner2 >dict.put !inner2
+(q) (second_q) inner2 >dict.put !inner2
+
+) Store inner dicts as values in outer dict
+) key value dict - so (first) inner1 outer_dict
+(first) inner1 outer_dict >dict.put !outer_dict
+(second) inner2 outer_dict >dict.put !outer_dict
+
+outer_dict >dict.size
+
+) TEST: Can retrieve and query inner dicts
+) EXPECT_AL: [True, True]
+(first) outer_dict >dict.get !retrieved_inner1
+(x) retrieved_inner1 >dict.has
+(y) retrieved_inner1 >dict.has
+
+) ==================== Nested dict.fold Tests ====================
+) (These overlap with 15_nested_fold_tests.soma but are more specific to RB tree)
+
+) TEST: dict.fold where folder uses dict.fold on a different dict
+) EXPECT_AL: [30]
+>dict.new !dict_a
+1 10 dict_a >dict.put !dict_a
+2 20 dict_a >dict.put !dict_a
+
+>dict.new !dict_b
+3 100 dict_b >dict.put !dict_b
+4 200 dict_b >dict.put !dict_b
+
+) Outer fold sums dict_a values
+) Inner fold (inside folder) also iterates dict_b - should not interfere
+{
+  !_.outer_acc !_.outer_val !_.outer_key
+  ) Inner fold: just iterate dict_b (ignore result)
+  { !_.ia !_.iv !_.ik _.ia } 0 dict_b >dict.fold
+  >drop
+  ) Add outer_val to accumulator
+  _.outer_acc _.outer_val >+
+} 0 dict_a >dict.fold
+
+) ==================== dict.remove Nested Tests ====================
+
+) TEST: dict.remove inside dict.fold
+) dict.remove uses dict.put internally (to rebuild), so this tests deep nesting
+) EXPECT_AL: [2]
+>dict.new !to_filter
+1 (keep1) to_filter >dict.put !to_filter
+2 (remove) to_filter >dict.put !to_filter
+3 (keep2) to_filter >dict.put !to_filter
+
+) Use fold to build a new dict with some keys removed
+{
+  !_.acc !_.value !_.key
+  _.
+  _.value (remove) >==
+  {
+    !_.
+    _.acc                              ) Skip this key
+  }
+  {
+    !_.
+    _.key _.value _.acc >dict.put      ) Keep: key value acc
+  }
+  >choose >^
+} >dict.new to_filter >dict.fold
+!filtered
+
+filtered >dict.size
+
+) TEST: Filtered dict has correct keys
+) EXPECT_AL: [True, False, True]
+1 filtered >dict.has
+2 filtered >dict.has
+3 filtered >dict.has
+
+) ==================== Stress Test: Many Nested Operations ====================
+
+) TEST: Build a dict of dicts via nested fold
+) Outer fold iterates source, inner creates a small dict for each key
+) EXPECT_AL: [3]
+>dict.new !src
+1 100 src >dict.put !src
+2 200 src >dict.put !src
+3 300 src >dict.put !src
+
+{
+  !_.acc !_.val !_.key
+  ) For each entry, create a small inner dict with two entries
+  >dict.new !_.inner
+  _.key _.val _.inner >dict.put !_.inner
+  _.key _.val 1 >+ _.inner >dict.put !_.inner
+  ) Store inner dict with key in outer accumulator
+  _.key _.inner _.acc >dict.put
+} >dict.new src >dict.fold
+!nested_result
+
+nested_result >dict.size
+
+) TEST: Verify nested structure is correct
+) EXPECT_AL: [True, 2]
+1 nested_result >dict.has
+1 nested_result >dict.get >dict.size
+

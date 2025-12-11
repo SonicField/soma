@@ -1,0 +1,232 @@
+) ============================================================================
+) Red-Black Tree Balance Tests
+) Phase 3: Tests for balanced tree properties
+) ============================================================================
+
+) ==================== Helper: RB Tree Validation ====================
+
+) rbtree.is_black: Check if node is black (Nil counts as black)
+) AL: [node, ...] -> [bool, ...]
+{
+  !_.node
+  _.
+  _.node >isNil
+  { !_. True }
+  { !_. _.node.color >not }
+  >choose >^
+} !rbtree.is_black
+
+) rbtree.is_red: Check if node is red
+) AL: [node, ...] -> [bool, ...]
+{
+  !_.node
+  _.
+  _.node >isNil
+  { !_. False }
+  { !_. _.node.color }
+  >choose >^
+} !rbtree.is_red
+
+) rbtree.check_no_red_red: Check no red node has red child (recursive)
+) AL: [node, ...] -> [bool, ...]
+{
+  !_.node
+  _.
+  _.node >isNil
+  {
+    !_.
+    True
+  }
+  {
+    !_.
+    ) Check if current node is red
+    _.node >rbtree.is_red !_.is_red
+    _.node.left >rbtree.is_red !_.left_red
+    _.node.right >rbtree.is_red !_.right_red
+
+    ) If node is red and either child is red, that's a violation
+    _.is_red _.left_red >and !_.left_violation
+    _.is_red _.right_red >and !_.right_violation
+    _.left_violation _.right_violation >or !_.has_violation
+
+    _.
+    _.has_violation
+    {
+      !_.
+      False
+    }
+    {
+      !_.
+      ) Recursively check children
+      _.node.left >rbtree.check_no_red_red
+      _.node.right >rbtree.check_no_red_red
+      >and
+    }
+    >choose >^
+  }
+  >choose >^
+} !rbtree.check_no_red_red
+
+) rbtree.black_height: Count black nodes on path to leftmost leaf
+) AL: [node, ...] -> [count, ...]
+{
+  !_.node
+  _.
+  _.node >isNil
+  {
+    !_.
+    1                                  ) Nil counts as black
+  }
+  {
+    !_.
+    _.node.left >rbtree.black_height !_.left_h
+    _.node >rbtree.is_black !_.is_blk
+    _.
+    _.is_blk
+    { !_. _.left_h 1 >+ }
+    { !_. _.left_h }
+    >choose >^
+  }
+  >choose >^
+} !rbtree.black_height
+
+) rbtree.check_black_height: Verify all paths have same black height
+) AL: [node, ...] -> [bool, ...]
+{
+  !_.node
+  _.
+  _.node >isNil
+  {
+    !_.
+    True
+  }
+  {
+    !_.
+    _.node.left >rbtree.black_height !_.left_h
+    _.node.right >rbtree.black_height !_.right_h
+    _.left_h _.right_h >== !_.heights_match
+    _.
+    _.heights_match
+    {
+      !_.
+      ) Recursively check children
+      _.node.left >rbtree.check_black_height
+      _.node.right >rbtree.check_black_height
+      >and
+    }
+    {
+      !_.
+      False
+    }
+    >choose >^
+  }
+  >choose >^
+} !rbtree.check_black_height
+
+) rbtree.check_bst_node: Check BST property for a single node
+) AL: [node, min, max, ...] -> [bool, ...]
+) min/max are Nil for unbounded
+{
+  !_.max !_.min !_.node
+  _.
+  _.node >isNil
+  {
+    !_.
+    True
+  }
+  {
+    !_.
+    ) Check min bound
+    _.min >isNil !_.min_unbounded
+    _.
+    _.min_unbounded
+    { !_. True }
+    { !_. _.min _.node.key >< }         ) min < key
+    >choose >^ !_.min_ok
+
+    ) Check max bound
+    _.max >isNil !_.max_unbounded
+    _.
+    _.max_unbounded
+    { !_. True }
+    { !_. _.node.key _.max >< }         ) key < max
+    >choose >^ !_.max_ok
+
+    _.min_ok _.max_ok >and !_.bounds_ok
+    _.
+    _.bounds_ok
+    {
+      !_.
+      ) Recursively check children with updated bounds
+      _.node.left _.min _.node.key >rbtree.check_bst_node
+      _.node.right _.node.key _.max >rbtree.check_bst_node
+      >and
+    }
+    {
+      !_.
+      False
+    }
+    >choose >^
+  }
+  >choose >^
+} !rbtree.check_bst_node
+
+) rbtree.validate: Full validation of RB tree invariants
+) AL: [dict, ...] -> [bool, ...]
+{
+  !_.root
+  _.
+  _.root >isNil
+  {
+    !_.
+    True
+  }
+  {
+    !_.
+    ) 1. Root must be black
+    _.root >rbtree.is_black !_.root_black
+
+    ) 2. No red node has red child
+    _.root >rbtree.check_no_red_red !_.no_red_red
+
+    ) 3. All paths have same black height
+    _.root >rbtree.check_black_height !_.black_height_ok
+
+    ) 4. BST property
+    _.root Nil Nil >rbtree.check_bst_node !_.bst_ok
+
+    _.root_black _.no_red_red >and _.black_height_ok >and _.bst_ok >and
+  }
+  >choose >^
+} !rbtree.validate
+
+) ==================== Balance Invariant Tests ====================
+
+) TEST: Empty dict is valid RB tree
+) EXPECT_AL: [True]
+>dict.new >rbtree.validate
+
+) TEST: Single entry dict should be valid (root is black)
+) EXPECT_AL: [True]
+1 (one) >dict.new >dict.put >rbtree.validate
+
+) TEST: Multiple entries - still valid
+) EXPECT_AL: [True]
+>dict.new !d
+1 (one) d >dict.put !d
+2 (two) d >dict.put !d
+3 (three) d >dict.put !d
+d >rbtree.validate
+
+) TEST: Sequential insert of 7 keys - tests rotations
+) EXPECT_AL: [True]
+>dict.new !d2
+1 (a) d2 >dict.put !d2
+2 (b) d2 >dict.put !d2
+3 (c) d2 >dict.put !d2
+4 (d) d2 >dict.put !d2
+5 (e) d2 >dict.put !d2
+6 (f) d2 >dict.put !d2
+7 (g) d2 >dict.put !d2
+d2 >rbtree.validate
+

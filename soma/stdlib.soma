@@ -471,10 +471,17 @@
   >choose >^
 } !debug.assert
 
-) ==================== Dictionary (Association List) ====================
-) Key-value dictionary implemented as association list
-) Structure: Nil | node where node.key, node.value, node.next
+) ==================== Dictionary (Red-Black Tree) ====================
+) Key-value dictionary implemented as a red-black tree
+) Structure: Nil | node where node.key, node.value, node.color, node.left, node.right
+) Color: True = red, False = black
 ) Supports any key type that works with >< and >==
+)
+) Red-Black Tree Invariants:
+) 1. Root is always black
+) 2. No red node has a red child
+) 3. All paths from root to leaves have the same black count
+) 4. BST property: left.key < node.key < right.key
 
 ) dict.new: Create empty dictionary
 ) AL: [...] -> [dict, ...]
@@ -507,7 +514,18 @@
       }
       {
         !_.                              ) Pop context
-        _.key _.node.next                ) Continue searching
+        ) BST: go left if key < node.key, right otherwise
+        _.
+        _.key _.node.key ><              ) key < node.key
+        {
+          !_.
+          _.key _.node.left              ) Search left subtree
+        }
+        {
+          !_.
+          _.key _.node.right             ) Search right subtree
+        }
+        >choose >^
         dict.has.#loop
       }
       >choose >^
@@ -545,7 +563,18 @@
       }
       {
         !_.                              ) Pop context
-        _.key _.node.next                ) Continue searching
+        ) BST: go left if key < node.key, right otherwise
+        _.
+        _.key _.node.key ><              ) key < node.key
+        {
+          !_.
+          _.key _.node.left              ) Search left subtree
+        }
+        {
+          !_.
+          _.key _.node.right             ) Search right subtree
+        }
+        >choose >^
         dict.get.#loop
       }
       >choose >^
@@ -584,7 +613,18 @@
       }
       {
         !_.                              ) Pop context
-        _.default _.key _.node.next      ) Continue searching
+        ) BST: go left if key < node.key, right otherwise
+        _.
+        _.key _.node.key ><              ) key < node.key
+        {
+          !_.
+          _.default _.key _.node.left    ) Search left subtree
+        }
+        {
+          !_.
+          _.default _.key _.node.right   ) Search right subtree
+        }
+        >choose >^
         dict.get_or.#loop
       }
       >choose >^
@@ -598,252 +638,455 @@
   >drop
 } !dict.get_or
 
-) dict.put: Insert or update key-value pair
+) dict.put: Insert or update key-value pair (red-black tree insert)
 ) AL: [dict, value, key, ...] -> [new_dict, ...]
 {
   !_.dict !_.value !_.key
 
-  ) Helper to update existing key (traverses and rebuilds list)
+  ) Helper: Create a new red node
+  ) AL: [key, value, ...] -> [node, ...]
   {
-    !_.node !_.key !_.value !_.acc
-    _.                                 ) Push context for choose
+    !_.value !_.key
+    _.key !_.n.key
+    _.value !_.n.value
+    True !_.n.color                      ) New nodes are red
+    Nil !_.n.left
+    Nil !_.n.right
+    _.n.
+  } !dict.put.#new_red
+
+  ) Helper: Check if node is red
+  ) AL: [node, ...] -> [bool, ...]
+  {
+    !_.node
+    _.
+    _.node >isNil
+    { !_. False }
+    { !_. _.node.color }
+    >choose >^
+  } !dict.put.#is_red
+
+  ) Helper: Check if node's left child is red
+  ) AL: [node, ...] -> [bool, ...]
+  {
+    !_.node
+    _.
+    _.node >isNil
+    { !_. False }
+    { !_. _.node.left >dict.put.#is_red }
+    >choose >^
+  } !dict.put.#left_is_red
+
+  ) Helper: Left rotate
+  ) AL: [node, ...] -> [new_root, ...]
+  )     node              x
+  )    /    \    ->     /   \
+  )   a      x        node   c
+  )         / \       /  \
+  )        b   c     a    b
+  ) After rotation: x takes node's color, node becomes red
+  {
+    !_.node
+    _.node.right !_.x
+    _.x.left !_.b
+    ) Build new node (was root) - becomes red
+    _.node.key !_.new_node.key
+    _.node.value !_.new_node.value
+    True !_.new_node.color                 ) Old root becomes red
+    _.node.left !_.new_node.left
+    _.b !_.new_node.right
+    ) Build new x (new root) - takes old root's color
+    _.x.key !_.new_x.key
+    _.x.value !_.new_x.value
+    _.node.color !_.new_x.color            ) New root takes old root's color
+    _.new_node. !_.new_x.left
+    _.x.right !_.new_x.right
+    _.new_x.
+  } !dict.put.#rotate_left
+
+  ) Helper: Right rotate
+  ) AL: [node, ...] -> [new_root, ...]
+  )       node            x
+  )      /    \   ->    /   \
+  )     x      c       a    node
+  )    / \                  /  \
+  )   a   b                b    c
+  ) After rotation: x takes node's color, node becomes red
+  {
+    !_.node
+    _.node.left !_.x
+    _.x.right !_.b
+    ) Build new node (was root) - becomes red
+    _.node.key !_.new_node.key
+    _.node.value !_.new_node.value
+    True !_.new_node.color                 ) Old root becomes red
+    _.b !_.new_node.left
+    _.node.right !_.new_node.right
+    ) Build new x (new root) - takes old root's color
+    _.x.key !_.new_x.key
+    _.x.value !_.new_x.value
+    _.node.color !_.new_x.color            ) New root takes old root's color
+    _.x.left !_.new_x.left
+    _.new_node. !_.new_x.right
+    _.new_x.
+  } !dict.put.#rotate_right
+
+  ) Helper: Flip colors (node becomes red, children become black)
+  ) AL: [node, ...] -> [new_node, ...]
+  {
+    !_.node
+    ) Copy left child but make it black
+    _.node.left.key !_.new_left.key
+    _.node.left.value !_.new_left.value
+    False !_.new_left.color
+    _.node.left.left !_.new_left.left
+    _.node.left.right !_.new_left.right
+    ) Copy right child but make it black
+    _.node.right.key !_.new_right.key
+    _.node.right.value !_.new_right.value
+    False !_.new_right.color
+    _.node.right.left !_.new_right.left
+    _.node.right.right !_.new_right.right
+    ) Copy node but make it red
+    _.node.key !_.new_node.key
+    _.node.value !_.new_node.value
+    True !_.new_node.color
+    _.new_left. !_.new_node.left
+    _.new_right. !_.new_node.right
+    _.new_node.
+  } !dict.put.#flip_colors
+
+  ) Helper: Fix up after insert (maintain RB invariants)
+  ) AL: [node, ...] -> [fixed_node, ...]
+  ) Uses left-leaning red-black tree rules:
+  ) 1. If right child is red and left child is black: rotate left
+  ) 2. If left child is red and left-left grandchild is red: rotate right
+  ) 3. If both children are red: flip colors
+  {
+    !_.node
+
+    ) Case 1: Right child red, left child black -> rotate left
+    _.
+    _.node.right >dict.put.#is_red
+    _.node.left >dict.put.#is_red >not
+    >and
+    {
+      !_.
+      _.node >dict.put.#rotate_left !_.node
+    }
+    { !_. }
+    >choose >^
+
+    ) Case 2: Left child red, left-left grandchild red -> rotate right
+    ) Use helper to safely check if left.left is red
+    _.
+    _.node.left >dict.put.#is_red
+    _.node.left >dict.put.#left_is_red
+    >and
+    {
+      !_.
+      _.node >dict.put.#rotate_right !_.node
+    }
+    { !_. }
+    >choose >^
+
+    ) Case 3: Both children red -> flip colors
+    _.
+    _.node.left >dict.put.#is_red
+    _.node.right >dict.put.#is_red
+    >and
+    {
+      !_.
+      _.node >dict.put.#flip_colors !_.node
+    }
+    { !_. }
+    >choose >^
+
+    _.node
+  } !dict.put.#fixup
+
+  ) Helper: Recursive BST insert with fixup
+  ) AL: [key, value, node, ...] -> [new_node, ...]
+  {
+    !_.node !_.value !_.key
+    _.                                   ) Push context for choose
     _.node >isNil
     {
-      !_.                              ) Pop context
-      _.acc                            ) Return accumulated list
-      Nil                              ) Stop chain
+      !_.                                ) Pop context - create new red node
+      _.key _.value >dict.put.#new_red
     }
     {
-      !_.                              ) Pop context
-      _.                               ) Push context for inner choose
-      _.node.key _.key >==
+      !_.                                ) Pop context
+      _.                                 ) Push context for comparison
+      _.key _.node.key >==
       {
-        !_.                            ) Pop context - found matching key!
-        ) Replace this entry with new value, prepend rest of list
-        _.key !_.new.key
-        _.value !_.new.value
-        _.node.next !_.new.next        ) Link to rest of original list
-        ) Now prepend accumulated entries
-        _.acc _.new.                   ) Push acc and new node
-        dict.put.#prepend
+        !_.                              ) Pop context - update existing
+        _.key !_.upd.key
+        _.value !_.upd.value
+        _.node.color !_.upd.color
+        _.node.left !_.upd.left
+        _.node.right !_.upd.right
+        _.upd.
       }
       {
-        !_.                            ) Pop context
-        ) Keep this entry unchanged, continue searching
-        _.node.key !_.copy.key
-        _.node.value !_.copy.value
-        _.acc !_.copy.next
-        _.copy. _.value _.key _.node.next  ) Push new acc and continue
-        dict.put.#update
+        !_.                              ) Pop context
+        _.
+        _.key _.node.key ><              ) key < node.key
+        {
+          !_.                            ) Insert in left subtree
+          _.key _.value _.node.left >dict.put.#insert
+          !_.new_left
+          _.node.key !_.nl.key
+          _.node.value !_.nl.value
+          _.node.color !_.nl.color
+          _.new_left !_.nl.left
+          _.node.right !_.nl.right
+          _.nl. >dict.put.#fixup
+        }
+        {
+          !_.                            ) Insert in right subtree
+          _.key _.value _.node.right >dict.put.#insert
+          !_.new_right
+          _.node.key !_.nr.key
+          _.node.value !_.nr.value
+          _.node.color !_.nr.color
+          _.node.left !_.nr.left
+          _.new_right !_.nr.right
+          _.nr. >dict.put.#fixup
+        }
+        >choose >^
       }
       >choose >^
     }
     >choose >^
-  } !dict.put.#update
+  } !dict.put.#insert
 
-  ) Helper to prepend accumulated entries onto result
-  {
-    !_.result !_.acc
-    _.                                 ) Push context
-    _.acc >isNil
-    {
-      !_.                              ) Pop context
-      _.result                         ) Return result
-      Nil                              ) Stop chain
-    }
-    {
-      !_.                              ) Pop context
-      _.acc.key !_.entry.key
-      _.acc.value !_.entry.value
-      _.result !_.entry.next
-      _.acc.next _.entry.              ) Continue with rest of acc
-      dict.put.#prepend
-    }
-    >choose >^
-  } !dict.put.#prepend
-
-  ) Check if key exists and branch
-  _.key _.dict >dict.has
-  !_.exists
-  _.                                   ) Push context for choose
-  _.exists
-  {
-    !_.                                ) Pop context - key exists, update
-    Nil _.value _.key _.dict
-    dict.put.#update
-    >chain
-    dict.put.#prepend
-    >chain
-    >drop
-  }
-  {
-    !_.                                ) Pop context - key doesn't exist, prepend
-    _.key !_.new.key
-    _.value !_.new.value
-    _.dict !_.new.next
-    _.new.
-  }
-  >choose >^
+  ) Main insert: call recursive insert, then make root black
+  _.key _.value _.dict >dict.put.#insert
+  !_.result
+  ) Make root black
+  _.result.key !_.root.key
+  _.result.value !_.root.value
+  False !_.root.color
+  _.result.left !_.root.left
+  _.result.right !_.root.right
+  _.root.
 } !dict.put
 
-) dict.remove: Remove key from dictionary
+) dict.remove: Remove key from dictionary (red-black tree delete)
 ) AL: [key, dict, ...] -> [new_dict, ...]
+) Implementation: Collect all entries except the removed key, rebuild tree
+) This is simpler than full RB delete and maintains all invariants
 {
   !_.dict !_.key
 
+  ) Helper: Collect all key-value pairs into a list (in-order traversal)
+  ) AL: [node, acc, ...] -> [list, ...]
   {
-    !_.node !_.key !_.acc
-    _.                                   ) Push context for choose
+    !_.acc !_.node
+    _.
     _.node >isNil
     {
-      !_.                                ) Pop context
-      _.acc                              ) Return accumulated list
-      Nil                                ) Stop chain
+      !_.
+      _.acc
+      Nil
     }
     {
-      !_.                                ) Pop context
-      _.                                 ) Push context for inner choose
-      _.node.key _.key >==
+      !_.
+      ) In-order: left, then node, then right
+      _.node.left _.acc >dict.remove.#collect
+      !_.left_acc
+      ) Add current node's key-value to accumulator
+      _.node.key !_.pair.key
+      _.node.value !_.pair.value
+      _.left_acc !_.pair.next
+      _.node.right _.pair. >dict.remove.#collect
+      Nil
+    }
+    >choose >^
+  } !dict.remove.#collect
+
+  ) Helper: Build tree from list of key-value pairs
+  ) AL: [list, tree, ...] -> [tree, ...]
+  {
+    !_.tree !_.list
+    _.
+    _.list >isNil
+    {
+      !_.
+      _.tree
+      Nil
+    }
+    {
+      !_.
+      _.list.key _.list.value _.tree >dict.put
+      _.list.next
+      dict.remove.#rebuild
+    }
+    >choose >^
+  } !dict.remove.#rebuild
+
+  ) Helper: Filter out the key to remove
+  ) AL: [list, key, acc, ...] -> [filtered, ...]
+  {
+    !_.acc !_.key !_.list
+    _.
+    _.list >isNil
+    {
+      !_.
+      _.acc
+      Nil
+    }
+    {
+      !_.
+      _.
+      _.list.key _.key >==
       {
-        !_.                              ) Pop context
-        ) Skip this entry (remove it)
-        _.acc _.key _.node.next          ) Continue with rest
-        dict.remove.#loop
+        !_.
+        ) Skip this entry
+        _.list.next _.key _.acc
+        dict.remove.#filter
       }
       {
-        !_.                              ) Pop context
+        !_.
         ) Keep this entry
-        _.node.key !_.copy.key
-        _.node.value !_.copy.value
-        _.acc !_.copy.next
-        _.copy. _.key _.node.next        ) Push updated acc and continue
-        dict.remove.#loop
+        _.list.key !_.kept.key
+        _.list.value !_.kept.value
+        _.acc !_.kept.next
+        _.list.next _.key _.kept.
+        dict.remove.#filter
       }
       >choose >^
     }
     >choose >^
-  } !dict.remove.#loop
+  } !dict.remove.#filter
 
-  Nil _.key _.dict
-  dict.remove.#loop
-  >chain
-  >drop
+  ) Main: collect all, filter out key, rebuild tree
+  _.dict Nil >dict.remove.#collect
+  >chain >drop
+  !_.all_pairs
+
+  _.all_pairs _.key Nil >dict.remove.#filter
+  >chain >drop
+  !_.filtered
+
+  _.filtered Nil >dict.remove.#rebuild
+  >chain >drop
 } !dict.remove
 
-) dict.size: Count entries in dictionary
+) dict.size: Count entries in dictionary (tree traversal)
 ) AL: [dict, ...] -> [count, ...]
 {
-  !_.dict
-
+  !_.node
+  _.
+  _.node >isNil
   {
-    !_.node !_.count
-    _.                                   ) Push context for choose
-    _.node >isNil
-    {
-      !_.                                ) Pop context
-      _.count                            ) Return count
-      Nil                                ) Stop chain
-    }
-    {
-      !_.                                ) Pop context
-      _.count 1 >+ _.node.next           ) Increment and continue
-      dict.size.#loop
-    }
-    >choose >^
-  } !dict.size.#loop
-
-  0 _.dict
-  dict.size.#loop
-  >chain
-  >drop
+    !_.
+    0
+  }
+  {
+    !_.
+    _.node.left >dict.size
+    _.node.right >dict.size
+    >+ 1 >+                              ) left_count + right_count + 1
+  }
+  >choose >^
 } !dict.size
 
-) dict.keys: Get list of all keys
+) dict.keys: Get list of all keys (in-order traversal)
 ) AL: [dict, ...] -> [list, ...]
 {
-  !_.dict
-
+  ) Helper: in-order traversal collecting keys
+  ) AL: [node, acc, ...] -> [list, ...]
   {
-    !_.node !_.acc
-    _.                                   ) Push context for choose
+    !_.acc !_.node
+    _.
     _.node >isNil
     {
-      !_.                                ) Pop context
-      _.acc                              ) Return accumulated list
-      Nil                                ) Stop chain
+      !_.
+      _.acc
     }
     {
-      !_.                                ) Pop context
-      _.node.key _.acc >list.cons        ) Cons key onto accumulator
-      _.node.next                        ) Continue
-      dict.keys.#loop
+      !_.
+      ) In-order: left, then node, then right
+      ) Process right first (will be at end of list)
+      _.node.right _.acc >dict.keys.#collect
+      !_.right_acc
+      ) Add current key
+      _.node.key _.right_acc >list.cons
+      !_.mid_acc
+      ) Process left (will be at start of list)
+      _.node.left _.mid_acc >dict.keys.#collect
     }
     >choose >^
-  } !dict.keys.#loop
+  } !dict.keys.#collect
 
-  Nil _.dict
-  dict.keys.#loop
-  >chain
-  >drop
+  !_.dict
+  _.dict Nil >dict.keys.#collect
 } !dict.keys
 
-) dict.values: Get list of all values
+) dict.values: Get list of all values (in-order traversal)
 ) AL: [dict, ...] -> [list, ...]
 {
-  !_.dict
-
+  ) Helper: in-order traversal collecting values
+  ) AL: [node, acc, ...] -> [list, ...]
   {
-    !_.node !_.acc
-    _.                                   ) Push context for choose
+    !_.acc !_.node
+    _.
     _.node >isNil
     {
-      !_.                                ) Pop context
-      _.acc                              ) Return accumulated list
-      Nil                                ) Stop chain
+      !_.
+      _.acc
     }
     {
-      !_.                                ) Pop context
-      _.node.value _.acc >list.cons      ) Cons value onto accumulator
-      _.node.next                        ) Continue
-      dict.values.#loop
+      !_.
+      ) In-order: left, then node, then right
+      ) Process right first (will be at end of list)
+      _.node.right _.acc >dict.values.#collect
+      !_.right_acc
+      ) Add current value
+      _.node.value _.right_acc >list.cons
+      !_.mid_acc
+      ) Process left (will be at start of list)
+      _.node.left _.mid_acc >dict.values.#collect
     }
     >choose >^
-  } !dict.values.#loop
+  } !dict.values.#collect
 
-  Nil _.dict
-  dict.values.#loop
-  >chain
-  >drop
+  !_.dict
+  _.dict Nil >dict.values.#collect
 } !dict.values
 
-) dict.fold: Fold over dictionary entries
+) dict.fold: Fold over dictionary entries (in-order traversal)
 ) AL: [folder, init, dict, ...] -> [result, ...]
 ) folder receives [key, value, acc, ...] and returns new acc
 {
-  !_.dict !_.init !_.folder
-
+  ) Helper: in-order fold with folder passed through
+  ) AL: [node, acc, folder, ...] -> [result, ...]
   {
-    !_.node !_.acc !_.folder           ) Pop node (top), acc, folder
-    _.                                 ) Push context for choose
+    !_.folder !_.acc !_.node
+    _.
     _.node >isNil
     {
-      !_.                              ) Pop context
-      _.acc                            ) Return accumulator
-      Nil                              ) Stop chain
+      !_.
+      _.acc
     }
     {
-      !_.                              ) Pop context
-      _.node.key _.node.value _.acc _.folder >^
-      !_.new_acc
-      _.folder _.new_acc _.node.next   ) Push [folder, new_acc, next]
-      dict.fold.#loop
+      !_.
+      ) In-order: left, then node, then right
+      ) First fold left subtree
+      _.node.left _.acc _.folder >dict.fold.#traverse
+      !_.left_acc
+      ) Apply folder to current node
+      _.node.key _.node.value _.left_acc _.folder >^
+      !_.mid_acc
+      ) Fold right subtree
+      _.node.right _.mid_acc _.folder >dict.fold.#traverse
     }
     >choose >^
-  } !dict.fold.#loop
+  } !dict.fold.#traverse
 
-  _.folder _.init _.dict               ) Push [folder, init, dict]
-  dict.fold.#loop
-  >chain
-  >drop
+  !_.dict !_.init !_.folder
+  _.dict _.init _.folder >dict.fold.#traverse
 } !dict.fold
 
