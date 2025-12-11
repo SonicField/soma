@@ -1,0 +1,143 @@
+) ============================================================================
+) Nested Fold Tests
+) Testing that fold operations work correctly when nested
+) These tests expose the bug where temp namespace gets clobbered
+) ============================================================================
+
+) ==================== Nested list.fold ====================
+
+) TEST: Nested list.fold - sum of sums
+) Outer fold iterates over list of lists
+) Inner fold sums each inner list
+) If bug exists: inner fold clobbers outer's folder
+) EXPECT_AL: [True]
+
+) Build lists: [2, 1] and [4, 3]
+1 Nil >list.cons 2 >swap >list.cons !list1
+3 Nil >list.cons 4 >swap >list.cons !list2
+
+) Build list of lists: [list2, list1]
+list1 Nil >list.cons list2 >swap >list.cons !list_of_lists
+
+) Inner folder: sum elements [current, acc] -> current + acc
+{ !_.cur !_.acc _.cur _.acc >+ } !inner_sum
+
+) Outer folder: [inner_list, acc] -> (sum of inner_list) + acc
+{
+  !_.inner !_.acc
+  inner_sum 0 _.inner >list.fold
+  _.acc >+
+} !outer_sum
+
+) Sum all: (4+3) + (2+1) = 7 + 3 = 10
+outer_sum 0 list_of_lists >list.fold
+10 >==
+
+) ==================== Nested dict.fold ====================
+
+) TEST: Nested dict.fold - sum values of dict of dicts
+) EXPECT_AL: [True]
+
+) Build inner dicts
+(a) 1 >dict.new >dict.put
+(b) 2 >rot >dict.put
+!inner_dict1                        ) {a: 1, b: 2} sum=3
+
+(x) 10 >dict.new >dict.put
+(y) 20 >rot >dict.put
+!inner_dict2                        ) {x: 10, y: 20} sum=30
+
+) Build outer dict mapping to inner dicts
+(first) inner_dict1 >dict.new >dict.put
+(second) inner_dict2 >rot >dict.put
+!outer_dict
+
+) Inner folder: [key, value, acc] -> value + acc
+{ !_.acc !_.val !_.key _.val _.acc >+ } !inner_sum_dict
+
+) Outer folder: [key, inner_dict, acc] -> (sum inner dict) + acc
+{
+  !_.acc !_.inner !_.key
+  inner_sum_dict 0 _.inner >dict.fold
+  _.acc >+
+} !outer_sum_dict
+
+) Sum all: 3 + 30 = 33
+outer_sum_dict 0 outer_dict >dict.fold
+33 >==
+
+) ==================== Cross-nested: dict.fold using list.fold ====================
+
+) TEST: dict.fold where values are lists, folder sums each list
+) EXPECT_AL: [True]
+
+) Build lists
+1 Nil >list.cons 2 >swap >list.cons 3 >swap >list.cons !list_a   ) [3, 2, 1] sum=6
+10 Nil >list.cons 20 >swap >list.cons !list_b                     ) [20, 10] sum=30
+
+) Build dict mapping to lists
+(a) list_a >dict.new >dict.put
+(b) list_b >rot >dict.put
+!dict_of_lists
+
+) List folder: [current, acc] -> current + acc
+{ !_.cur !_.acc _.cur _.acc >+ } !list_summer
+
+) Dict folder: [key, list_value, acc] -> (sum list) + acc
+{
+  !_.acc !_.list_val !_.key
+  list_summer 0 _.list_val >list.fold
+  _.acc >+
+} !dict_list_folder
+
+) Sum all: 6 + 30 = 36
+dict_list_folder 0 dict_of_lists >dict.fold
+36 >==
+
+) ==================== Cross-nested: list.fold using dict.fold ====================
+
+) TEST: list.fold where elements are dicts, folder sums each dict's values
+) EXPECT_AL: [True]
+
+) Build dicts
+(a) 1 >dict.new >dict.put
+(b) 2 >rot >dict.put
+!d1                                 ) {a: 1, b: 2} sum=3
+
+(x) 100 >dict.new >dict.put
+!d2                                 ) {x: 100} sum=100
+
+) Build list of dicts: [d2, d1]
+d1 Nil >list.cons d2 >swap >list.cons !list_of_dicts
+
+) Dict folder: [key, value, acc] -> value + acc
+{ !_.acc !_.val !_.key _.val _.acc >+ } !dict_summer
+
+) List folder: [dict, acc] -> (sum dict values) + acc
+{
+  !_.dict !_.acc
+  dict_summer 0 _.dict >dict.fold
+  _.acc >+
+} !list_dict_folder
+
+) Sum all: 100 + 3 = 103
+list_dict_folder 0 list_of_dicts >list.fold
+103 >==
+
+) ==================== Simple fold still works ====================
+
+) TEST: Simple list.fold still works (regression check)
+) EXPECT_AL: [True]
+1 Nil >list.cons 2 >swap >list.cons 3 >swap >list.cons !simple_list
+{ !_.cur !_.acc _.cur _.acc >+ } 0 simple_list >list.fold
+6 >==
+
+) TEST: Simple dict.fold still works (regression check)
+) EXPECT_AL: [True]
+(a) 1 >dict.new >dict.put
+(b) 2 >rot >dict.put
+(c) 3 >rot >dict.put
+!simple_dict
+{ !_.acc !_.val !_.key _.val _.acc >+ } 0 simple_dict >dict.fold
+6 >==
+

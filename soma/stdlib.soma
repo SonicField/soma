@@ -1,6 +1,54 @@
 ) SOMA Standard Library
 ) Derived operations built from FFI primitives
 
+) ==================== Coding Principles ====================
+)
+) These principles apply specifically to stdlib code, where robustness
+) and composability are critical.
+)
+) 1. NO TEMP NAMESPACE FOR PERSISTENT STATE
+)    Never store state in the temp namespace that must survive nested calls.
+)    If a function's folder/callback might call the same function recursively,
+)    the temp storage will be clobbered. Instead, pass state through the
+)    iteration using context-passing (include it in the AL for each iteration).
+)
+)    BAD:  _.folder !temp.fold_fn ... temp.fold_fn >^
+)    GOOD: Pass folder through: _.folder _.acc _.list then pop !_.list !_.acc !_.folder
+)
+) 2. PRIVATE HELPER NAMING: x.#y
+)    Internal helper blocks local to a package use the # prefix convention.
+)    This signals "private/internal" and avoids polluting the public namespace.
+)
+)    Example: list.fold.#loop, dict.put.#update, dict.put.#prepend
+)
+) 3. CONTEXT-PASSING FOR CHOOSE BRANCHES
+)    Blocks inside choose branches cannot access the outer Register directly.
+)    Push the context reference before choose, then pop it inside each branch:
+)
+)    _.                    ) Push context reference
+)    <condition>
+)    { !_. _.outer_var ... } ) Pop context, access outer variables
+)    { !_. _.other_var ... }
+)    >choose >^
+)
+) 4. DOCUMENT AL SIGNATURES
+)    Every public function must document its stack effect:
+)    ) AL: [arg1, arg2, container, ...] -> [result, ...]
+)    Remember: rightmost = top of stack (pushed last, popped first)
+)
+) 5. FUNCTIONAL/IMMUTABLE STYLE
+)    Mutating operations return new containers rather than modifying in place.
+)    This matches SOMA's functional nature and enables safe composition.
+)
+)    Example: dict.put returns a new dict, original is unchanged
+)
+) 6. CHAIN PATTERN FOR ITERATION
+)    Use >chain with Nil-terminated loops for iteration. The loop block
+)    returns either [result, Nil] to stop or [state..., loop] to continue.
+)    This avoids deep recursion and enables clean iterative patterns.
+)
+) ==============================================================
+
 ) ==================== Boolean Logic ====================
 
 ) not: Boolean negation
@@ -315,10 +363,9 @@
 ) Processes from head to tail (left fold)
 {
   !_.list !_.init !_.folder           ) Pop: list (top), init, folder
-  _.folder !temp.fold_fn              ) Store folder in temp
 
   {
-    !_.list !_.acc                    ) Pop list (top) and accumulator
+    !_.list !_.acc !_.folder          ) Pop list (top), acc, folder
     _.                                ) Push context for choose
     _.list >isNil                     ) Check if Nil
     {
@@ -328,15 +375,15 @@
     }
     {
       !_.                             ) Pop context
-      _.acc _.list.value temp.fold_fn >^  ) Apply folder: [current, acc] -> new_acc
+      _.acc _.list.value _.folder >^  ) Apply folder: [current, acc] -> new_acc
       !_.new_acc                      ) Save new accumulator
-      _.new_acc _.list.next           ) Push [new_acc, next] for iteration
+      _.folder _.new_acc _.list.next  ) Push [folder, new_acc, next] for iteration
       list.fold.#loop                 ) Continue
     }
     >choose >^
   } !list.fold.#loop
 
-  _.init _.list                       ) Push [init, list]
+  _.folder _.init _.list              ) Push [folder, init, list]
   list.fold.#loop
   >chain
   >drop
@@ -485,7 +532,7 @@
     _.node >isNil
     {
       !_.                                ) Pop context
-      (Key not found in dictionary) >debug.error
+      Nil.value                          ) Key not found - error via Nil dereference
     }
     {
       !_.                                ) Pop context
@@ -774,28 +821,27 @@
 ) folder receives [key, value, acc, ...] and returns new acc
 {
   !_.dict !_.init !_.folder
-  _.folder !temp.dict_fold_fn
 
   {
-    !_.node !_.acc
-    _.                                   ) Push context for choose
+    !_.node !_.acc !_.folder           ) Pop node (top), acc, folder
+    _.                                 ) Push context for choose
     _.node >isNil
     {
-      !_.                                ) Pop context
-      _.acc                              ) Return accumulator
-      Nil                                ) Stop chain
+      !_.                              ) Pop context
+      _.acc                            ) Return accumulator
+      Nil                              ) Stop chain
     }
     {
-      !_.                                ) Pop context
-      _.node.key _.node.value _.acc temp.dict_fold_fn >^
+      !_.                              ) Pop context
+      _.node.key _.node.value _.acc _.folder >^
       !_.new_acc
-      _.new_acc _.node.next              ) Continue with new accumulator
+      _.folder _.new_acc _.node.next   ) Push [folder, new_acc, next]
       dict.fold.#loop
     }
     >choose >^
   } !dict.fold.#loop
 
-  _.init _.dict
+  _.folder _.init _.dict               ) Push [folder, init, dict]
   dict.fold.#loop
   >chain
   >drop
