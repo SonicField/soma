@@ -1,0 +1,181 @@
+(python) >use (markdown) >use
+>md.start
+
+(Zero-Code: The Anti-Vibe-Coding Manifesto) >md.h1
+
+(Why specification + falsifiability beats "just prompt it") >md.b >md.p
+
+>md.hr
+
+("Vibe coding is like vibe piloting a jet liner; it works till you hit the ground.") >md.i >md.q
+
+>md.hr
+
+(Why Vibe Coding Fails) >md.h2
+
+(Vibe coding feels productive. Code appears. Features materialise. The demo works. Ship it.) >md.p
+
+(Then reality intrudes. Edge cases. Integration failures. Behaviour that "seemed right" but wasn't.) >md.p
+
+(Two root causes:) >md.p
+
+(Underspecification) >md.b (: A vibe is not a specification. "Make it better" contains no falsifiable criteria. Without falsifiable acceptance criteria, there is no definition of success. The AI generates ) >md.t (something) >md.i (. The human accepts it because they cannot articulate why they shouldn't.) >md.t >md.p
+
+(Epistemic Drift) >md.b (: All intelligence-based systems lose coherence over time. Context degrades. Assumptions compound. Without periodic re-grounding against falsifiable criteria, the AI's model of "what we're building" drifts from the human's intent. Both parties end up confident about the wrong thing.) >md.t >md.p
+
+>md.hr
+
+(The Roles) >md.h2
+
+(Role) (Does) (Does Not)
+>md.table.header
+(Engineer (Human\29\) >md.b (Specifies requirements, defines acceptance criteria, validates alignment, final sign-off) (Write implementation code, rubber-stamp without evidence)
+>md.table.row
+(Machinist (AI\29\) >md.b (Clarifies requirements, proposes falsifiers, implements, reports honestly, flags concerns) (Decide what to build, declare "done" unilaterally, hide problems)
+>md.table.row
+>md.table
+
+(The contract) >md.b (: Neither party trusts assertions. Both parties trust evidence.) >md.t >md.p
+
+>md.hr
+
+(The Workflow) >md.h2
+
+(Phase 1: Specification) >md.h3
+
+(Engineer leads) >md.i >md.p
+
+(Define what must be built and what would prove it wrong.) >md.p
+
+(## Requirement)
+([What must exist])
+()
+(## Acceptance Criteria)
+(- [ ] [Falsifiable condition 1])
+(- [ ] [Falsifiable condition 2])
+()
+(## Out of Scope)
+([What this is NOT])
+(markdown) >md.code
+
+(Gate) >md.b (: Machinist restates requirements. Engineer confirms understanding.) >md.t >md.p
+
+(Phase 2: Falsification Design) >md.h3
+
+(Machinist proposes, Engineer approves) >md.i >md.p
+
+(Before any implementation: what tests would prove it wrong?) >md.p
+
+(Gate) >md.b (: Both parties agree on what "done" means.) >md.t >md.p
+
+(Phase 3: Decomposition) >md.h3
+
+(Machinist leads) >md.i >md.p
+
+(Break work into testable steps. ) (If you cannot write a test for a step, decompose further.) >md.b >md.t >md.p
+
+(Gate) >md.b (: Engineer acknowledges the plan.) >md.t >md.p
+
+(Phase 4: Implementation (TDD Loop\29\) >md.h3
+
+(Machinist executes, Engineer reviews at checkpoints) >md.i >md.p
+
+(For each step:) >md.p
+
+(TEST FIRST    → Write test; it must fail)
+(IMPLEMENT     → Minimum code to pass)
+(VERIFY        → All tests must pass)
+(DOCUMENT      → Record what was learned)
+(CHECKPOINT    → Report to Engineer with evidence)
+Nil >md.code
+
+(Critical rule) >md.b (: Never proceed past a failing test.) >md.t >md.p
+
+(Gate) >md.b (: All steps complete, all tests passing.) >md.t >md.p
+
+(Phase 5: Integration) >md.h3
+
+(Machinist executes) >md.i >md.p
+
+(Run full test suite against original acceptance criteria.) >md.p
+
+(Gate) >md.b (: All acceptance tests pass.) >md.t >md.p
+
+(Phase 6: Sign-off) >md.h3
+
+(Both parties) >md.i >md.p
+
+(Engineer reviews evidence, not assertions. Explicit acceptance required.) >md.p
+
+>md.hr
+
+(The TDD Contract) >md.h2
+
+(No implementation without a failing test) >md.b ( — the test defines success) >md.oli
+(No more test than necessary to fail) >md.b ( — keep tests focused) >md.oli
+(No more code than necessary to pass) >md.b ( — build what is tested, no more) >md.oli
+>md.ol
+
+(TDD prevents drift: the growing test suite is evidence, not assertion. At any checkpoint, the Machinist demonstrates the state of the system.) >md.p
+
+>md.hr
+
+(Communication) >md.h2
+
+(Clarification request (Machinist → Engineer\29\:) >md.b >md.p
+
+(State what is ambiguous)
+(Propose interpretations)
+(Wait for decision. Do not guess.)
+>md.ul
+
+(Checkpoint report (Machinist → Engineer\29\:) >md.b >md.p
+
+(Steps completed)
+(Test results (evidence, not claims\29\)
+(Concerns or blockers)
+>md.ul
+
+(The Machinist's duty) >md.b (: Flag contradictions, infeasibilities, ambiguities, and risks. Flagging is honesty, not failure.) >md.t >md.p
+
+>md.hr
+
+(Anti-Patterns) >md.h2
+
+(Anti-Pattern) (Why It Fails) (Prevention)
+>md.table.header
+(Vibe specification) (No falsifiable criteria) (Require acceptance criteria first)
+>md.table.row
+(Rubber stamp) (Allows drift) (Require evidence review)
+>md.table.row
+(Confident assertion) ("It works" ≠ evidence) (Require test output)
+>md.table.row
+(Assumption cascade) (Misalignments compound) (Flag and wait)
+>md.table.row
+(Skipped test) (Test fits code, not requirement) (Test must fail first)
+>md.table.row
+(Monolithic step) (Errors hide) (Decompose until testable)
+>md.table.row
+(Silent blocker) (Workarounds accumulate) (Duty to flag)
+>md.table.row
+>md.table
+
+>md.hr
+
+(The Promise) >md.h2
+
+(The AI is thousands of times faster at writing code. Speed without direction is just faster failure. Zero-Code harnesses the speed while the human provides direction.) >md.p
+
+(Falsifiability replaces trust)
+(TDD maintains coherence)
+(Respect flows both ways)
+(Problems surface early)
+>md.ul
+
+(No vibes. Just evidence.) >md.p
+
+>md.hr
+
+(Prove you understand the problem by defining how you would falsify the solution, then build the solution, then record what you learned.) >md.i >md.p
+
+(/data/users/alexturner/soma/docs/concepts/zero-code-manifesto.md) >md.render
