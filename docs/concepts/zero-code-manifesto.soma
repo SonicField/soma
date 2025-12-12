@@ -178,4 +178,4 @@ Nil >md.code
 
 (Prove you understand the problem by defining how you would falsify the solution, then build the solution, then record what you learned.) >md.i >md.p
 
-(/data/users/alexturner/soma/docs/concepts/zero-code-manifesto.md) >md.render
+>md.print

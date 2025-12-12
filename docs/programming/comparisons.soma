@@ -125,4 +125,4 @@
 
 (SOMA is a machine algebra\29\ It describes what machines do\29\ not what expressions mean\29\) >md.p
 
-(comparisons.md) >md.render
+>md.print

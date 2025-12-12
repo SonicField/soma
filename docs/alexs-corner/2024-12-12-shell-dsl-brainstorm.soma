@@ -1,0 +1,112 @@
+(python) >use (markdown) >use
+>md.start
+
+(# What If Shell Scripting Didn't Have to Be Terrible?) >md.h1
+
+(12 December 2024) >md.i >md.p
+
+(It started, as these things often do, with a small problem. I needed to verify that code snippets in our documentation actually had valid syntax. Surely a quick bash script would do the trick?) >md.p
+
+(Spoiler: bash is never "quick".) >md.p
+
+>md.hr
+
+(## The Rabbit Hole) >md.h2
+
+(So there I was, thinking about how to extract code blocks from rendered markdown, check their syntax with the appropriate parser, and report failures. Standard stuff. But then I started wondering: why is this so painful in bash? And more importantly - could SOMA do it better?) >md.p
+
+(You see, we've already built a markdown DSL for SOMA. When you write ) ((markdown\29\ >use) >md.c (, SOMA transforms into a language where the natural idioms ) (*are*) >md.i ( document authoring. The stack accumulation, the formatters draining to Void - it's not "SOMA plus markdown", it's "SOMA ) (as) >md.i ( markdown".) >md.t >md.p
+
+(So what if we did the same for shell scripting?) >md.p
+
+>md.hr
+
+(## Why Bash Is Bad \29\A Partial List\29\) >md.h2
+
+(I've been programming for 45 years, so I've had plenty of time to catalogue bash's sins:) >md.p
+
+(Argument processing) >md.b ( - Positional ) ($1 $2) >md.c (, quoting hell, everything is strings) >md.t >md.uli
+(Pipelining) >md.b ( - Actually OK, until you need error handling) >md.t >md.uli
+(Output filtering) >md.b ( - Requires bolting on awk/sed, which are entirely separate languages) >md.t >md.uli
+(Return codes) >md.b ( - The magic ) ($?) >md.c ( variable, lost the moment you run another command) >md.t >md.uli
+(Task management) >md.b ( - Subshell scoping is a nightmare. What variables survive where? Nobody knows.) >md.t >md.uli
+>md.ul
+
+(And don't get me started on ) (exec) >md.c (. It's about as intuitive as the British tax system.) >md.t >md.p
+
+(The root cause? ) (Implicit state) >md.b ( and ) (stringly-typed everything) >md.b (. SOMA's explicitness - stack visible, register named, types exist - directly addresses this.) >md.t >md.p
+
+>md.hr
+
+(## The Core Concepts) >md.h2
+
+(After some brainstorming \29\and a helpful sanity check from Claude\29\, we settled on 10 core concepts for a shell DSL. Any more and we're building a GPL, not a DSL:) >md.p
+
+(Pipelining) >md.b ( - The Unix philosophy. Stack model maps perfectly.) >md.t >md.oli
+(Output filtering) >md.b ( - THE pain point. Native ) (>lines) >md.c (, ) (>filter) >md.c (, ) (>map) >md.c (.) >md.t >md.oli
+(Return codes) >md.b ( - Explicit on stack, not hidden in ) ($?) >md.c (.) >md.t >md.oli
+(Argument processing) >md.b ( - AL draining pattern from the md DSL.) >md.t >md.oli
+(Environment/context) >md.b ( - Store maps naturally to env vars.) >md.t >md.oli
+(String interpolation) >md.b ( - Make substitution explicit, no quoting arcana.) >md.t >md.oli
+(Field/record processing) >md.b ( - Awk's ) (-F) >md.c ( but not terrible.) >md.t >md.oli
+(Task management) >md.b ( - Process spawning, backgrounding. Layer later.) >md.t >md.oli
+(Path manipulation) >md.b ( - dirname/basename/join. Common enough to warrant primitives.) >md.t >md.oli
+(Parallel execution) >md.b ( - The ) (xargs -P) >md.c ( pattern. Increasingly essential.) >md.t >md.oli
+>md.ol
+
+>md.hr
+
+(## What About JSON?) >md.h2
+
+(Claude suggested native JSON support. I pushed back.) >md.p
+
+(JSON is the second-worst option for everything. It's the lowest common denominator for network interchange - verbose, no comments, no trailing commas, poor for streaming, poor for config, poor for human authoring. Its ubiquity is a symptom of "nothing else is universal", not a sign that it's actually good.) >md.p
+
+(The right answer isn't "handle JSON natively". It's:) >md.p
+
+(Have such good text processing that structured formats are just text you parse when needed) >md.uli
+(Provide ) (json.parse) >md.c ( as an optional extension \29\replaces jq\29\) >md.uli
+(Provide a ) ((json\29\ >use) >md.c ( DSL for emission, like the md DSL) >md.uli
+>md.ul
+
+(Interop, not foundation. Same pattern works for YAML, TOML, CSV - they're all just optional extensions.) >md.p
+
+>md.hr
+
+(## The Data::Dumper Insight) >md.h2
+
+(This led to something interesting. Remember Perl's Data::Dumper? It serialises data structures as ) (Perl code) >md.i ( that reconstructs them when eval'd. The output IS the language.) >md.t >md.p
+
+(Why have a separate serialisation format when your language's literal syntax can BE the format?) >md.p
+
+(>soma.dump) >md.c ( outputs SOMA code that rebuilds any structure) >md.uli
+(Config files are just SOMA) >md.uli
+(Debug output is copy-pasteable back into SOMA) >md.uli
+(No separate data format to learn) >md.uli
+>md.ul
+
+(Perl got this. Lisp got this with s-expressions. JSON is what happens when you forget this lesson.) >md.p
+
+>md.hr
+
+(## SOMA as Translation Layer) >md.h2
+
+(And then the really interesting bit emerged.) >md.p
+
+(If you have parsers \29\JSON\2D\\3E\SOMA, YAML\2D\\3E\SOMA, TOML\2D\\3E\SOMA\29\ and emitters \29\SOMA\2D\\3E\JSON, SOMA\2D\\3E\YAML, SOMA\2D\\3E\SOMA\29\, then SOMA becomes the ) (universal pivot format) >md.b (. Like LLVM IR for data formats. Like Pandoc's internal AST.) >md.t >md.p
+
+(Any-to-any translation is just: source \2D\\3E\ SOMA \2D\\3E\ target.) >md.p
+
+(And because SOMA is a ) (language) >md.i (, not just a format, you can ) (transform) >md.i ( during translation. Not transcoding - translation with transformation.) >md.t >md.p
+
+>md.hr
+
+(## Where Next?) >md.h2
+
+(This started as "verify code blocks in docs" and ended at "universal data transformation language". Welcome to my brain, I suppose.) >md.p
+
+(The practical next step is still that bash script for doc verification. But now we know where it ) (could) >md.i ( go. Phase 0 solves the immediate problem. Later phases make it elegant.) >md.t >md.p
+
+(What do you think? Is there something here, or have I disappeared down another rabbit hole? Let me know in the comments.) >md.p
+
+>md.print

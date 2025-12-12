@@ -372,6 +372,11 @@ Complete reference of SOMA token categories:
 
 The lexer raises errors for:
 
+- **Unterminated strings**: `(hello` (missing `)`)
+- **Invalid escapes**: (\g\)Invalid modifier targetsNil
+  - >(foo)
+  - !{...} — cannot store to block
+  - >42 — cannot execute number
 - **Illegal numeric forms**: `23a`, `42-x`
 - **Unexpected characters**: Any malformed token sequence
 

@@ -1,0 +1,91 @@
+(python) >use (markdown) >use
+>md.start
+
+(# Alex's Corner: Style Guide) >md.h1
+
+(This style guide captures my personal voice for blog posts and technical writing. It's here so Claude \29\or future me\29\ can help draft posts that actually sound like me.) >md.p
+
+>md.hr
+
+(## Personal Voice) >md.h2
+
+(Use she/her pronouns when referring to me) >md.uli
+(British English spelling: colour, centre, organise, analyse) >md.uli
+(Confident on technical topics, but not arrogant) >md.uli
+(Friendly and approachable - we're having a conversation, not delivering a lecture) >md.uli
+>md.ul
+
+>md.hr
+
+(## Language and Tone) >md.h2
+
+(### Active and Collaborative) >md.h3
+
+(Use active voice: "we will", "let's", "our goal is") >md.uli
+(Prefer collaborative language: "we", "us", "shall we" rather than singular directives) >md.uli
+(Rhetorical questions sparingly to engage: "don't you think?", "isn't it?") >md.uli
+>md.ul
+
+(### Thoughtful Qualification) >md.h3
+
+(It's fine to use "I think", "perhaps", "might", "could" - these show thoughtful consideration, not uncertainty.) >md.p
+
+(Frame suggestions invitingly: "We might consider..." rather than "Do this") >md.uli
+(Use "sort of", "kind of", "really", "quite" to add nuance) >md.uli
+(Soften requests with "would you mind", "could we", "please" where natural) >md.uli
+>md.ul
+
+(### Natural Speech Patterns) >md.h3
+
+(Don't over-edit into stiffness. If I'd say "just wanted to mention" rather than "I mention", use it.) >md.p
+
+(Conversational connectors are fine: "So,", "Well,", "Now," to start sentences) >md.uli
+(Be a bit more verbose if it makes content more engaging and clear) >md.uli
+(Express enthusiasm, concern, or frustration appropriately) >md.uli
+(Use intensifiers naturally: "really important", "absolutely crucial", "so helpful") >md.uli
+>md.ul
+
+>md.hr
+
+(## Technical Writing) >md.h2
+
+(### Explaining Concepts) >md.h3
+
+(Use metaphors and analogies - draw from everyday life, literature, philosophy) >md.uli
+(Explain the "why" and "how", not just the "what") >md.uli
+(Set context before diving into technical details) >md.uli
+(Include code snippets that demonstrate ideas in action) >md.uli
+>md.ul
+
+(### Structure) >md.h3
+
+(Use headings and subheadings to organise content) >md.uli
+(Break up text - bullet points and numbered lists for complex information) >md.uli
+(Include links to relevant resources) >md.uli
+(Use ) (**bold**) >md.c ( for emphasis,) ( ) (*italics*) >md.c ( for nuance) >md.t >md.uli
+>md.ul
+
+>md.hr
+
+(## Formatting Preferences) >md.h2
+
+(Oxford commas in lists) >md.uli
+(Spaced hyphens \29\ - \29\ rather than em-dashes for readability) >md.uli
+(Backticks for inline code, indented blocks for longer snippets) >md.uli
+(Emojis sparingly - a touch of personality, not decoration) >md.uli
+>md.ul
+
+>md.hr
+
+(## The Goal) >md.h2
+
+(The best posts are those that:) >md.p
+
+(Inform - share something genuinely useful) >md.uli
+(Inspire - show why it matters) >md.uli
+(Invite collaboration - make space for questions and alternative viewpoints) >md.uli
+>md.ul
+
+(All whilst remaining true to my authentic voice. Professional, yes. Robotic, no.) >md.p
+
+>md.print

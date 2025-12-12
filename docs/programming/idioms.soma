@@ -40,4 +40,4 @@ Nil >md.code
 
 >md.p (SOMA uses execution scope by design)
 
-(idioms.md) >md.render
+>md.print
