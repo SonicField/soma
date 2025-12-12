@@ -1,0 +1,425 @@
+(python) >use (markdown) >use
+>md.start
+
+(# 11. Standard Library: Containers) >md.h1
+
+(Container data structures and their operations: linked lists, dictionaries, and AL draining utilities.) >md.p
+
+>md.hr
+
+(## Coding Principles) >md.h2
+
+(These principles apply specifically to stdlib code, where robustness and composability are critical.) >md.p
+
+(1. No Temp Namespace for Persistent State) >md.b >md.p
+
+(Never store state in the temp namespace that must survive nested calls. If a function's folder/callback might call the same function recursively, the temp storage will be clobbered. Instead, pass state through the iteration using context-passing.) >md.p
+
+(\29\ BAD:  _.folder !temp.fold_fn ... temp.fold_fn >^
+\29\ GOOD: Pass folder through: _.folder _.acc _.list then pop) (soma) >md.code
+
+(2. Private Helper Naming: x.#y) >md.b >md.p
+
+(Internal helper blocks local to a package use the ) (#) >md.c ( prefix convention. This signals "private/internal" and avoids polluting the public namespace. Example: ) (list.fold.#loop) >md.c (, ) (dict.put.#fixup) >md.c (.) >md.t >md.p
+
+(3. Context-Passing for Choose Branches) >md.b >md.p
+
+(Blocks inside choose branches cannot access the outer Register directly. Push the context reference before choose, then pop it inside each branch:) >md.p
+
+(\29\ Push context reference
+_.
+<condition>
+\29\ Pop context, access outer variables
+{ !_. _.outer_var ... }
+{ !_. _.other_var ... }
+>choose >^) (soma) >md.code
+
+(4. Functional/Immutable Style) >md.b >md.p
+
+(Mutating operations return new containers rather than modifying in place. This matches SOMA's functional nature and enables safe composition.) >md.p
+
+>md.hr
+
+(## Linked Lists) >md.h2
+
+(Linked lists using CellRefs and context-passing style. Empty list is ) (Nil) >md.c (, nodes have ) (.value) >md.c ( and ) (.next) >md.c ( fields.) >md.t >md.p
+
+(### >list.new) >md.h3
+
+(Signature:) >md.b ( ) (([...] -> [Nil, ...]\29\) >md.c >md.t >md.p
+
+(Creates an empty list. An empty list is simply ) (Nil) >md.c (.) >md.t >md.p
+
+(Definition:) >md.b >md.p
+
+({ Nil } !list.new) (soma) >md.code
+
+(Example:) >md.b >md.p
+
+(>list.new    ; AL: [Nil]) (soma) >md.code
+
+>md.hr
+
+(### >list.cons) >md.h3
+
+(Signature:) >md.b ( ) (([value, list, ...] -> [new_node, ...]\29\) >md.c >md.t >md.p
+
+(Prepends a value to a list, creating a new node. The new node's ) (.value) >md.c ( is the given value, and ) (.next) >md.c ( points to the original list.) >md.t >md.p
+
+(Definition:) >md.b >md.p
+
+({
+  !_.list !_.value
+  _.value !_.node.value
+  _.list !_.node.next
+  _.node.
+} !list.cons) (soma) >md.code
+
+(Example:) >md.b >md.p
+
+((a\29\ Nil >list.cons          ; AL: [node] where node.value=(a\29\, node.next=Nil
+(b\29\ >list.cons               ; AL: [node'] where node'.value=(b\29\, node'.next=node) (soma) >md.code
+
+>md.hr
+
+(### >list.from_al) >md.h3
+
+(Signature:) >md.b ( ) (([Void, items..., ...] -> [list, ...]\29\) >md.c >md.t >md.p
+
+(Drains AL items until Void, building a linked list. Preserves order: ) (Void (a\29\ (b\29\ (c\29\) >md.c ( becomes list ) ((a,b,c\29\) >md.c (.) >md.t >md.p
+
+(Definition:) >md.b >md.p
+
+({
+  >list.new { !_.persistent !_.current _.current _.persistent >list.cons } >al.drain
+} !list.from_al) (soma) >md.code
+
+(Example:) >md.b >md.p
+
+(Void (first\29\ (second\29\ (third\29\ >list.from_al
+; AL: [list] containing (first\29\, (second\29\, (third\29\) (soma) >md.code
+
+>md.hr
+
+(### >list.to_al) >md.h3
+
+(Signature:) >md.b ( ) (([list, ...] -> [items..., ...]\29\) >md.c >md.t >md.p
+
+(Pushes list items onto AL. Preserves order: list ) ((a,b,c\29\) >md.c ( becomes AL ) ([(a\29\, (b\29\, (c\29\]) >md.c (.) >md.t >md.p
+
+(Example:) >md.b >md.p
+
+(my_list >list.to_al
+; Each item now on AL, head first) (soma) >md.code
+
+>md.hr
+
+(### >list.reverse) >md.h3
+
+(Signature:) >md.b ( ) (([list, ...] -> [reversed_list, ...]\29\) >md.c >md.t >md.p
+
+(Reverses a list by copying. Creates a new list with elements in reverse order.) >md.p
+
+(Example:) >md.b >md.p
+
+(Void (a\29\ (b\29\ (c\29\ >list.from_al >list.reverse
+; AL: [list] containing (c\29\, (b\29\, (a\29\) (soma) >md.code
+
+>md.hr
+
+(### >list.map) >md.h3
+
+(Signature:) >md.b ( ) (([transform_block, list, ...] -> [mapped_list, ...]\29\) >md.c >md.t >md.p
+
+(Applies a transform block to each element, returning a new list. The transform block receives ) ([value, ...]) >md.c ( and should leave ) ([new_value, ...]) >md.c (. Order is preserved.) >md.t >md.p
+
+(Example:) >md.b >md.p
+
+({ 2 >* } my_list >list.map
+; Each element doubled) (soma) >md.code
+
+>md.hr
+
+(### >list.length) >md.h3
+
+(Signature:) >md.b ( ) (([list, ...] -> [count, ...]\29\) >md.c >md.t >md.p
+
+(Counts elements in the list by traversing until Nil.) >md.p
+
+(Example:) >md.b >md.p
+
+(Void (a\29\ (b\29\ (c\29\ >list.from_al >list.length
+; AL: [3]) (soma) >md.code
+
+>md.hr
+
+(### >list.fold) >md.h3
+
+(Signature:) >md.b ( ) (([folder, init, list, ...] -> [result, ...]\29\) >md.c >md.t >md.p
+
+(Reduces a list with an accumulator. The folder block receives ) ([current, acc, ...]) >md.c ( and returns the new accumulator. Processes from head to tail (left fold\29\.) >md.t >md.p
+
+(Example:) >md.b >md.p
+
+({ >+ } 0 my_number_list >list.fold
+; Sum of all elements) (soma) >md.code
+
+>md.hr
+
+(### >list.append) >md.h3
+
+(Signature:) >md.b ( ) (([list1, list2, ...] -> [concatenated, ...]\29\) >md.c >md.t >md.p
+
+(Concatenates two lists. Result has list1 elements followed by list2 elements.) >md.p
+
+(Example:) >md.b >md.p
+
+(list_abc list_xyz >list.append
+; AL: [list] containing a,b,c,x,y,z) (soma) >md.code
+
+>md.hr
+
+(### >list.filter) >md.h3
+
+(Signature:) >md.b ( ) (([predicate, list, ...] -> [filtered, ...]\29\) >md.c >md.t >md.p
+
+(Keeps elements matching the predicate. The predicate receives ) ([value, ...]) >md.c ( and returns a boolean. Order is preserved.) >md.t >md.p
+
+(Example:) >md.b >md.p
+
+({ 0 >> } my_numbers >list.filter
+; Keep only positive numbers) (soma) >md.code
+
+>md.hr
+
+(## AL Draining) >md.h2
+
+(### >al.drain) >md.h3
+
+(Signature:) >md.b ( ) (([Void, item1, ..., itemN, persistent, action_block, ...] -> [result, ...]\29\) >md.c >md.t >md.p
+
+(Drains AL until Void, applying an action to each item. The action block receives ) ([current, persistent, ...]) >md.c ( and should return the new persistent value. This is the core state transformer: AL -> AL'.) >md.t >md.p
+
+(Example:) >md.b >md.p
+
+(Void (a\29\ (b\29\ (c\29\    \29\ Items to process
+Nil                   \29\ Initial accumulator
+{ !_.acc !_.item _.item _.acc >list.cons }
+>al.drain
+\29\ Builds a list from items) (soma) >md.code
+
+>md.hr
+
+(## Dictionaries) >md.h2
+
+(Key-value dictionary implemented as a Left-Leaning Red-Black (LLRB\29\ tree. Supports any key type that works with ) (><) >md.c ( and ) (>==) >md.c (.) >md.t >md.p
+
+(Red-Black Tree Invariants:) >md.b >md.p
+
+(Root is always black) >md.uli
+(No red node has a red child) >md.uli
+(All paths from root to leaves have the same black count) >md.uli
+(BST property: left.key < node.key < right.key) >md.uli
+>md.ul
+
+(Structure: ) (Nil) >md.c ( | node where node has ) (.key) >md.c (, ) (.value) >md.c (, ) (.color) >md.c ( (True=red, False=black\29\, ) (.left) >md.c (, ) (.right) >md.c (.) >md.t >md.p
+
+(### >dict.new) >md.h3
+
+(Signature:) >md.b ( ) (([...] -> [dict, ...]\29\) >md.c >md.t >md.p
+
+(Creates an empty dictionary. An empty dictionary is ) (Nil) >md.c (.) >md.t >md.p
+
+(Example:) >md.b >md.p
+
+(>dict.new    ; AL: [Nil]) (soma) >md.code
+
+>md.hr
+
+(### >dict.has) >md.h3
+
+(Signature:) >md.b ( ) (([key, dict, ...] -> [bool, ...]\29\) >md.c >md.t >md.p
+
+(Checks if a key exists in the dictionary. Returns ) (True) >md.c ( if found, ) (False) >md.c ( otherwise.) >md.t >md.p
+
+(Example:) >md.b >md.p
+
+((name\29\ my_dict >dict.has
+; AL: [True] if "name" key exists) (soma) >md.code
+
+>md.hr
+
+(### >dict.get) >md.h3
+
+(Signature:) >md.b ( ) (([key, dict, ...] -> [value, ...]\29\) >md.c >md.t >md.p
+
+(Gets value by key. ) (Errors if key not found) >md.b ( (attempts Nil dereference\29\.) >md.t >md.p
+
+(Example:) >md.b >md.p
+
+((name\29\ my_dict >dict.get
+; AL: [value] associated with "name") (soma) >md.code
+
+>md.hr
+
+(### >dict.get_or) >md.h3
+
+(Signature:) >md.b ( ) (([key, default, dict, ...] -> [value, ...]\29\) >md.c >md.t >md.p
+
+(Gets value by key, or returns default if not found. Safe alternative to ) (>dict.get) >md.c (.) >md.t >md.p
+
+(Example:) >md.b >md.p
+
+((name\29\ (unknown\29\ my_dict >dict.get_or
+; AL: [value] or (unknown\29\ if key missing) (soma) >md.code
+
+>md.hr
+
+(### >dict.put) >md.h3
+
+(Signature:) >md.b ( ) (([key, value, dict, ...] -> [new_dict, ...]\29\) >md.c >md.t >md.p
+
+(Inserts or updates a key-value pair. Returns a new dictionary; the original is unchanged. Uses LLRB tree insertion with automatic rebalancing to maintain invariants.) >md.p
+
+(Implementation notes:) >md.b ( New nodes are inserted as red. After insertion, three fixup cases are applied:) >md.t >md.p
+
+(Right child red, left child black: rotate left) >md.uli
+(Left child red, left-left grandchild red: rotate right) >md.uli
+(Both children red: flip colours) >md.uli
+>md.ul
+
+(The root is always made black after insertion.) >md.p
+
+(Example:) >md.b >md.p
+
+((name\29\ (Alice\29\ my_dict >dict.put
+; AL: [new_dict] with name=Alice) (soma) >md.code
+
+>md.hr
+
+(### >dict.remove) >md.h3
+
+(Signature:) >md.b ( ) (([key, dict, ...] -> [new_dict, ...]\29\) >md.c >md.t >md.p
+
+(Removes a key from the dictionary. Returns a new dictionary. Implementation collects all entries, filters out the key, and rebuilds the tree.) >md.p
+
+(Example:) >md.b >md.p
+
+((name\29\ my_dict >dict.remove
+; AL: [new_dict] without "name" key) (soma) >md.code
+
+>md.hr
+
+(### >dict.size) >md.h3
+
+(Signature:) >md.b ( ) (([dict, ...] -> [count, ...]\29\) >md.c >md.t >md.p
+
+(Counts entries in the dictionary via tree traversal.) >md.p
+
+(Example:) >md.b >md.p
+
+(my_dict >dict.size
+; AL: [n] where n is number of key-value pairs) (soma) >md.code
+
+>md.hr
+
+(### >dict.keys) >md.h3
+
+(Signature:) >md.b ( ) (([dict, ...] -> [list, ...]\29\) >md.c >md.t >md.p
+
+(Gets a list of all keys via in-order traversal. Keys are returned in sorted order.) >md.p
+
+(Example:) >md.b >md.p
+
+(my_dict >dict.keys
+; AL: [list of keys]) (soma) >md.code
+
+>md.hr
+
+(### >dict.values) >md.h3
+
+(Signature:) >md.b ( ) (([dict, ...] -> [list, ...]\29\) >md.c >md.t >md.p
+
+(Gets a list of all values via in-order traversal. Values are returned in key-sorted order.) >md.p
+
+(Example:) >md.b >md.p
+
+(my_dict >dict.values
+; AL: [list of values]) (soma) >md.code
+
+>md.hr
+
+(### >dict.fold) >md.h3
+
+(Signature:) >md.b ( ) (([folder, init, dict, ...] -> [result, ...]\29\) >md.c >md.t >md.p
+
+(Folds over dictionary entries via in-order traversal. The folder receives ) ([key, value, acc, ...]) >md.c ( and returns the new accumulator.) >md.t >md.p
+
+(Example:) >md.b >md.p
+
+({ !_.acc !_.val !_.key _.acc 1 >+ } 0 my_dict >dict.fold
+; Count entries (equivalent to >dict.size\29\) (soma) >md.code
+
+>md.hr
+
+(## Reference Table) >md.h2
+
+(Operation) (AL transformation) (Description)
+>md.table.header
+(>list.new) >md.c ([] -> [Nil]) (Create empty list)
+>md.table.row
+(>list.cons) >md.c ([val, list] -> [node]) (Prepend value)
+>md.table.row
+(>list.from_al) >md.c ([Void, items...] -> [list]) (Build list from AL)
+>md.table.row
+(>list.to_al) >md.c ([list] -> [items...]) (Push list items to AL)
+>md.table.row
+(>list.reverse) >md.c ([list] -> [reversed]) (Reverse list)
+>md.table.row
+(>list.map) >md.c ([fn, list] -> [mapped]) (Transform elements)
+>md.table.row
+(>list.length) >md.c ([list] -> [count]) (Count elements)
+>md.table.row
+(>list.fold) >md.c ([fn, init, list] -> [result]) (Reduce with accumulator)
+>md.table.row
+(>list.append) >md.c ([list1, list2] -> [concatenated]) (Concatenate lists)
+>md.table.row
+(>list.filter) >md.c ([pred, list] -> [filtered]) (Keep matching elements)
+>md.table.row
+(>al.drain) >md.c ([Void, items..., acc, fn] -> [result]) (Process AL items)
+>md.table.row
+(>dict.new) >md.c ([] -> [Nil]) (Create empty dict)
+>md.table.row
+(>dict.has) >md.c ([key, dict] -> [bool]) (Check key exists)
+>md.table.row
+(>dict.get) >md.c ([key, dict] -> [value]) (Get value (errors if missing\29\)
+>md.table.row
+(>dict.get_or) >md.c ([key, default, dict] -> [value]) (Get value or default)
+>md.table.row
+(>dict.put) >md.c ([key, value, dict] -> [new_dict]) (Insert/update entry)
+>md.table.row
+(>dict.remove) >md.c ([key, dict] -> [new_dict]) (Remove entry)
+>md.table.row
+(>dict.size) >md.c ([dict] -> [count]) (Count entries)
+>md.table.row
+(>dict.keys) >md.c ([dict] -> [list]) (Get all keys)
+>md.table.row
+(>dict.values) >md.c ([dict] -> [list]) (Get all values)
+>md.table.row
+(>dict.fold) >md.c ([fn, init, dict] -> [result]) (Fold over entries)
+>md.table.row
+>md.table
+
+>md.hr
+
+(## Summary) >md.h2
+
+(The container library provides two primary data structures:) >md.p
+
+(Linked lists) >md.b ( - Nil-terminated chains of nodes with ) (.value) >md.c ( and ) (.next) >md.c ( fields. Functional operations preserve immutability.) >md.t >md.uli
+(Dictionaries) >md.b ( - LLRB trees providing O(log n\29\ lookup, insertion, and deletion. Keys must support ) (><) >md.c ( and ) (>==) >md.c (.) >md.t >md.uli
+>md.ul
+
+(Both follow functional/immutable style: operations return new structures rather than modifying in place.) >md.p
+
+>md.print
