@@ -1,6 +1,6 @@
-# # What If Shell Scripting Didn't Have to Be Terrible?
+# What If Shell Scripting Didn't Have to Be Terrible?
 
-_12 December 2024_
+_12 December 2025_
 
 It started, as these things often do, with a small problem. I needed to verify that code snippets in our documentation actually had valid syntax. Surely a quick bash script would do the trick?
 
@@ -8,7 +8,7 @@ Spoiler: bash is never "quick".
 
 ---
 
-## ## The Rabbit Hole
+## The Rabbit Hole
 
 So there I was, thinking about how to extract code blocks from rendered markdown, check their syntax with the appropriate parser, and report failures. Standard stuff. But then I started wondering: why is this so painful in bash? And more importantly - could SOMA do it better?
 
@@ -18,7 +18,7 @@ So what if we did the same for shell scripting?
 
 ---
 
-## ## Why Bash Is Bad )A Partial List)
+## Why Bash Is Bad )A Partial List)
 
 I've been programming for 45 years, so I've had plenty of time to catalogue bash's sins:
 
@@ -34,7 +34,7 @@ The root cause? **Implicit state** and **stringly-typed everything**. SOMA's exp
 
 ---
 
-## ## The Core Concepts
+## The Core Concepts
 
 After some brainstorming )and a helpful sanity check from Claude), we settled on 10 core concepts for a shell DSL. Any more and we're building a GPL, not a DSL:
 
@@ -51,7 +51,7 @@ After some brainstorming )and a helpful sanity check from Claude), we settled on
 
 ---
 
-## ## What About JSON?
+## What About JSON?
 
 Claude suggested native JSON support. I pushed back.
 
@@ -67,7 +67,7 @@ Interop, not foundation. Same pattern works for YAML, TOML, CSV - they're all ju
 
 ---
 
-## ## The Data::Dumper Insight
+## The Data::Dumper Insight
 
 This led to something interesting. Remember Perl's Data::Dumper? It serialises data structures as _Perl code_ that reconstructs them when eval'd. The output IS the language.
 
@@ -82,7 +82,7 @@ Perl got this. Lisp got this with s-expressions. JSON is what happens when you f
 
 ---
 
-## ## SOMA as Translation Layer
+## SOMA as Translation Layer
 
 And then the really interesting bit emerged.
 
@@ -94,7 +94,7 @@ And because SOMA is a _language_, not just a format, you can _transform_ during 
 
 ---
 
-## ## Where Next?
+## Where Next?
 
 This started as "verify code blocks in docs" and ended at "universal data transformation language". Welcome to my brain, I suppose.
 

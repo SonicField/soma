@@ -1,9 +1,9 @@
 (python) >use (markdown) >use
 >md.start
 
-(# What If Shell Scripting Didn't Have to Be Terrible?) >md.h1
+(What If Shell Scripting Didn't Have to Be Terrible?) >md.h1
 
-(12 December 2024) >md.i >md.p
+(12 December 2025) >md.i >md.p
 
 (It started, as these things often do, with a small problem. I needed to verify that code snippets in our documentation actually had valid syntax. Surely a quick bash script would do the trick?) >md.p
 
@@ -11,7 +11,7 @@
 
 >md.hr
 
-(## The Rabbit Hole) >md.h2
+(The Rabbit Hole) >md.h2
 
 (So there I was, thinking about how to extract code blocks from rendered markdown, check their syntax with the appropriate parser, and report failures. Standard stuff. But then I started wondering: why is this so painful in bash? And more importantly - could SOMA do it better?) >md.p
 
@@ -21,7 +21,7 @@
 
 >md.hr
 
-(## Why Bash Is Bad \29\A Partial List\29\) >md.h2
+(Why Bash Is Bad \29\A Partial List\29\) >md.h2
 
 (I've been programming for 45 years, so I've had plenty of time to catalogue bash's sins:) >md.p
 
@@ -38,7 +38,7 @@
 
 >md.hr
 
-(## The Core Concepts) >md.h2
+(The Core Concepts) >md.h2
 
 (After some brainstorming \29\and a helpful sanity check from Claude\29\, we settled on 10 core concepts for a shell DSL. Any more and we're building a GPL, not a DSL:) >md.p
 
@@ -56,7 +56,7 @@
 
 >md.hr
 
-(## What About JSON?) >md.h2
+(What About JSON?) >md.h2
 
 (Claude suggested native JSON support. I pushed back.) >md.p
 
@@ -73,7 +73,7 @@
 
 >md.hr
 
-(## The Data::Dumper Insight) >md.h2
+(The Data::Dumper Insight) >md.h2
 
 (This led to something interesting. Remember Perl's Data::Dumper? It serialises data structures as ) (Perl code) >md.i ( that reconstructs them when eval'd. The output IS the language.) >md.t >md.p
 
@@ -89,7 +89,7 @@
 
 >md.hr
 
-(## SOMA as Translation Layer) >md.h2
+(SOMA as Translation Layer) >md.h2
 
 (And then the really interesting bit emerged.) >md.p
 
@@ -101,7 +101,7 @@
 
 >md.hr
 
-(## Where Next?) >md.h2
+(Where Next?) >md.h2
 
 (This started as "verify code blocks in docs" and ended at "universal data transformation language". Welcome to my brain, I suppose.) >md.p
 
