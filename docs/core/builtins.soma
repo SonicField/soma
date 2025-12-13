@@ -21,7 +21,7 @@
 
 (Example:) >md.b >md.p
 
-(5 3 >+    ; AL: [8]) (soma) >md.code
+(5 3 >+    \29\ AL: [8]) (soma) >md.code
 
 (Errors:) >md.b ( Fatal if AL has fewer than 2 values or if either value is not an integer.) >md.t >md.p
 
@@ -35,7 +35,7 @@
 
 (Example:) >md.b >md.p
 
-(10 3 >-   ; AL: [7]) (soma) >md.code
+(10 3 >-   \29\ AL: [7]) (soma) >md.code
 
 (Errors:) >md.b ( Fatal if AL has fewer than 2 values or if either value is not an integer.) >md.t >md.p
 
@@ -49,7 +49,7 @@
 
 (Example:) >md.b >md.p
 
-(4 5 >*    ; AL: [20]) (soma) >md.code
+(4 5 >*    \29\ AL: [20]) (soma) >md.code
 
 (Errors:) >md.b ( Fatal if AL has fewer than 2 values or if either value is not an integer.) >md.t >md.p
 
@@ -63,7 +63,7 @@
 
 (Example:) >md.b >md.p
 
-(10 3 >/   ; AL: [3]) (soma) >md.code
+(10 3 >/   \29\ AL: [3]) (soma) >md.code
 
 (Errors:) >md.b ( Fatal if AL has fewer than 2 values, if either value is not an integer, or if ) (b) >md.c ( is zero.) >md.t >md.p
 
@@ -81,8 +81,8 @@
 
 (Example:) >md.b >md.p
 
-(5 5 >==       ; AL: [True]
-"cat" "dog" >==   ; AL: [False]) (soma) >md.code
+(5 5 >==       \29\ AL: [True]
+"cat" "dog" >==   \29\ AL: [False]) (soma) >md.code
 
 (Errors:) >md.b ( Fatal if AL has fewer than 2 values or if types are incompatible for comparison.) >md.t >md.p
 
@@ -96,8 +96,8 @@
 
 (Example:) >md.b >md.p
 
-(3 5 ><        ; AL: [True]
-10 2 ><       ; AL: [False]) (soma) >md.code
+(3 5 ><        \29\ AL: [True]
+10 2 ><       \29\ AL: [False]) (soma) >md.code
 
 (Errors:) >md.b ( Fatal if AL has fewer than 2 values or if types are incompatible for comparison.) >md.t >md.p
 
@@ -111,8 +111,8 @@
 
 (Example:) >md.b >md.p
 
-(10 5 >>       ; AL: [True]
-3 7 >>        ; AL: [False]) (soma) >md.code
+(10 5 >>       \29\ AL: [True]
+3 7 >>        \29\ AL: [False]) (soma) >md.code
 
 (Errors:) >md.b ( Fatal if AL has fewer than 2 values or if types are incompatible for comparison.) >md.t >md.p
 
@@ -130,7 +130,7 @@
 
 (Example:) >md.b >md.p
 
-(7 >dup        ; AL: [7, 7]) (soma) >md.code
+(7 >dup        \29\ AL: [7, 7]) (soma) >md.code
 
 (Errors:) >md.b ( Fatal if AL is empty.) >md.t >md.p
 
@@ -144,7 +144,7 @@
 
 (Example:) >md.b >md.p
 
-(1 2 3 >drop   ; AL: [1, 2]) (soma) >md.code
+(1 2 3 >drop   \29\ AL: [1, 2]) (soma) >md.code
 
 (Errors:) >md.b ( Fatal if AL is empty.) >md.t >md.p
 
@@ -158,7 +158,7 @@
 
 (Example:) >md.b >md.p
 
-(1 2 >swap     ; AL: [2, 1]) (soma) >md.code
+(1 2 >swap     \29\ AL: [2, 1]) (soma) >md.code
 
 (Errors:) >md.b ( Fatal if AL has fewer than 2 values.) >md.t >md.p
 
@@ -172,7 +172,7 @@
 
 (Example:) >md.b >md.p
 
-(1 2 >over     ; AL: [1, 2, 1]) (soma) >md.code
+(1 2 >over     \29\ AL: [1, 2, 1]) (soma) >md.code
 
 (Errors:) >md.b ( Fatal if AL has fewer than 2 values.) >md.t >md.p
 
@@ -190,8 +190,8 @@
 
 (Example:) >md.b >md.p
 
-("Hello" >print   ; Output: Hello
-42 >print        ; Output: 42) (soma) >md.code
+("Hello" >print   \29\ Output: Hello
+42 >print        \29\ Output: 42) (soma) >md.code
 
 (Errors:) >md.b ( Fatal if AL is empty.) >md.t >md.p
 
@@ -217,21 +217,21 @@
 
 (Examples:) >md.b >md.p
 
-(; Select a value
-True 10 20 >choose      ; AL: [10]
-False 10 20 >choose     ; AL: [20]
+(\29\ Select a value
+True 10 20 >choose      \29\ AL: [10]
+False 10 20 >choose     \29\ AL: [20]
 
-; Select and execute a block
+\29\ Select and execute a block
 5 3 ><
   { (small\29\ >print }
   { (large\29\ >print }
->choose >^              ; Selects { (large\29\ >print }, then executes it
+>choose >^              \29\ Selects { (large\29\ >print }, then executes it
 
-; Common pattern: select block for loop continuation
+\29\ Common pattern: select block for loop continuation
 counter 10 ><
-  >block                ; Continue - return current block
-  Nil                   ; Stop
->choose                 ; AL: [block] or [Nil]) (soma) >md.code
+  >block                \29\ Continue - return current block
+  Nil                   \29\ Stop
+>choose                 \29\ AL: [block] or [Nil]) (soma) >md.code
 
 (Errors:) >md.b ( Fatal if AL has fewer than 3 values or if first value is not a Boolean.) >md.t >md.p
 
@@ -254,32 +254,32 @@ counter 10 ><
 
 (Examples:) >md.b >md.p
 
-(; Execute a block once
-{ 5 3 >+ } >chain       ; AL: [8]
+(\29\ Execute a block once
+{ 5 3 >+ } >chain       \29\ AL: [8]
 
-; Infinite loop \29\block returns itself\29\
+\29\ Infinite loop \29\block returns itself\29\
 {
   (tick\29\ >print
-  >block                ; Push self back to AL
-} >chain                ; Prints "tick" forever
+  >block                \29\ Push self back to AL
+} >chain                \29\ Prints "tick" forever
 
-; Conditional loop \29\using >choose\29\
+\29\ Conditional loop \29\using >choose\29\
 0 !counter
 {
   counter >toString >print
   counter >inc !counter
   counter 10 ><
-    >block              ; Continue: push self
-    Nil                 ; Stop: push Nil
+    >block              \29\ Continue: push self
+    Nil                 \29\ Stop: push Nil
   >choose
 } !loop
-loop >chain             ; Prints 0..9, then stops
+loop >chain             \29\ Prints 0..9, then stops
 
-; State machine
+\29\ State machine
 { (A\29\ >print state-b } !state-a
 { (B\29\ >print state-c } !state-b
 { (C\29\ >print Nil } !state-c
-state-a >chain          ; Prints "A", "B", "C", stops) (soma) >md.code
+state-a >chain          \29\ Prints "A", "B", "C", stops) (soma) >md.code
 
 (Errors:) >md.b ( None \29\stops cleanly on non-Block values\29\.) >md.t >md.p
 
@@ -302,24 +302,24 @@ state-a >chain          ; Prints "A", "B", "C", stops) (soma) >md.code
 
 (Examples:) >md.b >md.p
 
-(; Get current block for recursion
+(\29\ Get current block for recursion
 0 !counter
 {
   counter >toString >print
   counter >inc !counter
   counter 5 ><
-    >block              ; Continue: push self
-    Nil                 ; Stop
+    >block              \29\ Continue: push self
+    Nil                 \29\ Stop
   >choose
-} >chain                ; Prints 0..4
+} >chain                \29\ Prints 0..4
 
-; Store reference to current block
-{ >block !_.me _.me }   ; Store reference in Register, push to AL
+\29\ Store reference to current block
+{ >block !_.me _.me }   \29\ Store reference in Register, push to AL
 
-; Internationalization via aliasing
-block !блок             ; Russian
-block !ブロック          ; Japanese
-{ (loop\29\ >print >блок } >chain   ; Use Russian alias) (soma) >md.code
+\29\ Internationalization via aliasing
+block !блок             \29\ Russian
+block !ブロック          \29\ Japanese
+{ (loop\29\ >print >блок } >chain   \29\ Use Russian alias) (soma) >md.code
 
 (Errors:) >md.b ( None.) >md.t >md.p
 
@@ -335,7 +335,7 @@ block !ブロック          ; Japanese
 
 (Example:) >md.b >md.p
 
-(>noop         ; AL unchanged) (soma) >md.code
+(>noop         \29\ AL unchanged) (soma) >md.code
 
 (Errors:) >md.b ( None.) >md.t >md.p
 

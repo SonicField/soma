@@ -117,7 +117,7 @@ This prints `tick` forever. Why?
 The original specification contained examples that incorrectly used **CellRefs** (trailing-dot paths) with `>chain`. For example:
 
 ```soma
-7 square. >chain >print  ; WRONG!
+7 square. >chain >print  ) WRONG!
 ```
 
 Under SOMA semantics:
@@ -129,7 +129,7 @@ Under SOMA semantics:
 **Correct form:**
 
 ```soma
-7 square >chain >print  ; CORRECT
+7 square >chain >print  ) CORRECT
 ```
 
 This retrieves the **block value** stored at `square`, not a reference to the cell. All examples in this document use the corrected form.

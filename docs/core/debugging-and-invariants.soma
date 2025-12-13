@@ -40,9 +40,9 @@
 (Example:) >md.b >md.p
 
 (1 2 3
->debug.al.dump   ; Shows AL: [1, 2, 3] and Store contents
->+               ; Compute 2 + 3
->debug.al.dump   ; Shows AL: [1, 5] - verify operation) (soma) >md.code
+>debug.al.dump   \29\ Shows AL: [1, 2, 3] and Store contents
+>+               \29\ Compute 2 + 3
+>debug.al.dump   \29\ Shows AL: [1, 5] - verify operation) (soma) >md.code
 
 (Use cases:) >md.b >md.p
 
@@ -63,10 +63,10 @@
 
 (Example:) >md.b >md.p
 
-(42 >debug.type        ; AL: ["Int"]
-(hello\29\ >debug.type   ; AL: ["Str"]
-True >debug.type      ; AL: ["Bool"]
-{ >noop } >debug.type ; AL: ["Block"]) (soma) >md.code
+(42 >debug.type        \29\ AL: ["Int"]
+(hello\29\ >debug.type   \29\ AL: ["Str"]
+True >debug.type      \29\ AL: ["Bool"]
+{ >noop } >debug.type \29\ AL: ["Block"]) (soma) >md.code
 
 (Use cases:) >md.b >md.p
 
@@ -87,13 +87,13 @@ True >debug.type      ; AL: ["Bool"]
 
 (Example:) >md.b >md.p
 
-(a.b. >debug.id        ; AL: [<identity integer>]
-thing. >debug.id      ; AL: [<identity integer>]
+(a.b. >debug.id        \29\ AL: [<identity integer>]
+thing. >debug.id      \29\ AL: [<identity integer>]
 
-; Comparing identities
+\29\ Comparing identities
 cell1. >debug.id
 cell2. >debug.id
->==             ; AL: [True] if same cell, [False] otherwise) (soma) >md.code
+>==             \29\ AL: [True] if same cell, [False] otherwise) (soma) >md.code
 
 (Use cases:) >md.b >md.p
 

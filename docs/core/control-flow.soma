@@ -116,7 +116,7 @@
 
 (The original specification contained examples that incorrectly used ) (CellRefs) >md.b ( (trailing-dot paths\29\ with ) (>chain) >md.c (. For example:) >md.t >md.p
 
-(7 square. >chain >print  ; WRONG!) (soma) >md.code
+(7 square. >chain >print  \29\ WRONG!) (soma) >md.code
 
 (Under SOMA semantics:) >md.p
 
@@ -127,7 +127,7 @@
 
 (Correct form:) >md.b >md.p
 
-(7 square >chain >print  ; CORRECT) (soma) >md.code
+(7 square >chain >print  \29\ CORRECT) (soma) >md.code
 
 (This retrieves the ) (block value) >md.b ( stored at ) (square) >md.c (, not a reference to the cell. All examples in this document use the corrected form.) >md.t >md.p
 

@@ -60,7 +60,7 @@ Creates an empty list. An empty list is simply `Nil`.
 **Example:**
 
 ```soma
->list.new    ; AL: [Nil]
+>list.new    ) AL: [Nil]
 ```
 
 ---
@@ -85,8 +85,8 @@ Prepends a value to a list, creating a new node. The new node's `.value` is the 
 **Example:**
 
 ```soma
-(a) Nil >list.cons          ; AL: [node] where node.value=(a), node.next=Nil
-(b) >list.cons               ; AL: [node'] where node'.value=(b), node'.next=node
+(a) Nil >list.cons          ) AL: [node] where node.value=(a), node.next=Nil
+(b) >list.cons               ) AL: [node'] where node'.value=(b), node'.next=node
 ```
 
 ---
@@ -109,7 +109,7 @@ Drains AL items until Void, building a linked list. Preserves order: `Void (a) (
 
 ```soma
 Void (first) (second) (third) >list.from_al
-; AL: [list] containing (first), (second), (third)
+) AL: [list] containing (first), (second), (third)
 ```
 
 ---
@@ -124,7 +124,7 @@ Pushes list items onto AL. Preserves order: list `(a,b,c)` becomes AL `[(a), (b)
 
 ```soma
 my_list >list.to_al
-; Each item now on AL, head first
+) Each item now on AL, head first
 ```
 
 ---
@@ -139,7 +139,7 @@ Reverses a list by copying. Creates a new list with elements in reverse order.
 
 ```soma
 Void (a) (b) (c) >list.from_al >list.reverse
-; AL: [list] containing (c), (b), (a)
+) AL: [list] containing (c), (b), (a)
 ```
 
 ---
@@ -154,7 +154,7 @@ Applies a transform block to each element, returning a new list. The transform b
 
 ```soma
 { 2 >* } my_list >list.map
-; Each element doubled
+) Each element doubled
 ```
 
 ---
@@ -169,7 +169,7 @@ Counts elements in the list by traversing until Nil.
 
 ```soma
 Void (a) (b) (c) >list.from_al >list.length
-; AL: [3]
+) AL: [3]
 ```
 
 ---
@@ -184,7 +184,7 @@ Reduces a list with an accumulator. The folder block receives `[current, acc, ..
 
 ```soma
 { >+ } 0 my_number_list >list.fold
-; Sum of all elements
+) Sum of all elements
 ```
 
 ---
@@ -199,7 +199,7 @@ Concatenates two lists. Result has list1 elements followed by list2 elements.
 
 ```soma
 list_abc list_xyz >list.append
-; AL: [list] containing a,b,c,x,y,z
+) AL: [list] containing a,b,c,x,y,z
 ```
 
 ---
@@ -214,7 +214,7 @@ Keeps elements matching the predicate. The predicate receives `[value, ...]` and
 
 ```soma
 { 0 >> } my_numbers >list.filter
-; Keep only positive numbers
+) Keep only positive numbers
 ```
 
 ---
@@ -261,7 +261,7 @@ Creates an empty dictionary. An empty dictionary is `Nil`.
 **Example:**
 
 ```soma
->dict.new    ; AL: [Nil]
+>dict.new    ) AL: [Nil]
 ```
 
 ---
@@ -276,7 +276,7 @@ Checks if a key exists in the dictionary. Returns `True` if found, `False` other
 
 ```soma
 (name) my_dict >dict.has
-; AL: [True] if "name" key exists
+) AL: [True] if "name" key exists
 ```
 
 ---
@@ -291,7 +291,7 @@ Gets value by key. **Errors if key not found** (attempts Nil dereference).
 
 ```soma
 (name) my_dict >dict.get
-; AL: [value] associated with "name"
+) AL: [value] associated with "name"
 ```
 
 ---
@@ -306,7 +306,7 @@ Gets value by key, or returns default if not found. Safe alternative to `>dict.g
 
 ```soma
 (name) (unknown) my_dict >dict.get_or
-; AL: [value] or (unknown) if key missing
+) AL: [value] or (unknown) if key missing
 ```
 
 ---
@@ -329,7 +329,7 @@ The root is always made black after insertion.
 
 ```soma
 (name) (Alice) my_dict >dict.put
-; AL: [new_dict] with name=Alice
+) AL: [new_dict] with name=Alice
 ```
 
 ---
@@ -344,7 +344,7 @@ Removes a key from the dictionary. Returns a new dictionary. Implementation coll
 
 ```soma
 (name) my_dict >dict.remove
-; AL: [new_dict] without "name" key
+) AL: [new_dict] without "name" key
 ```
 
 ---
@@ -359,7 +359,7 @@ Counts entries in the dictionary via tree traversal.
 
 ```soma
 my_dict >dict.size
-; AL: [n] where n is number of key-value pairs
+) AL: [n] where n is number of key-value pairs
 ```
 
 ---
@@ -374,7 +374,7 @@ Gets a list of all keys via in-order traversal. Keys are returned in sorted orde
 
 ```soma
 my_dict >dict.keys
-; AL: [list of keys]
+) AL: [list of keys]
 ```
 
 ---
@@ -389,7 +389,7 @@ Gets a list of all values via in-order traversal. Values are returned in key-sor
 
 ```soma
 my_dict >dict.values
-; AL: [list of values]
+) AL: [list of values]
 ```
 
 ---
@@ -404,7 +404,7 @@ Folds over dictionary entries via in-order traversal. The folder receives `[key,
 
 ```soma
 { !_.acc !_.val !_.key _.acc 1 >+ } 0 my_dict >dict.fold
-; Count entries (equivalent to >dict.size)
+) Count entries (equivalent to >dict.size)
 ```
 
 ---

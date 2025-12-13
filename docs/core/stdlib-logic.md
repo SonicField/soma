@@ -42,8 +42,8 @@ The implementation exploits `>choose`'s semantics: when the condition is `True`,
 **Example:**
 
 ```soma
-True >not      ; AL: [False]
-False >not     ; AL: [True]
+True >not      ) AL: [False]
+False >not     ) AL: [True]
 ```
 
 ---
@@ -65,10 +65,10 @@ If the top value )first argument) is `True`, returns the second value; if `False
 **Example:**
 
 ```soma
-True True >and    ; AL: [True]
-True False >and   ; AL: [False]
-False True >and   ; AL: [False]
-False False >and  ; AL: [False]
+True True >and    ) AL: [True]
+True False >and   ) AL: [False]
+False True >and   ) AL: [False]
+False False >and  ) AL: [False]
 ```
 
 ---
@@ -90,10 +90,10 @@ If the top value is `True`, returns `True` immediately; otherwise returns the se
 **Example:**
 
 ```soma
-True True >or     ; AL: [True]
-True False >or    ; AL: [True]
-False True >or    ; AL: [True]
-False False >or   ; AL: [False]
+True True >or     ) AL: [True]
+True False >or    ) AL: [True]
+False True >or    ) AL: [True]
+False False >or   ) AL: [False]
 ```
 
 ---
@@ -119,9 +119,9 @@ Greater-than is simply less-than with swapped arguments: `a > b` is equivalent t
 **Example:**
 
 ```soma
-10 5 >>      ; AL: [True]
-3 7 >>       ; AL: [False]
-5 5 >>       ; AL: [False]
+10 5 >>      ) AL: [True]
+3 7 >>       ) AL: [False]
+5 5 >>       ) AL: [False]
 ```
 
 ---
@@ -143,9 +143,9 @@ Two values are not equal if either `a < b` or `b < a`. The implementation duplic
 **Example:**
 
 ```soma
-5 3 >=!      ; AL: [True]
-5 5 >=!      ; AL: [False]
-"cat" "dog" >=!  ; AL: [True]
+5 3 >=!      ) AL: [True]
+5 5 >=!      ) AL: [False]
+"cat" "dog" >=!  ) AL: [True]
 ```
 
 ---
@@ -167,9 +167,9 @@ Equality is the negation of inequality. Note: This stdlib `>==` shadows the FFI 
 **Example:**
 
 ```soma
-5 5 >==      ; AL: [True]
-5 3 >==      ; AL: [False]
-"cat" "cat" >==  ; AL: [True]
+5 5 >==      ) AL: [True]
+5 3 >==      ) AL: [False]
+"cat" "cat" >==  ) AL: [True]
 ```
 
 ---
@@ -191,9 +191,9 @@ Less-than-or-equal is the negation of greater-than: `a <= b` is equivalent to `N
 **Example:**
 
 ```soma
-3 5 >=<      ; AL: [True]
-5 5 >=<      ; AL: [True]
-7 5 >=<      ; AL: [False]
+3 5 >=<      ) AL: [True]
+5 5 >=<      ) AL: [True]
+7 5 >=<      ) AL: [False]
 ```
 
 ---
@@ -215,9 +215,9 @@ Greater-than-or-equal is the negation of less-than: `a >= b` is equivalent to `N
 **Example:**
 
 ```soma
-7 5 >=>      ; AL: [True]
-5 5 >=>      ; AL: [True]
-3 5 >=>      ; AL: [False]
+7 5 >=>      ) AL: [True]
+5 5 >=>      ) AL: [True]
+3 5 >=>      ) AL: [False]
 ```
 
 ---
@@ -243,8 +243,8 @@ The value is stored in the Register, then pushed twice.
 **Example:**
 
 ```soma
-7 >dup       ; AL: [7, 7]
-"hello" >dup ; AL: ["hello", "hello"]
+7 >dup       ) AL: [7, 7]
+"hello" >dup ) AL: ["hello", "hello"]
 ```
 
 ---
@@ -266,7 +266,7 @@ The value is stored in the Register and discarded.
 **Example:**
 
 ```soma
-1 2 3 >drop  ; AL: [1, 2]
+1 2 3 >drop  ) AL: [1, 2]
 ```
 
 ---
@@ -288,8 +288,8 @@ Both values are stored, then pushed in reverse order.
 **Example:**
 
 ```soma
-1 2 >swap    ; AL: [2, 1]
-"a" "b" >swap ; AL: ["b", "a"]
+1 2 >swap    ) AL: [2, 1]
+"a" "b" >swap ) AL: ["b", "a"]
 ```
 
 ---
@@ -311,7 +311,7 @@ Both values are stored, then the second is pushed, followed by the first, follow
 **Example:**
 
 ```soma
-1 2 >over    ; AL: [1, 2, 1]
+1 2 >over    ) AL: [1, 2, 1]
 ```
 
 ---
@@ -333,7 +333,7 @@ All three values are stored. The rotation brings the deepest value )`c`) to the 
 **Example:**
 
 ```soma
-1 2 3 >rot   ; AL: [2, 3, 1]
+1 2 3 >rot   ) AL: [2, 3, 1]
 ```
 
 ---
@@ -357,8 +357,8 @@ Increments an integer by 1.
 **Example:**
 
 ```soma
-5 >inc       ; AL: [6]
--1 >inc      ; AL: [0]
+5 >inc       ) AL: [6]
+-1 >inc      ) AL: [0]
 ```
 
 ---
@@ -378,8 +378,8 @@ Decrements an integer by 1.
 **Example:**
 
 ```soma
-5 >dec       ; AL: [4]
-0 >dec       ; AL: [-1]
+5 >dec       ) AL: [4]
+0 >dec       ) AL: [-1]
 ```
 
 ---
@@ -401,9 +401,9 @@ If the value is negative )less than 0), it is negated by subtracting from 0. Oth
 **Example:**
 
 ```soma
-5 >abs       ; AL: [5]
--5 >abs      ; AL: [5]
-0 >abs       ; AL: [0]
+5 >abs       ) AL: [5]
+-5 >abs      ) AL: [5]
+0 >abs       ) AL: [0]
 ```
 
 ---
@@ -425,9 +425,9 @@ Both values are duplicated for comparison. If the first is less than the second,
 **Example:**
 
 ```soma
-3 7 >min     ; AL: [3]
-7 3 >min     ; AL: [3]
-5 5 >min     ; AL: [5]
+3 7 >min     ) AL: [3]
+7 3 >min     ) AL: [3]
+5 5 >min     ) AL: [5]
 ```
 
 ---
@@ -449,9 +449,9 @@ Both values are duplicated for comparison. If the first is greater than the seco
 **Example:**
 
 ```soma
-3 7 >max     ; AL: [7]
-7 3 >max     ; AL: [7]
-5 5 >max     ; AL: [5]
+3 7 >max     ) AL: [7]
+7 3 >max     ) AL: [7]
+5 5 >max     ) AL: [5]
 ```
 
 ---
@@ -492,10 +492,10 @@ The implementation uses `>chain` for iteration. On each iteration, it executes t
 
 ```soma
 3 { (Hello) >print } >times
-; Output:
-; Hello
-; Hello
-; Hello
+) Output:
+) Hello
+) Hello
+) Hello
 ```
 
 ---
@@ -517,8 +517,8 @@ Uses `>choose` to select between the provided block and an empty block, then exe
 **Example:**
 
 ```soma
-True { (yes) >print } >if   ; Output: yes
-False { (no) >print } >if   ; No output
+True { (yes) >print } >if   ) Output: yes
+False { (no) >print } >if   ) No output
 ```
 
 ---
@@ -539,7 +539,7 @@ Executes one of two blocks based on a condition. This is an alias for `>choose >
 
 ```soma
 5 0 >< { (positive) } { (not positive) } >ifelse
-; AL: ["positive"]
+) AL: ["positive"]
 ```
 
 ---
@@ -561,8 +561,8 @@ The block is stored in the Register, then executed via `>_`.
 **Example:**
 
 ```soma
-{ 5 3 >+ } >^   ; AL: [8]
-{ (hello) } >^  ; AL: ["hello"]
+{ 5 3 >+ } >^   ) AL: [8]
+{ (hello) } >^  ) AL: ["hello"]
 ```
 
 ---
@@ -601,7 +601,7 @@ The loop executes the condition block first. If true, it executes the body and r
 ```soma
 0 !count
 { count 5 >< } { count >print count >inc !count } >while
-; Output: 0 1 2 3 4
+) Output: 0 1 2 3 4
 ```
 
 ---
@@ -637,7 +637,7 @@ Unlike `>while`, the body executes before the condition is checked, guaranteeing
 ```soma
 0 !count
 { count >print count >inc !count } { count 3 >< } >do
-; Output: 0 1 2
+) Output: 0 1 2
 ```
 
 ---

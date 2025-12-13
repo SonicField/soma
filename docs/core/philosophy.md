@@ -65,7 +65,7 @@ The inner block's Register is completely separate. Its `_.n` does not affect the
 If the inner block tried to _read_ the outer's Register, it would fail:
 
 ```soma
->{1 !_.n >{_.n >print}}  ; FATAL ERROR
+>{1 !_.n >{_.n >print}}  ) FATAL ERROR
 ```
 
 The inner block's Register has no `_.n` path, so `_.n` resolves to Void. Trying to execute Void is a fatal error.
@@ -90,7 +90,7 @@ Real programs mutate memory. SOMA models this directly.
 
 ```soma
 42 !counter.value
-counter.value >print    ; prints 42
+counter.value >print    ) prints 42
 ```
 
 The state exists. You can see it. You can change it. You can reason about it. This is not a problem to be solved—it is the nature of computation.
@@ -137,7 +137,7 @@ Memory in SOMA is not a flat array of bytes. It is a graph of named, aliasable c
 ```soma
 99 !a.b
 a.b. !x.y
-x.y >print      ; prints 99
+x.y >print      ) prints 99
 ```
 
 The cell at `a.b` is aliased from `x.y`. This is not pointer arithmetic—it is structural identity preserved across multiple paths.
@@ -164,7 +164,7 @@ Blocks are **state transformers**. They act upon the machine state and leave it 
 
 ```soma
 { >dup >* } !square
-5 >square >print    ; prints 25
+5 >square >print    ) prints 25
 ```
 
 `square` is not a function. It is a sequence of tokens that transforms state.
@@ -178,8 +178,8 @@ In SOMA, blocks are values until you explicitly execute them. This is fundamenta
 The `>` prefix modifier makes execution explicit:
 
 ```soma
-print           ; Pushes the print block onto the AL (it's a value)
->print          ; Executes the print block (it's an operation)
+print           ) Pushes the print block onto the AL (it's a value)
+>print          ) Executes the print block (it's an operation)
 ```
 
 When you write `>path`, you are saying: "read the value at this path and execute it." This is an atomic operation--not two separate steps, but a single unified action.
@@ -187,9 +187,9 @@ When you write `>path`, you are saying: "read the value at this path and execute
 This applies to any path:
 
 ```soma
->print          ; Execute block at Store path "print"
->my_func        ; Execute block at Store path "my_func"
->_.action       ; Execute block at Register path "_.action"
+>print          ) Execute block at Store path "print"
+>my_func        ) Execute block at Store path "my_func"
+>_.action       ) Execute block at Register path "_.action"
 ```
 
 **Built-ins are just blocks.** When you write `>print`, `>dup`, or `>+`, you are executing blocks stored at Store paths. There is no special "built-in" syntax--they are simply pre-populated Store entries.
@@ -198,13 +198,13 @@ This design enables powerful patterns. You can store blocks and execute them lat
 
 ```soma
 { (Hello) >print } !greet
->greet          ; Executes the stored block
+>greet          ) Executes the stored block
 ```
 
 You can also execute block literals directly with `>{ }`:
 
 ```soma
->{ 1 2 >+ >print }    ; Execute block immediately
+>{ 1 2 >+ >print }    ) Execute block immediately
 ```
 
 This is cleaner than the older pattern `{ 1 2 >+ >print } >chain` for single execution.
@@ -212,8 +212,8 @@ This is cleaner than the older pattern `{ 1 2 >+ >print } >chain` for single exe
 The standard library defines `>^` which executes the top value from the AL:
 
 ```soma
-{ !_ >_ } !^              ; Store this block as "^"
-(Data) print >^           ; Pushes "Data", pushes print block, executes it
+{ !_ >_ } !^              ) Store this block as "^"
+(Data) print >^           ) Pushes "Data", pushes print block, executes it
 ```
 
 This enables macro-like behavior from simple primitives. The `>^` operator is similar to Forth's `EXECUTE` or Lisp's `FUNCALL`.
@@ -279,12 +279,12 @@ This makes tail-recursive patterns natural and efficient:
   counter 1 >- !counter
 
   counter 0 >>
-    _.self          ; Continue: return this block
-    Nil             ; Stop: return Nil
+    _.self          ) Continue: return this block
+    Nil             ) Stop: return Nil
   >choose
 } !countdown
 
-countdown >chain    ; No stack growth!
+countdown >chain    ) No stack growth!
 ```
 
 **Functional elegance with imperative mutation:** SOMA combines the best of both worlds. The control flow is functional (blocks returning blocks), but the state mutation is explicit and visible. You can see exactly what changes and when, while still writing clean tail-recursive loops.
@@ -335,16 +335,16 @@ Example - tail-recursive factorial with accumulator:
 
 {
   fact.n 0 >=<
-    fact.acc                    ; Base: return accumulator (stops chain)
-    {                           ; Recursive: mutate and continue
+    fact.acc                    ) Base: return accumulator (stops chain)
+    {                           ) Recursive: mutate and continue
       fact.acc fact.n >* !fact.acc
       fact.n 1 >- !fact.n
-      _.self                    ; Return self (continues chain)
+      _.self                    ) Return self (continues chain)
     }
   >choose
 } !fact-step
 
-fact-step >chain                ; AL: [120]
+fact-step >chain                ) AL: [120]
 ```
 
 **What's happening:**
@@ -389,8 +389,8 @@ Let's implement a simple counter that prints numbers until it reaches a limit.
   counter.n 1 >+ !counter.n
 
   counter.n counter.limit >>
-  { Nil }           ; Stop: return Nil to terminate chain
-  { _.self }        ; Continue: return self to continue chain
+  { Nil }           ) Stop: return Nil to terminate chain
+  { _.self }        ) Continue: return self to continue chain
   >choose
 } !counter-loop
 

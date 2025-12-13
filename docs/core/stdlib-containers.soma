@@ -56,7 +56,7 @@ _.
 
 (Example:) >md.b >md.p
 
-(>list.new    ; AL: [Nil]) (soma) >md.code
+(>list.new    \29\ AL: [Nil]) (soma) >md.code
 
 >md.hr
 
@@ -77,8 +77,8 @@ _.
 
 (Example:) >md.b >md.p
 
-((a\29\ Nil >list.cons          ; AL: [node] where node.value=(a\29\, node.next=Nil
-(b\29\ >list.cons               ; AL: [node'] where node'.value=(b\29\, node'.next=node) (soma) >md.code
+((a\29\ Nil >list.cons          \29\ AL: [node] where node.value=(a\29\, node.next=Nil
+(b\29\ >list.cons               \29\ AL: [node'] where node'.value=(b\29\, node'.next=node) (soma) >md.code
 
 >md.hr
 
@@ -97,7 +97,7 @@ _.
 (Example:) >md.b >md.p
 
 (Void (first\29\ (second\29\ (third\29\ >list.from_al
-; AL: [list] containing (first\29\, (second\29\, (third\29\) (soma) >md.code
+\29\ AL: [list] containing (first\29\, (second\29\, (third\29\) (soma) >md.code
 
 >md.hr
 
@@ -110,7 +110,7 @@ _.
 (Example:) >md.b >md.p
 
 (my_list >list.to_al
-; Each item now on AL, head first) (soma) >md.code
+\29\ Each item now on AL, head first) (soma) >md.code
 
 >md.hr
 
@@ -123,7 +123,7 @@ _.
 (Example:) >md.b >md.p
 
 (Void (a\29\ (b\29\ (c\29\ >list.from_al >list.reverse
-; AL: [list] containing (c\29\, (b\29\, (a\29\) (soma) >md.code
+\29\ AL: [list] containing (c\29\, (b\29\, (a\29\) (soma) >md.code
 
 >md.hr
 
@@ -136,7 +136,7 @@ _.
 (Example:) >md.b >md.p
 
 ({ 2 >* } my_list >list.map
-; Each element doubled) (soma) >md.code
+\29\ Each element doubled) (soma) >md.code
 
 >md.hr
 
@@ -149,7 +149,7 @@ _.
 (Example:) >md.b >md.p
 
 (Void (a\29\ (b\29\ (c\29\ >list.from_al >list.length
-; AL: [3]) (soma) >md.code
+\29\ AL: [3]) (soma) >md.code
 
 >md.hr
 
@@ -162,7 +162,7 @@ _.
 (Example:) >md.b >md.p
 
 ({ >+ } 0 my_number_list >list.fold
-; Sum of all elements) (soma) >md.code
+\29\ Sum of all elements) (soma) >md.code
 
 >md.hr
 
@@ -175,7 +175,7 @@ _.
 (Example:) >md.b >md.p
 
 (list_abc list_xyz >list.append
-; AL: [list] containing a,b,c,x,y,z) (soma) >md.code
+\29\ AL: [list] containing a,b,c,x,y,z) (soma) >md.code
 
 >md.hr
 
@@ -188,7 +188,7 @@ _.
 (Example:) >md.b >md.p
 
 ({ 0 >> } my_numbers >list.filter
-; Keep only positive numbers) (soma) >md.code
+\29\ Keep only positive numbers) (soma) >md.code
 
 >md.hr
 
@@ -232,7 +232,7 @@ Nil                   \29\ Initial accumulator
 
 (Example:) >md.b >md.p
 
-(>dict.new    ; AL: [Nil]) (soma) >md.code
+(>dict.new    \29\ AL: [Nil]) (soma) >md.code
 
 >md.hr
 
@@ -245,7 +245,7 @@ Nil                   \29\ Initial accumulator
 (Example:) >md.b >md.p
 
 ((name\29\ my_dict >dict.has
-; AL: [True] if "name" key exists) (soma) >md.code
+\29\ AL: [True] if "name" key exists) (soma) >md.code
 
 >md.hr
 
@@ -258,7 +258,7 @@ Nil                   \29\ Initial accumulator
 (Example:) >md.b >md.p
 
 ((name\29\ my_dict >dict.get
-; AL: [value] associated with "name") (soma) >md.code
+\29\ AL: [value] associated with "name") (soma) >md.code
 
 >md.hr
 
@@ -271,7 +271,7 @@ Nil                   \29\ Initial accumulator
 (Example:) >md.b >md.p
 
 ((name\29\ (unknown\29\ my_dict >dict.get_or
-; AL: [value] or (unknown\29\ if key missing) (soma) >md.code
+\29\ AL: [value] or (unknown\29\ if key missing) (soma) >md.code
 
 >md.hr
 
@@ -293,7 +293,7 @@ Nil                   \29\ Initial accumulator
 (Example:) >md.b >md.p
 
 ((name\29\ (Alice\29\ my_dict >dict.put
-; AL: [new_dict] with name=Alice) (soma) >md.code
+\29\ AL: [new_dict] with name=Alice) (soma) >md.code
 
 >md.hr
 
@@ -306,7 +306,7 @@ Nil                   \29\ Initial accumulator
 (Example:) >md.b >md.p
 
 ((name\29\ my_dict >dict.remove
-; AL: [new_dict] without "name" key) (soma) >md.code
+\29\ AL: [new_dict] without "name" key) (soma) >md.code
 
 >md.hr
 
@@ -319,7 +319,7 @@ Nil                   \29\ Initial accumulator
 (Example:) >md.b >md.p
 
 (my_dict >dict.size
-; AL: [n] where n is number of key-value pairs) (soma) >md.code
+\29\ AL: [n] where n is number of key-value pairs) (soma) >md.code
 
 >md.hr
 
@@ -332,7 +332,7 @@ Nil                   \29\ Initial accumulator
 (Example:) >md.b >md.p
 
 (my_dict >dict.keys
-; AL: [list of keys]) (soma) >md.code
+\29\ AL: [list of keys]) (soma) >md.code
 
 >md.hr
 
@@ -345,7 +345,7 @@ Nil                   \29\ Initial accumulator
 (Example:) >md.b >md.p
 
 (my_dict >dict.values
-; AL: [list of values]) (soma) >md.code
+\29\ AL: [list of values]) (soma) >md.code
 
 >md.hr
 
@@ -358,7 +358,7 @@ Nil                   \29\ Initial accumulator
 (Example:) >md.b >md.p
 
 ({ !_.acc !_.val !_.key _.acc 1 >+ } 0 my_dict >dict.fold
-; Count entries (equivalent to >dict.size\29\) (soma) >md.code
+\29\ Count entries (equivalent to >dict.size\29\) (soma) >md.code
 
 >md.hr
 

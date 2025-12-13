@@ -25,7 +25,7 @@ Blocks may be nested without limit:
 **Critically: a block is not executed when it is read.** It is pushed onto the AL as a value, just like an integer or string.
 
 ```soma
-{ 5 5 >* }     ; AL now contains a Block, not 25
+{ 5 5 >* }     ) AL now contains a Block, not 25
 ```
 
 Blocks behave like any other SOMA value. They may be:
@@ -69,7 +69,7 @@ There is no signature like `f)x, y) -> z`. Instead:
 { >+ } !add_two_numbers
 
 3 4 add_two_numbers >chain
-; AL now contains [7]
+) AL now contains [7]
 ```
 
 The block `add_two_numbers` doesn't declare "I take two integers." It simply executes `>+`, which consumes two values from the AL. If fewer than two values are present, execution fails fatally.
@@ -80,7 +80,7 @@ The block `add_two_numbers` doesn't declare "I take two integers." It simply exe
 { 1 2 3 } !push_three
 
 push_three >chain
-; AL now contains [1, 2, 3]
+) AL now contains [1, 2, 3]
 ```
 
 There is no formal return statement. The block simply leaves values on the AL.
@@ -217,18 +217,18 @@ We don't need to ask "what executes the top-level block?" The top-level code IS 
 ### `>block` Works Everywhere
 
 ```soma
-; Top-level
->block              ; Returns the outermost block (the "program")
+) Top-level
+>block              ) Returns the outermost block (the "program")
 
-; Inside explicit block
-{ >block }          ; Returns this block
+) Inside explicit block
+{ >block }          ) Returns this block
 
-; Nested blocks
+) Nested blocks
 {
   >block !outer
   {
     >block !inner
-    outer inner >Equal    ; False - different blocks
+    outer inner >Equal    ) False - different blocks
   }
 }
 ```
@@ -260,18 +260,18 @@ This creates an infinite loop without any external naming or storage.
 ```soma
 {
   "Outer block executing" >print
-  >block !outer_self_reg           ; Store in outer's Register
+  >block !outer_self_reg           ) Store in outer's Register
 
   {
     "Inner block executing" >print
-    >block !inner_self_reg         ; Store in inner's Register
+    >block !inner_self_reg         ) Store in inner's Register
   } >chain
 
-  ; After inner block completes, inner's Register is destroyed
-  ; outer_self_reg still exists in outer's Register
-  ; inner_self_reg is GONE (was in inner's Register)
+  ) After inner block completes, inner's Register is destroyed
+  ) outer_self_reg still exists in outer's Register
+  ) inner_self_reg is GONE (was in inner's Register)
 
-  >block outer_self_reg >==        ; Compare current block with saved value
+  >block outer_self_reg >==        ) Compare current block with saved value
   { "Same block (correct)" }
   { "Different blocks (impossible)" }
   >choose >chain >print
@@ -304,11 +304,11 @@ If you want to actually compare the inner and outer blocks, you must use the Sto
 ```soma
 {
   "Outer block executing" >print
-  >block !outer_block              ; Store in Store (global)
+  >block !outer_block              ) Store in Store (global)
 
   {
     "Inner block executing" >print
-    >block !inner_block            ; Store in Store (global)
+    >block !inner_block            ) Store in Store (global)
   } >chain
 
   outer_block inner_block >==
@@ -363,16 +363,16 @@ The `>` prefix performs a single atomic operation:
 **Blocks Are Values Until Executed:**
 
 ```soma
-print           ; Pushes the print Block onto AL (it's a value)
->print          ; Executes the print Block (it's an operation)
+print           ) Pushes the print Block onto AL (it's a value)
+>print          ) Executes the print Block (it's an operation)
 ```
 
 **Without `>`, blocks are just values:**
 
 ```soma
-{ 1 2 >+ }      ; This is a value (a Block) pushed onto AL
-{ 1 2 >+ } >^   ; This pushes the block, then executes from AL
->{ 1 2 >+ }     ; This executes immediately (cleaner!)
+{ 1 2 >+ }      ) This is a value (a Block) pushed onto AL
+{ 1 2 >+ } >^   ) This pushes the block, then executes from AL
+>{ 1 2 >+ }     ) This executes immediately (cleaner!)
 ```
 
 The `>` modifier makes execution **explicit and first-class**.
@@ -384,7 +384,7 @@ The most common use of `>` is executing blocks stored in the Store:
 ```soma
 { >dup >* } !square
 
->square         ; Execute the block at Store path "square"
+>square         ) Execute the block at Store path "square"
 ```
 
 **How it works:**
@@ -398,7 +398,7 @@ The most common use of `>` is executing blocks stored in the Store:
 ```soma
 { (Hello) >print } !say_hello
 
->say_hello      ; Prints: Hello
+>say_hello      ) Prints: Hello
 ```
 
 #### Execution from Register Paths
@@ -408,7 +408,7 @@ The `>` modifier works identically with Register paths:
 ```soma
 {
   { (Hi from register) >print } !_.greet
-  >_.greet      ; Execute block at Register path "_.greet"
+  >_.greet      ) Execute block at Register path "_.greet"
 }
 ```
 
@@ -419,7 +419,7 @@ This is crucial for local execution patterns:
 ```soma
 {
   { >dup >* } !_.operation
-  7 >_.operation    ; Execute the locally-stored operation
+  7 >_.operation    ) Execute the locally-stored operation
 }
 ```
 
@@ -430,10 +430,10 @@ This is crucial for local execution patterns:
 **All SOMA built-ins are Blocks stored at Store paths.** When you write `>print`, you're not calling a "built-in function"—you're executing the Block at Store path "print".
 
 ```soma
->print          ; Execute block at Store path "print"
->dup            ; Execute block at Store path "dup"
->+              ; Execute block at Store path "+"
->==             ; Execute block at Store path "=="
+>print          ) Execute block at Store path "print"
+>dup            ) Execute block at Store path "dup"
+>+              ) Execute block at Store path "+"
+>==             ) Execute block at Store path "=="
 ```
 
 There's no special built-in syntax. They're just pre-populated Store paths!
@@ -441,15 +441,15 @@ There's no special built-in syntax. They're just pre-populated Store paths!
 User-defined blocks work exactly the same:
 
 ```soma
-{ ... } !my_func    ; Store block at path "my_func"
->my_func            ; Execute block at path "my_func"
+{ ... } !my_func    ) Store block at path "my_func"
+>my_func            ) Execute block at path "my_func"
 ```
 
 **The key distinction:**
 
 ```soma
-square          ; Pushes the Block value onto AL
->square         ; Executes the Block (nothing pushed onto AL)
+square          ) Pushes the Block value onto AL
+>square         ) Executes the Block (nothing pushed onto AL)
 ```
 
 ---
@@ -461,7 +461,7 @@ The `>{ }` pattern executes a block literal **immediately** without storing it f
 **Syntax:**
 
 ```soma
->{ code }       ; Execute this block immediately
+>{ code }       ) Execute this block immediately
 ```
 
 **Examples from test suite:**
@@ -528,13 +528,13 @@ Blocks can receive arguments from the AL:
 **Old pattern (verbose):**
 
 ```soma
-{ 42 } >chain       ; Push block to AL, then execute with chain
+{ 42 } >chain       ) Push block to AL, then execute with chain
 ```
 
 **New pattern (cleaner):**
 
 ```soma
->{ 42 }             ; Execute block literal directly
+>{ 42 }             ) Execute block literal directly
 ```
 
 Both give the same result, but `>{ }` is more concise and clearer in intent.
@@ -793,7 +793,7 @@ Result: True
 The `>^` pattern executes a block that's **already on the AL**. This is typically user-defined in stdlib:
 
 ```soma
-{ !_ >_ } !^                 ; Like Forth's EXECUTE
+{ !_ >_ } !^                 ) Like Forth's EXECUTE
 ```
 
 **How it works:**
@@ -803,7 +803,7 @@ The `>^` pattern executes a block that's **already on the AL**. This is typicall
 **Example:**
 
 ```soma
-(Data) print >^              ; Execute print block on "Data"
+(Data) print >^              ) Execute print block on "Data"
 ```
 
 **How it works:**
@@ -818,7 +818,7 @@ The `>^` pattern executes a block that's **already on the AL**. This is typicall
 { !_.f !_.x _.x >_.f } !apply
 
 { 1 >+ } !increment
-5 increment >apply         ; AL: [6]
+5 increment >apply         ) AL: [6]
 ```
 
 **How it works:**
@@ -865,8 +865,8 @@ The `>block` built-in can be combined with these patterns:
   counter 1 >+ !counter
   counter >print
   counter 10 ><
-    >block              ; Continue if counter < 10
-    Nil                 ; Stop otherwise
+    >block              ) Continue if counter < 10
+    Nil                 ) Stop otherwise
   >choose
 } !count_to_ten
 
@@ -891,10 +891,10 @@ The `>block` built-in can be combined with these patterns:
 Because built-ins are just Store paths, you can override them:
 
 ```soma
-print !old_print                ; Save original print
-{ )LOUD: ) >old_print >old_print } !print    ; Override print
+print !old_print                ) Save original print
+{ )LOUD: ) >old_print >old_print } !print    ) Override print
 
-)hello) >print                  ; Prints: LOUD: hello
+)hello) >print                  ) Prints: LOUD: hello
 ```
 
 **What happens:**
@@ -923,13 +923,13 @@ The block literal is executed immediately with `>{ }`.
 **With computation:**
 
 ```soma
->{ 5 3 >+ }     ; AL: [8]
+>{ 5 3 >+ }     ) AL: [8]
 ```
 
 **With arguments from AL:**
 
 ```soma
-5 >{ !_.x _.x 2 >* }    ; AL: [10]
+5 >{ !_.x _.x 2 >* }    ) AL: [10]
 ```
 
 ---
@@ -939,7 +939,7 @@ The block literal is executed immediately with `>{ }`.
 ```soma
 { >dup >* } !square
 
-7 >square       ; Execute stored block, AL: [49]
+7 >square       ) Execute stored block, AL: [49]
 ```
 
 **How it works:**
@@ -957,7 +957,7 @@ The block literal is executed immediately with `>{ }`.
 { !_.x !_.y _.x _.y >+ } !add_named
 
 3 7 >add_named
-; AL = [10]
+) AL = [10]
 ```
 
 **How it works:**
@@ -1106,7 +1106,7 @@ Done
 ) This will FAIL
 {
   42 !_.value
-  >{ _.value >print }  ; ERROR: _.value is Void in inner block
+  >{ _.value >print }  ) ERROR: _.value is Void in inner block
 }
 ```
 
@@ -1115,8 +1115,8 @@ Done
 ```soma
 {
   42 !_.value
-  _.value              ; Push onto AL
-  >{ !_.y _.y >print } ; Inner block pops from AL
+  _.value              ) Push onto AL
+  >{ !_.y _.y >print } ) Inner block pops from AL
 }
 ```
 
@@ -1126,9 +1126,9 @@ Done
 
 ```soma
 {
-  42 !shared_value     ; Store in Store )global)
+  42 !shared_value     ) Store in Store )global)
   >{
-    shared_value >print  ; Inner reads from Store
+    shared_value >print  ) Inner reads from Store
   }
 }
 ```
@@ -1173,8 +1173,8 @@ When a block begins execution:
 ```soma
 {
   1 !_.x
-  { 2 !_.x _.x >print } >chain  ; Prints: 2
-  _.x >print                     ; Prints: 1
+  { 2 !_.x _.x >print } >chain  ) Prints: 2
+  _.x >print                     ) Prints: 1
 }
 ```
 
@@ -1198,7 +1198,7 @@ When a block begins execution:
 ### Example 2: Inner Block Cannot See Outer Register )ERROR)
 
 ```soma
->{1 !_.n >{_.n >print}}  ; FATAL ERROR
+>{1 !_.n >{_.n >print}}  ) FATAL ERROR
 ```
 
 **What happens:**
@@ -1210,7 +1210,7 @@ When a block begins execution:
 Let me show the correct error case:
 
 ```soma
->{1 !_.n >{_.n 10 >+}}  ; Inner block gets Void for _.n
+>{1 !_.n >{_.n 10 >+}}  ) Inner block gets Void for _.n
 ```
 
 **What happens:**
@@ -1226,15 +1226,15 @@ Let me show the correct error case:
 
 ```soma
 {
-  1 !_.n                ; Outer Register: _.n = 1
+  1 !_.n                ) Outer Register: _.n = 1
 
-  { 2 !_.n } >chain     ; Inner1 Register: _.n = 2 )then destroyed)
+  { 2 !_.n } >chain     ) Inner1 Register: _.n = 2 )then destroyed)
 
-  _.n >print            ; Outer Register: _.n still = 1
+  _.n >print            ) Outer Register: _.n still = 1
 
-  { 3 !_.n } >chain     ; Inner2 Register: _.n = 3 )then destroyed)
+  { 3 !_.n } >chain     ) Inner2 Register: _.n = 3 )then destroyed)
 
-  _.n >print            ; Outer Register: _.n still = 1
+  _.n >print            ) Outer Register: _.n still = 1
 }
 ```
 
@@ -1252,10 +1252,10 @@ Let me show the correct error case:
 ### WRONG: Trying to Access Outer Register
 
 ```soma
-; WRONG - Inner block can't see outer's _.value
+) WRONG - Inner block can't see outer's _.value
 {
   42 !_.value
-  >{_.value >print }  ; ERROR: _.value is Void in inner block
+  >{_.value >print }  ) ERROR: _.value is Void in inner block
 }
 ```
 
@@ -1266,11 +1266,11 @@ This **fails** because the inner block has its own empty Register.
 ### RIGHT: Pass Data via AL
 
 ```soma
-; RIGHT - Pass value through the AL
+) RIGHT - Pass value through the AL
 {
   42 !_.value
-  _.value              ; Push onto AL
-  >{ >print }          ; Inner block pops from AL and prints
+  _.value              ) Push onto AL
+  >{ >print }          ) Inner block pops from AL and prints
 }
 ```
 
@@ -1290,11 +1290,11 @@ This **fails** because the inner block has its own empty Register.
 ### RIGHT: Share Data via Store
 
 ```soma
-; RIGHT - Use Store for shared state
+) RIGHT - Use Store for shared state
 {
-  42 !shared_value     ; Store in Store (global)
+  42 !shared_value     ) Store in Store (global)
   >{
-    shared_value >print  ; Inner reads from Store
+    shared_value >print  ) Inner reads from Store
   }
 }
 ```
@@ -1315,10 +1315,10 @@ This **fails** because the inner block has its own empty Register.
 
 ```soma
 {
-  >{ 5 !_.n _.n _.n >* } !_.square  ; Define helper in outer Register
+  >{ 5 !_.n _.n _.n >* } !_.square  ) Define helper in outer Register
 
-  7 >_.square          ; Call with 7
-  >print               ; Prints: 49
+  7 >_.square          ) Call with 7
+  >print               ) Prints: 49
 }
 ```
 
@@ -1346,20 +1346,20 @@ The block execution:
 
 ```soma
 {
-  0 !_.i                           ; Outer counter
+  0 !_.i                           ) Outer counter
 
   {
-    0 !_.i                         ; Inner counter (different Register!)
+    0 !_.i                         ) Inner counter (different Register!)
     _.i 5 ><
-      { _.i 1 >+ !_.i >block >chain }    ; Inner loop uses its own _.i
+      { _.i 1 >+ !_.i >block >chain }    ) Inner loop uses its own _.i
       { }
     >choose >chain
   } !_.inner_loop
 
   _.i 3 ><
     {
-      >_.inner_loop                ; Call inner loop
-      _.i 1 >+ !_.i                ; Increment outer _.i
+      >_.inner_loop                ) Call inner loop
+      _.i 1 >+ !_.i                ) Increment outer _.i
       >block >chain
     }
     { }
@@ -1380,11 +1380,11 @@ The block execution:
 
 ```soma
 {
-  { !_.x _.x _.x >* } !_.square    ; Helper: square a number
-  { !_.x _.x 2 >* } !_.double      ; Helper: double a number
+  { !_.x _.x _.x >* } !_.square    ) Helper: square a number
+  { !_.x _.x 2 >* } !_.double      ) Helper: double a number
 
-  5 >_.square >print               ; Prints: 25
-  5 >_.double >print               ; Prints: 10
+  5 >_.square >print               ) Prints: 25
+  5 >_.double >print               ) Prints: 10
 }
 ```
 
@@ -1441,11 +1441,11 @@ The `>block` built-in enables recursion. For tail-call optimization with `>chain
 
 {
   fact.n 0 >=<
-    fact.acc                    ; Base case: return accumulator
-    {                           ; Recursive case: update and continue
+    fact.acc                    ) Base case: return accumulator
+    {                           ) Recursive case: update and continue
       fact.n 1 >- !fact.n
       fact.acc fact.n 1 >+ >* !fact.acc
-      fact-step                 ; Return self for tail-call
+      fact-step                 ) Return self for tail-call
     }
   >choose
 } !fact-step
@@ -1473,13 +1473,13 @@ If you want Register-local state, you must pass state via AL (this builds a trad
 
 ```soma
 {
-  !_.n                           ; Pop initial value into Register
+  !_.n                           ) Pop initial value into Register
   _.n 0 >==
-  { 1 }                          ; Base case: return 1
+  { 1 }                          ) Base case: return 1
   {
-    _.n 1 >-                     ; Compute n-1
-    >block >chain                ; Recursive call with n-1
-    _.n >*                       ; Multiply result by original n
+    _.n 1 >-                     ) Compute n-1
+    >block >chain                ) Recursive call with n-1
+    _.n >*                       ) Multiply result by original n
   }
   >choose >^
 } !factorial
@@ -1580,9 +1580,9 @@ SOMA programs do not reduce. **They run.**
 
 ```soma
 {
-  >block !outer_self     ; Store in Store (not Register!)
+  >block !outer_self     ) Store in Store (not Register!)
   >{ >block !inner_self }
-  outer_self             ; This works because outer_self is in Store
+  outer_self             ) This works because outer_self is in Store
 }
 ```
 

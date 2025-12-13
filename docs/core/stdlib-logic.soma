@@ -44,8 +44,8 @@
 
 (Example:) >md.b >md.p
 
-(True >not      ; AL: [False]
-False >not     ; AL: [True]) (soma) >md.code
+(True >not      \29\ AL: [False]
+False >not     \29\ AL: [True]) (soma) >md.code
 
 >md.hr
 
@@ -63,10 +63,10 @@ False >not     ; AL: [True]) (soma) >md.code
 
 (Example:) >md.b >md.p
 
-(True True >and    ; AL: [True]
-True False >and   ; AL: [False]
-False True >and   ; AL: [False]
-False False >and  ; AL: [False]) (soma) >md.code
+(True True >and    \29\ AL: [True]
+True False >and   \29\ AL: [False]
+False True >and   \29\ AL: [False]
+False False >and  \29\ AL: [False]) (soma) >md.code
 
 >md.hr
 
@@ -84,10 +84,10 @@ False False >and  ; AL: [False]) (soma) >md.code
 
 (Example:) >md.b >md.p
 
-(True True >or     ; AL: [True]
-True False >or    ; AL: [True]
-False True >or    ; AL: [True]
-False False >or   ; AL: [False]) (soma) >md.code
+(True True >or     \29\ AL: [True]
+True False >or    \29\ AL: [True]
+False True >or    \29\ AL: [True]
+False False >or   \29\ AL: [False]) (soma) >md.code
 
 >md.hr
 
@@ -109,9 +109,9 @@ False False >or   ; AL: [False]) (soma) >md.code
 
 (Example:) >md.b >md.p
 
-(10 5 >>      ; AL: [True]
-3 7 >>       ; AL: [False]
-5 5 >>       ; AL: [False]) (soma) >md.code
+(10 5 >>      \29\ AL: [True]
+3 7 >>       \29\ AL: [False]
+5 5 >>       \29\ AL: [False]) (soma) >md.code
 
 >md.hr
 
@@ -129,9 +129,9 @@ False False >or   ; AL: [False]) (soma) >md.code
 
 (Example:) >md.b >md.p
 
-(5 3 >=!      ; AL: [True]
-5 5 >=!      ; AL: [False]
-"cat" "dog" >=!  ; AL: [True]) (soma) >md.code
+(5 3 >=!      \29\ AL: [True]
+5 5 >=!      \29\ AL: [False]
+"cat" "dog" >=!  \29\ AL: [True]) (soma) >md.code
 
 >md.hr
 
@@ -149,9 +149,9 @@ False False >or   ; AL: [False]) (soma) >md.code
 
 (Example:) >md.b >md.p
 
-(5 5 >==      ; AL: [True]
-5 3 >==      ; AL: [False]
-"cat" "cat" >==  ; AL: [True]) (soma) >md.code
+(5 5 >==      \29\ AL: [True]
+5 3 >==      \29\ AL: [False]
+"cat" "cat" >==  \29\ AL: [True]) (soma) >md.code
 
 >md.hr
 
@@ -169,9 +169,9 @@ False False >or   ; AL: [False]) (soma) >md.code
 
 (Example:) >md.b >md.p
 
-(3 5 >=<      ; AL: [True]
-5 5 >=<      ; AL: [True]
-7 5 >=<      ; AL: [False]) (soma) >md.code
+(3 5 >=<      \29\ AL: [True]
+5 5 >=<      \29\ AL: [True]
+7 5 >=<      \29\ AL: [False]) (soma) >md.code
 
 >md.hr
 
@@ -189,9 +189,9 @@ False False >or   ; AL: [False]) (soma) >md.code
 
 (Example:) >md.b >md.p
 
-(7 5 >=>      ; AL: [True]
-5 5 >=>      ; AL: [True]
-3 5 >=>      ; AL: [False]) (soma) >md.code
+(7 5 >=>      \29\ AL: [True]
+5 5 >=>      \29\ AL: [True]
+3 5 >=>      \29\ AL: [False]) (soma) >md.code
 
 >md.hr
 
@@ -213,8 +213,8 @@ False False >or   ; AL: [False]) (soma) >md.code
 
 (Example:) >md.b >md.p
 
-(7 >dup       ; AL: [7, 7]
-"hello" >dup ; AL: ["hello", "hello"]) (soma) >md.code
+(7 >dup       \29\ AL: [7, 7]
+"hello" >dup \29\ AL: ["hello", "hello"]) (soma) >md.code
 
 >md.hr
 
@@ -232,7 +232,7 @@ False False >or   ; AL: [False]) (soma) >md.code
 
 (Example:) >md.b >md.p
 
-(1 2 3 >drop  ; AL: [1, 2]) (soma) >md.code
+(1 2 3 >drop  \29\ AL: [1, 2]) (soma) >md.code
 
 >md.hr
 
@@ -250,8 +250,8 @@ False False >or   ; AL: [False]) (soma) >md.code
 
 (Example:) >md.b >md.p
 
-(1 2 >swap    ; AL: [2, 1]
-"a" "b" >swap ; AL: ["b", "a"]) (soma) >md.code
+(1 2 >swap    \29\ AL: [2, 1]
+"a" "b" >swap \29\ AL: ["b", "a"]) (soma) >md.code
 
 >md.hr
 
@@ -269,7 +269,7 @@ False False >or   ; AL: [False]) (soma) >md.code
 
 (Example:) >md.b >md.p
 
-(1 2 >over    ; AL: [1, 2, 1]) (soma) >md.code
+(1 2 >over    \29\ AL: [1, 2, 1]) (soma) >md.code
 
 >md.hr
 
@@ -287,7 +287,7 @@ False False >or   ; AL: [False]) (soma) >md.code
 
 (Example:) >md.b >md.p
 
-(1 2 3 >rot   ; AL: [2, 3, 1]) (soma) >md.code
+(1 2 3 >rot   \29\ AL: [2, 3, 1]) (soma) >md.code
 
 >md.hr
 
@@ -307,8 +307,8 @@ False False >or   ; AL: [False]) (soma) >md.code
 
 (Example:) >md.b >md.p
 
-(5 >inc       ; AL: [6]
--1 >inc      ; AL: [0]) (soma) >md.code
+(5 >inc       \29\ AL: [6]
+-1 >inc      \29\ AL: [0]) (soma) >md.code
 
 >md.hr
 
@@ -324,8 +324,8 @@ False False >or   ; AL: [False]) (soma) >md.code
 
 (Example:) >md.b >md.p
 
-(5 >dec       ; AL: [4]
-0 >dec       ; AL: [-1]) (soma) >md.code
+(5 >dec       \29\ AL: [4]
+0 >dec       \29\ AL: [-1]) (soma) >md.code
 
 >md.hr
 
@@ -343,9 +343,9 @@ False False >or   ; AL: [False]) (soma) >md.code
 
 (Example:) >md.b >md.p
 
-(5 >abs       ; AL: [5]
--5 >abs      ; AL: [5]
-0 >abs       ; AL: [0]) (soma) >md.code
+(5 >abs       \29\ AL: [5]
+-5 >abs      \29\ AL: [5]
+0 >abs       \29\ AL: [0]) (soma) >md.code
 
 >md.hr
 
@@ -363,9 +363,9 @@ False False >or   ; AL: [False]) (soma) >md.code
 
 (Example:) >md.b >md.p
 
-(3 7 >min     ; AL: [3]
-7 3 >min     ; AL: [3]
-5 5 >min     ; AL: [5]) (soma) >md.code
+(3 7 >min     \29\ AL: [3]
+7 3 >min     \29\ AL: [3]
+5 5 >min     \29\ AL: [5]) (soma) >md.code
 
 >md.hr
 
@@ -383,9 +383,9 @@ False False >or   ; AL: [False]) (soma) >md.code
 
 (Example:) >md.b >md.p
 
-(3 7 >max     ; AL: [7]
-7 3 >max     ; AL: [7]
-5 5 >max     ; AL: [5]) (soma) >md.code
+(3 7 >max     \29\ AL: [7]
+7 3 >max     \29\ AL: [7]
+5 5 >max     \29\ AL: [5]) (soma) >md.code
 
 >md.hr
 
@@ -422,10 +422,10 @@ False False >or   ; AL: [False]) (soma) >md.code
 (Example:) >md.b >md.p
 
 (3 { (Hello\29\ >print } >times
-; Output:
-; Hello
-; Hello
-; Hello) (soma) >md.code
+\29\ Output:
+\29\ Hello
+\29\ Hello
+\29\ Hello) (soma) >md.code
 
 >md.hr
 
@@ -443,8 +443,8 @@ False False >or   ; AL: [False]) (soma) >md.code
 
 (Example:) >md.b >md.p
 
-(True { (yes\29\ >print } >if   ; Output: yes
-False { (no\29\ >print } >if   ; No output) (soma) >md.code
+(True { (yes\29\ >print } >if   \29\ Output: yes
+False { (no\29\ >print } >if   \29\ No output) (soma) >md.code
 
 >md.hr
 
@@ -461,7 +461,7 @@ False { (no\29\ >print } >if   ; No output) (soma) >md.code
 (Example:) >md.b >md.p
 
 (5 0 >< { (positive\29\ } { (not positive\29\ } >ifelse
-; AL: ["positive"]) (soma) >md.code
+\29\ AL: ["positive"]) (soma) >md.code
 
 >md.hr
 
@@ -479,8 +479,8 @@ False { (no\29\ >print } >if   ; No output) (soma) >md.code
 
 (Example:) >md.b >md.p
 
-({ 5 3 >+ } >^   ; AL: [8]
-{ (hello\29\ } >^  ; AL: ["hello"]) (soma) >md.code
+({ 5 3 >+ } >^   \29\ AL: [8]
+{ (hello\29\ } >^  \29\ AL: ["hello"]) (soma) >md.code
 
 >md.hr
 
@@ -515,7 +515,7 @@ False { (no\29\ >print } >if   ; No output) (soma) >md.code
 
 (0 !count
 { count 5 >< } { count >print count >inc !count } >while
-; Output: 0 1 2 3 4) (soma) >md.code
+\29\ Output: 0 1 2 3 4) (soma) >md.code
 
 >md.hr
 
@@ -547,7 +547,7 @@ False { (no\29\ >print } >if   ; No output) (soma) >md.code
 
 (0 !count
 { count >print count >inc !count } { count 3 >< } >do
-; Output: 0 1 2) (soma) >md.code
+\29\ Output: 0 1 2) (soma) >md.code
 
 >md.hr
 

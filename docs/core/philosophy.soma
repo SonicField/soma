@@ -68,7 +68,7 @@
 
 (If the inner block tried to ) (read) >md.i ( the outer's Register, it would fail:) >md.t >md.p
 
-(>{1 !_.n >{_.n >print}}  ; FATAL ERROR) (soma) >md.code
+(>{1 !_.n >{_.n >print}}  \29\ FATAL ERROR) (soma) >md.code
 
 (The inner block's Register has no ) (_.n) >md.c ( path, so ) (_.n) >md.c ( resolves to Void. Trying to execute Void is a fatal error.) >md.t >md.p
 
@@ -92,7 +92,7 @@
 (Real programs mutate memory. SOMA models this directly.) >md.p
 
 (42 !counter.value
-counter.value >print    ; prints 42) (soma) >md.code
+counter.value >print    \29\ prints 42) (soma) >md.code
 
 (The state exists. You can see it. You can change it. You can reason about it. This is not a problem to be solved—it is the nature of computation.) >md.p
 
@@ -134,7 +134,7 @@ counter.value >print    ; prints 42) (soma) >md.code
 
 (99 !a.b
 a.b. !x.y
-x.y >print      ; prints 99) (soma) >md.code
+x.y >print      \29\ prints 99) (soma) >md.code
 
 (The cell at ) (a.b) >md.c ( is aliased from ) (x.y) >md.c (. This is not pointer arithmetic—it is structural identity preserved across multiple paths.) >md.t >md.p
 
@@ -161,7 +161,7 @@ x.y >print      ; prints 99) (soma) >md.code
 (Blocks are ) (state transformers) >md.b (. They act upon the machine state and leave it changed.) >md.t >md.p
 
 ({ >dup >* } !square
-5 >square >print    ; prints 25) (soma) >md.code
+5 >square >print    \29\ prints 25) (soma) >md.code
 
 (square) >md.c ( is not a function. It is a sequence of tokens that transforms state.) >md.t >md.p
 
@@ -173,34 +173,34 @@ x.y >print      ; prints 99) (soma) >md.code
 
 (The ) (>) >md.c ( prefix modifier makes execution explicit:) >md.t >md.p
 
-(print           ; Pushes the print block onto the AL (it's a value\29\
->print          ; Executes the print block (it's an operation\29\) (soma) >md.code
+(print           \29\ Pushes the print block onto the AL (it's a value\29\
+>print          \29\ Executes the print block (it's an operation\29\) (soma) >md.code
 
 (When you write ) (>path) >md.c (, you are saying: "read the value at this path and execute it." This is an atomic operation--not two separate steps, but a single unified action.) >md.t >md.p
 
 (This applies to any path:) >md.p
 
-(>print          ; Execute block at Store path "print"
->my_func        ; Execute block at Store path "my_func"
->_.action       ; Execute block at Register path "_.action") (soma) >md.code
+(>print          \29\ Execute block at Store path "print"
+>my_func        \29\ Execute block at Store path "my_func"
+>_.action       \29\ Execute block at Register path "_.action") (soma) >md.code
 
 (Built-ins are just blocks.) >md.b ( When you write ) (>print) >md.c (, ) (>dup) >md.c (, or ) (>+) >md.c (, you are executing blocks stored at Store paths. There is no special "built-in" syntax--they are simply pre-populated Store entries.) >md.t >md.p
 
 (This design enables powerful patterns. You can store blocks and execute them later:) >md.p
 
 ({ (Hello\29\ >print } !greet
->greet          ; Executes the stored block) (soma) >md.code
+>greet          \29\ Executes the stored block) (soma) >md.code
 
 (You can also execute block literals directly with ) (>{ }) >md.c (:) >md.t >md.p
 
-(>{ 1 2 >+ >print }    ; Execute block immediately) (soma) >md.code
+(>{ 1 2 >+ >print }    \29\ Execute block immediately) (soma) >md.code
 
 (This is cleaner than the older pattern ) ({ 1 2 >+ >print } >chain) >md.c ( for single execution.) >md.t >md.p
 
 (The standard library defines ) (>^) >md.c ( which executes the top value from the AL:) >md.t >md.p
 
-({ !_ >_ } !^              ; Store this block as "^"
-(Data\29\ print >^           ; Pushes "Data", pushes print block, executes it) (soma) >md.code
+({ !_ >_ } !^              \29\ Store this block as "^"
+(Data\29\ print >^           \29\ Pushes "Data", pushes print block, executes it) (soma) >md.code
 
 (This enables macro-like behavior from simple primitives. The ) (>^) >md.c ( operator is similar to Forth's ) (EXECUTE) >md.c ( or Lisp's ) (FUNCALL) >md.c (.) >md.t >md.p
 
@@ -266,12 +266,12 @@ x.y >print      ; prints 99) (soma) >md.code
   counter 1 >- !counter
 
   counter 0 >>
-    _.self          ; Continue: return this block
-    Nil             ; Stop: return Nil
+    _.self          \29\ Continue: return this block
+    Nil             \29\ Stop: return Nil
   >choose
 } !countdown
 
-countdown >chain    ; No stack growth!) (soma) >md.code
+countdown >chain    \29\ No stack growth!) (soma) >md.code
 
 (Functional elegance with imperative mutation:) >md.b ( SOMA combines the best of both worlds. The control flow is functional (blocks returning blocks\29\, but the state mutation is explicit and visible. You can see exactly what changes and when, while still writing clean tail-recursive loops.) >md.t >md.p
 
@@ -324,16 +324,16 @@ countdown >chain    ; No stack growth!) (soma) >md.code
 
 {
   fact.n 0 >=<
-    fact.acc                    ; Base: return accumulator (stops chain\29\
-    {                           ; Recursive: mutate and continue
+    fact.acc                    \29\ Base: return accumulator (stops chain\29\
+    {                           \29\ Recursive: mutate and continue
       fact.acc fact.n >* !fact.acc
       fact.n 1 >- !fact.n
-      _.self                    ; Return self (continues chain\29\
+      _.self                    \29\ Return self (continues chain\29\
     }
   >choose
 } !fact-step
 
-fact-step >chain                ; AL: [120]) (soma) >md.code
+fact-step >chain                \29\ AL: [120]) (soma) >md.code
 
 (What's happening:) >md.b >md.p
 
@@ -385,8 +385,8 @@ fact-step >chain                ; AL: [120]) (soma) >md.code
   counter.n 1 >+ !counter.n
 
   counter.n counter.limit >>
-  { Nil }           ; Stop: return Nil to terminate chain
-  { _.self }        ; Continue: return self to continue chain
+  { Nil }           \29\ Stop: return Nil to terminate chain
+  { _.self }        \29\ Continue: return self to continue chain
   >choose
 } !counter-loop
 

@@ -63,19 +63,19 @@ Properties:
 Example )basic usage):
 
 ```soma
-Nil !config.middle_name        ; Explicitly set to empty
-config.middle_name             ; AL = [Nil] — was set, but to nothing
-config.middle_name >isVoid     ; False — has been set
+Nil !config.middle_name        ) Explicitly set to empty
+config.middle_name             ) AL = [Nil] — was set, but to nothing
+config.middle_name >isVoid     ) False — has been set
 ```
 
 Example )Nil with children):
 
 ```soma
-Nil !a.b          ; Set a.b's VALUE to Nil
-23 !a.b.c         ; Create child 'c' in a.b's SUBPATHS
+Nil !a.b          ) Set a.b's VALUE to Nil
+23 !a.b.c         ) Create child 'c' in a.b's SUBPATHS
 
-a.b               ; Returns Nil )reads a.b's VALUE)
-a.b.c             ; Returns 23 )traverses a.b's SUBPATHS to c)
+a.b               ) Returns Nil )reads a.b's VALUE)
+a.b.c             ) Returns 23 )traverses a.b's SUBPATHS to c)
 ```
 
 Nil represents "explicitly empty" — the Cell exists and has been set, but it carries the value "nothing." This is useful for representing optional fields that are intentionally left empty.
@@ -109,28 +109,28 @@ Properties:
 Example )reading never-set paths):
 
 ```soma
-42 !a.b.c         ; Auto-vivifies a and a.b with Void payload
-a.b.c             ; Returns 42 )explicitly set)
-a.b               ; Returns Void )auto-vivified, never set)
-a                 ; Returns Void )auto-vivified, never set)
+42 !a.b.c         ) Auto-vivifies a and a.b with Void payload
+a.b.c             ) Returns 42 )explicitly set)
+a.b               ) Returns Void )auto-vivified, never set)
+a                 ) Returns Void )auto-vivified, never set)
 
-a.b >isVoid       ; True — never explicitly set
+a.b >isVoid       ) True — never explicitly set
 ```
 
 Example )Void with children):
 
 ```soma
-42 !parent.child  ; Auto-vivifies parent with Void value
-parent            ; Returns Void )parent's VALUE)
-parent.child      ; Returns 42 )traverses parent's SUBPATHS)
+42 !parent.child  ) Auto-vivifies parent with Void value
+parent            ) Returns Void )parent's VALUE)
+parent.child      ) Returns 42 )traverses parent's SUBPATHS)
 ```
 
 Example )structural deletion):
 
 ```soma
-42 !a.b.c         ; Create Cell a.b.c with payload 42
-Void !a.b.c.      ; Delete Cell a.b.c and its entire subtree
-a.b.c             ; AL = [Void] — the Cell no longer exists
+42 !a.b.c         ) Create Cell a.b.c with payload 42
+Void !a.b.c.      ) Delete Cell a.b.c and its entire subtree
+a.b.c             ) AL = [Void] — the Cell no longer exists
 ```
 
 ## Conclusion

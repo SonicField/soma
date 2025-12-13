@@ -19,7 +19,7 @@ Pops two integers `(b, a)` from the AL and pushes `(a + b)`.
 **Example:**
 
 ```soma
-5 3 >+    ; AL: [8]
+5 3 >+    ) AL: [8]
 ```
 
 **Errors:** Fatal if AL has fewer than 2 values or if either value is not an integer.
@@ -35,7 +35,7 @@ Pops two integers `(b, a)` from the AL and pushes `(a - b)`.
 **Example:**
 
 ```soma
-10 3 >-   ; AL: [7]
+10 3 >-   ) AL: [7]
 ```
 
 **Errors:** Fatal if AL has fewer than 2 values or if either value is not an integer.
@@ -51,7 +51,7 @@ Pops two integers `(b, a)` from the AL and pushes `(a * b)`.
 **Example:**
 
 ```soma
-4 5 >*    ; AL: [20]
+4 5 >*    ) AL: [20]
 ```
 
 **Errors:** Fatal if AL has fewer than 2 values or if either value is not an integer.
@@ -67,7 +67,7 @@ Pops two integers `(b, a)` from the AL and pushes `(a / b)` using integer divisi
 **Example:**
 
 ```soma
-10 3 >/   ; AL: [3]
+10 3 >/   ) AL: [3]
 ```
 
 **Errors:** Fatal if AL has fewer than 2 values, if either value is not an integer, or if `b` is zero.
@@ -87,8 +87,8 @@ Pops two values `(b, a)` from the AL and pushes `True` if `a == b`, otherwise `F
 **Example:**
 
 ```soma
-5 5 >==       ; AL: [True]
-"cat" "dog" >==   ; AL: [False]
+5 5 >==       ) AL: [True]
+"cat" "dog" >==   ) AL: [False]
 ```
 
 **Errors:** Fatal if AL has fewer than 2 values or if types are incompatible for comparison.
@@ -104,8 +104,8 @@ Pops two values `(b, a)` from the AL and pushes `True` if `a < b`, otherwise `Fa
 **Example:**
 
 ```soma
-3 5 ><        ; AL: [True]
-10 2 ><       ; AL: [False]
+3 5 ><        ) AL: [True]
+10 2 ><       ) AL: [False]
 ```
 
 **Errors:** Fatal if AL has fewer than 2 values or if types are incompatible for comparison.
@@ -121,8 +121,8 @@ Pops two values `(b, a)` from the AL and pushes `True` if `a > b`, otherwise `Fa
 **Example:**
 
 ```soma
-10 5 >>       ; AL: [True]
-3 7 >>        ; AL: [False]
+10 5 >>       ) AL: [True]
+3 7 >>        ) AL: [False]
 ```
 
 **Errors:** Fatal if AL has fewer than 2 values or if types are incompatible for comparison.
@@ -142,7 +142,7 @@ Duplicates the top value on the AL.
 **Example:**
 
 ```soma
-7 >dup        ; AL: [7, 7]
+7 >dup        ) AL: [7, 7]
 ```
 
 **Errors:** Fatal if AL is empty.
@@ -158,7 +158,7 @@ Removes the top value from the AL.
 **Example:**
 
 ```soma
-1 2 3 >drop   ; AL: [1, 2]
+1 2 3 >drop   ) AL: [1, 2]
 ```
 
 **Errors:** Fatal if AL is empty.
@@ -174,7 +174,7 @@ Swaps the top two values on the AL.
 **Example:**
 
 ```soma
-1 2 >swap     ; AL: [2, 1]
+1 2 >swap     ) AL: [2, 1]
 ```
 
 **Errors:** Fatal if AL has fewer than 2 values.
@@ -190,7 +190,7 @@ Duplicates the second value and pushes it on top.
 **Example:**
 
 ```soma
-1 2 >over     ; AL: [1, 2, 1]
+1 2 >over     ) AL: [1, 2, 1]
 ```
 
 **Errors:** Fatal if AL has fewer than 2 values.
@@ -210,8 +210,8 @@ Pops the top value from the AL and displays it to standard output.
 **Example:**
 
 ```soma
-"Hello" >print   ; Output: Hello
-42 >print        ; Output: 42
+"Hello" >print   ) Output: Hello
+42 >print        ) Output: 42
 ```
 
 **Errors:** Fatal if AL is empty.
@@ -240,21 +240,21 @@ Pops three values
 **Examples:**
 
 ```soma
-; Select a value
-True 10 20 >choose      ; AL: [10]
-False 10 20 >choose     ; AL: [20]
+) Select a value
+True 10 20 >choose      ) AL: [10]
+False 10 20 >choose     ) AL: [20]
 
-; Select and execute a block
+) Select and execute a block
 5 3 ><
   { (small) >print }
   { (large) >print }
->choose >^              ; Selects { (large) >print }, then executes it
+>choose >^              ) Selects { (large) >print }, then executes it
 
-; Common pattern: select block for loop continuation
+) Common pattern: select block for loop continuation
 counter 10 ><
-  >block                ; Continue - return current block
-  Nil                   ; Stop
->choose                 ; AL: [block] or [Nil]
+  >block                ) Continue - return current block
+  Nil                   ) Stop
+>choose                 ) AL: [block] or [Nil]
 ```
 
 **Errors:** Fatal if AL has fewer than 3 values or if first value is not a Boolean.
@@ -278,32 +278,32 @@ Pops a value from the AL. If it's a Block, executes it and repeats )pops again).
 **Examples:**
 
 ```soma
-; Execute a block once
-{ 5 3 >+ } >chain       ; AL: [8]
+) Execute a block once
+{ 5 3 >+ } >chain       ) AL: [8]
 
-; Infinite loop )block returns itself)
+) Infinite loop )block returns itself)
 {
   (tick) >print
-  >block                ; Push self back to AL
-} >chain                ; Prints "tick" forever
+  >block                ) Push self back to AL
+} >chain                ) Prints "tick" forever
 
-; Conditional loop )using >choose)
+) Conditional loop )using >choose)
 0 !counter
 {
   counter >toString >print
   counter >inc !counter
   counter 10 ><
-    >block              ; Continue: push self
-    Nil                 ; Stop: push Nil
+    >block              ) Continue: push self
+    Nil                 ) Stop: push Nil
   >choose
 } !loop
-loop >chain             ; Prints 0..9, then stops
+loop >chain             ) Prints 0..9, then stops
 
-; State machine
+) State machine
 { (A) >print state-b } !state-a
 { (B) >print state-c } !state-b
 { (C) >print Nil } !state-c
-state-a >chain          ; Prints "A", "B", "C", stops
+state-a >chain          ) Prints "A", "B", "C", stops
 ```
 
 **Errors:** None )stops cleanly on non-Block values).
@@ -327,24 +327,24 @@ Pushes the currently executing block onto the AL.
 **Examples:**
 
 ```soma
-; Get current block for recursion
+) Get current block for recursion
 0 !counter
 {
   counter >toString >print
   counter >inc !counter
   counter 5 ><
-    >block              ; Continue: push self
-    Nil                 ; Stop
+    >block              ) Continue: push self
+    Nil                 ) Stop
   >choose
-} >chain                ; Prints 0..4
+} >chain                ) Prints 0..4
 
-; Store reference to current block
-{ >block !_.me _.me }   ; Store reference in Register, push to AL
+) Store reference to current block
+{ >block !_.me _.me }   ) Store reference in Register, push to AL
 
-; Internationalization via aliasing
-block !блок             ; Russian
-block !ブロック          ; Japanese
-{ (loop) >print >блок } >chain   ; Use Russian alias
+) Internationalization via aliasing
+block !блок             ) Russian
+block !ブロック          ) Japanese
+{ (loop) >print >блок } >chain   ) Use Russian alias
 ```
 
 **Errors:** None.
@@ -362,7 +362,7 @@ Performs no operation. The AL is unchanged.
 **Example:**
 
 ```soma
->noop         ; AL unchanged
+>noop         ) AL unchanged
 ```
 
 **Errors:** None.

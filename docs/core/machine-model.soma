@@ -218,10 +218,10 @@ Nil (        +---------------------+
 
 (Example: Value and Subpaths Coexist) >md.b >md.p
 
-(soma) (Nil !a.b        ; Set a.b's VALUE to Nil
-23 !a.b.c       ; Create child 'c' in a.b's SUBPATHS
-a.b             ; Returns Nil (reads VALUE\29\
-a.b.c           ; Returns 23 (traverses SUBPATHS to c\29\) >md.code
+(soma) (Nil !a.b        \29\ Set a.b's VALUE to Nil
+23 !a.b.c       \29\ Create child 'c' in a.b's SUBPATHS
+a.b             \29\ Returns Nil (reads VALUE\29\
+a.b.c           \29\ Returns 23 (traverses SUBPATHS to c\29\) >md.code
 
 (Cell ) (a.b) >md.c ( now has:) >md.t >md.b >md.p
 
@@ -238,12 +238,12 @@ a.b.c           ; Returns 23 (traverses SUBPATHS to c\29\) >md.code
 (Reading a Cell reads ONLY its value:) >md.b >md.p
 
 (42 !node
-node            ; Returns 42 (reads VALUE only, ignores subpaths\29\) (soma) >md.code
+node            \29\ Returns 42 (reads VALUE only, ignores subpaths\29\) (soma) >md.code
 
 (Path traversal uses ONLY subpaths:) >md.b >md.p
 
-(42 !a.b.c       ; a.b.c has value 42
-a.b.c           ; Traverses a -> b -> c through SUBPATHS, returns c's VALUE (42\29\) (soma) >md.code
+(42 !a.b.c       \29\ a.b.c has value 42
+a.b.c           \29\ Traverses a -> b -> c through SUBPATHS, returns c's VALUE (42\29\) (soma) >md.code
 
 (Path resolution walks through the ) (subpaths dictionary) >md.b (, completely ignoring the values of intermediate Cells.) >md.t >md.p
 
@@ -252,26 +252,26 @@ a.b.c           ; Traverses a -> b -> c through SUBPATHS, returns c's VALUE (42\
 (All of these are perfectly legal:) >md.p
 
 (\29\ Void with children (from auto-vivification\29\
-42 !a.b.c       ; 'a' has Void value but children {"b": ...}
-                ; 'a.b' has Void value but children {"c": ...}
+42 !a.b.c       \29\ 'a' has Void value but children {"b": ...}
+                \29\ 'a.b' has Void value but children {"c": ...}
 
 \29\ Nil with children
 Nil !parent
 23 !parent.child
-parent          ; Returns Nil (VALUE\29\
-parent.child    ; Returns 23 (traverses SUBPATHS\29\
+parent          \29\ Returns Nil (VALUE\29\
+parent.child    \29\ Returns 23 (traverses SUBPATHS\29\
 
 \29\ Int with children
 42 !node
 99 !node.sub
-node            ; Returns 42 (VALUE\29\
-node.sub        ; Returns 99 (traverses SUBPATHS\29\
+node            \29\ Returns 42 (VALUE\29\
+node.sub        \29\ Returns 99 (traverses SUBPATHS\29\
 
 \29\ Block with children
 { >print } !action
 (help text\29\ !action.description
->action                      ; Executes the block (reads VALUE\29\
-action.description >print   ; Prints "help text" (traverses SUBPATHS\29\) (soma) >md.code
+>action                      \29\ Executes the block (reads VALUE\29\
+action.description >print   \29\ Prints "help text" (traverses SUBPATHS\29\) (soma) >md.code
 
 (Why this matters:) >md.b >md.p
 
@@ -285,7 +285,7 @@ action.description >print   ; Prints "help text" (traverses SUBPATHS\29\) (soma)
 
 (\29\ Node with both value and next pointer
 1 !list.value
-list.next. !list.next        ; CellRef to next node
+list.next. !list.next        \29\ CellRef to next node
 
 \29\ The Cell at 'list' has:
 \29\   value: Void (never set\29\
@@ -321,20 +321,20 @@ undefined.path -> RuntimeError (path doesn't exist - STRICT semantics\29\) >md.c
 
 (Examples:) >md.b >md.p
 
-(soma) (Nil !a.b     ; Legal: explicitly set a.b to Nil
-a.b          ; AL = [Nil] - was set to empty) >md.code
+(soma) (Nil !a.b     \29\ Legal: explicitly set a.b to Nil
+a.b          \29\ AL = [Nil] - was set to empty) >md.code
 
-(soma) (Void !a.b    ; Legal: stores Void as payload
-a.b          ; AL = [Void] - Cell exists with Void value) >md.code
+(soma) (Void !a.b    \29\ Legal: stores Void as payload
+a.b          \29\ AL = [Void] - Cell exists with Void value) >md.code
 
-(soma) (Void !a.b.   ; Legal: delete Cell a.b structurally
-a.b          ; RuntimeError - path no longer exists) >md.code
+(soma) (Void !a.b.   \29\ Legal: delete Cell a.b structurally
+a.b          \29\ RuntimeError - path no longer exists) >md.code
 
-(soma) (42 !a.b.c    ; Auto-vivifies a and a.b with Void payload
-a.b          ; AL = [Void] - auto-vivified Cell exists
-a.b.c        ; AL = [42] - was explicitly set
+(soma) (42 !a.b.c    \29\ Auto-vivifies a and a.b with Void payload
+a.b          \29\ AL = [Void] - auto-vivified Cell exists
+a.b.c        \29\ AL = [42] - was explicitly set
 
-undefined    ; RuntimeError - path never created) >md.code
+undefined    \29\ RuntimeError - path never created) >md.code
 
 (2.4 Cell Creation and Auto-Vivification) >md.h3
 
@@ -384,13 +384,13 @@ Nil (Store = {
 (Reading auto-vivified cells vs undefined paths:) >md.b >md.p
 
 (soma) (42 !a.b.c
-a.b.c        ; AL = [42] - explicitly set (reads VALUE\29\ +
-a.b          ; AL = [Void] - auto-vivified, CAN be read +
-a            ; AL = [Void] - auto-vivified, CAN be read +) >md.code
+a.b.c        \29\ AL = [42] - explicitly set (reads VALUE\29\ +
+a.b          \29\ AL = [Void] - auto-vivified, CAN be read +
+a            \29\ AL = [Void] - auto-vivified, CAN be read +) >md.code
 
 (Reading undefined paths (STRICT semantics\29\:) >md.b >md.p
 
-(soma) (undefined.path    ; RuntimeError - path does not exist X) >md.code
+(soma) (undefined.path    \29\ RuntimeError - path does not exist X) >md.code
 
 (The key distinction:) >md.b >md.p
 
@@ -402,10 +402,10 @@ a            ; AL = [Void] - auto-vivified, CAN be read +) >md.code
 
 (Auto-vivified intermediate cells allow path traversal - you can traverse through cells with Void value to reach deeper values:) >md.p
 
-(soma) (42 !a.b.c       ; Auto-vivifies 'a' and 'a.b' with Void value
-a.b.c           ; Can traverse through a (Void\29\ and a.b (Void\29\ to reach c (42\29\
-                ; Path traversal uses SUBPATHS, ignores intermediate VALUES
-                ; Returns 42 +) >md.code
+(soma) (42 !a.b.c       \29\ Auto-vivifies 'a' and 'a.b' with Void value
+a.b.c           \29\ Can traverse through a (Void\29\ and a.b (Void\29\ to reach c (42\29\
+                \29\ Path traversal uses SUBPATHS, ignores intermediate VALUES
+                \29\ Returns 42 +) >md.code
 
 (This is crucial for sparse structures - once you've written a deep path, all intermediate nodes exist and can be traversed.) >md.p
 
@@ -413,12 +413,12 @@ a.b.c           ; Can traverse through a (Void\29\ and a.b (Void\29\ to reach c 
 
 (Because value and subpaths are orthogonal, a Cell with Void value can still have children in its subpaths:) >md.p
 
-(soma) (42 !a.b.c       ; Auto-vivifies 'a' with Void value
-99 !a.x         ; Add child 'x' to a's SUBPATHS (a already exists from previous write\29\
+(soma) (42 !a.b.c       \29\ Auto-vivifies 'a' with Void value
+99 !a.x         \29\ Add child 'x' to a's SUBPATHS (a already exists from previous write\29\
 
-a               ; Returns Void (VALUE was never set, but Cell exists\29\ +
-a.b.c           ; Returns 42 (traverses SUBPATHS\29\ +
-a.x             ; Returns 99 (traverses SUBPATHS\29\ +) >md.code
+a               \29\ Returns Void (VALUE was never set, but Cell exists\29\ +
+a.b.c           \29\ Returns 42 (traverses SUBPATHS\29\ +
+a.x             \29\ Returns 99 (traverses SUBPATHS\29\ +) >md.code
 
 (Cell ) (a) >md.c ( now has:) >md.t >md.p
 
@@ -445,8 +445,8 @@ a.x             ; Returns 99 (traverses SUBPATHS\29\ +) >md.code
 (Example:) >md.p
 
 (soma) (99 !config.timeout
-config.timeout      ; Pushes 99 onto AL
-config.timeout.     ; Pushes CellRef onto AL) >md.code
+config.timeout      \29\ Pushes 99 onto AL
+config.timeout.     \29\ Pushes CellRef onto AL) >md.code
 
 (A ) (trailing dot) >md.b ( denotes a reference to the Cell itself, not its payload.) >md.t >md.p
 
@@ -459,7 +459,7 @@ config.timeout.     ; Pushes CellRef onto AL) >md.code
 (soma) (23 !a.b
 a.b !a.c
 24 !a.b
-a.c >print   ; prints 23) >md.code
+a.c >print   \29\ prints 23) >md.code
 
 (Step) (Store State) (Description)
 >md.table.header
@@ -479,8 +479,8 @@ a.c >print   ; prints 23) >md.code
 a.b. !x.y.
 (goodbye\29\ !d.b.c
 d.b. !a.b.
-a.b.c >print   ; prints "goodbye"
-x.y.c >print   ; prints "hello") >md.code
+a.b.c >print   \29\ prints "goodbye"
+x.y.c >print   \29\ prints "hello") >md.code
 
 (Step) (Description)
 >md.table.header
@@ -679,12 +679,12 @@ counter.n >print) (soma) >md.code
 
 (The Store has an unnamed root that cannot be directly referenced. For symmetry, the Register has a ) (named root) >md.b ( ) (_) >md.c ( that can be referenced and manipulated:) >md.t >md.p
 
-(_                 ; Register root value
-_.                ; Register root CellRef
-_.x               ; Register path: root \5C\u2192 x \29\value\29\
-_.x.              ; Register path: root \5C\u2192 x \29\CellRef\29\
-_.x.y.z           ; Register path: root \5C\u2192 x \5C\u2192 y \5C\u2192 z \29\value\29\
-_.x.y.z.          ; Register path: root \5C\u2192 x \5C\u2192 y \5C\u2192 z \29\CellRef\29\) (soma) >md.code
+(_                 \29\ Register root value
+_.                \29\ Register root CellRef
+_.x               \29\ Register path: root \5C\u2192 x \29\value\29\
+_.x.              \29\ Register path: root \5C\u2192 x \29\CellRef\29\
+_.x.y.z           \29\ Register path: root \5C\u2192 x \5C\u2192 y \5C\u2192 z \29\value\29\
+_.x.y.z.          \29\ Register path: root \5C\u2192 x \5C\u2192 y \5C\u2192 z \29\CellRef\29\) (soma) >md.code
 
 (This allows the entire Register graph to be captured, stored, or manipulated as a single entity.) >md.p
 
@@ -692,18 +692,18 @@ _.x.y.z.          ; Register path: root \5C\u2192 x \5C\u2192 y \5C\u2192 z \29\
 
 (Valid Register Syntax:) >md.b >md.p
 
-(_                 ; Register root value \29\payload at root\29\
-_.                ; Register root CellRef
-_.x               ; Register path to child cell \29\value\29\
-_.x.              ; Register path to child cell \29\CellRef\29\
-_.counter         ; Nested register path \29\value\29\
-_.counter.        ; Nested register path \29\CellRef\29\) (soma) >md.code
+(_                 \29\ Register root value \29\payload at root\29\
+_.                \29\ Register root CellRef
+_.x               \29\ Register path to child cell \29\value\29\
+_.x.              \29\ Register path to child cell \29\CellRef\29\
+_.counter         \29\ Nested register path \29\value\29\
+_.counter.        \29\ Nested register path \29\CellRef\29\) (soma) >md.code
 
 (Invalid Register Syntax:) >md.b >md.p
 
-(_x                ; ILLEGAL: missing dot after _
-_counter          ; ILLEGAL: must be _.counter
-_x.y              ; ILLEGAL: must be _.x.y) (soma) >md.code
+(_x                \29\ ILLEGAL: missing dot after _
+_counter          \29\ ILLEGAL: must be _.counter
+_x.y              \29\ ILLEGAL: must be _.x.y) (soma) >md.code
 
 (NORMATIVE RULE:) >md.b >md.p
 
@@ -714,11 +714,11 @@ _x.y              ; ILLEGAL: must be _.x.y) (soma) >md.code
 
 (Register writes follow the same syntax as Store writes, but target Register paths:) >md.p
 
-(42 !_.x           ; Store 42 in register path _.x
-!_.y              ; Pop AL and store in register path _.y
-Nil !_.z          ; Store Nil in register path _.z
-Void !_.w.        ; Delete register cell at _.w
-Void !_.w         ; FATAL ERROR: cannot store Void as payload)
+(42 !_.x           \29\ Store 42 in register path _.x
+!_.y              \29\ Pop AL and store in register path _.y
+Nil !_.z          \29\ Store Nil in register path _.z
+Void !_.w.        \29\ Delete register cell at _.w
+Void !_.w         \29\ FATAL ERROR: cannot store Void as payload)
 (soma) >md.code
 
 (3.8 Register Deletion Semantics) >md.h3
@@ -1012,7 +1012,7 @@ _ >print  \29\ Prints 23)
 
 (Example: Register destroyed, but value lost (no CellRef\29\) >md.b >md.p
 
-(1 { _ 1 >+ !_ } >chain _  >print   ; ERROR: Register Not Set) (soma) >md.code
+(1 { _ 1 >+ !_ } >chain _  >print   \29\ ERROR: Register Not Set) (soma) >md.code
 
 (Step) (Description)
 >md.table.header
@@ -1031,7 +1031,7 @@ _ >print  \29\ Prints 23)
 (Example: CellRef escapes, Cell persists) >md.b >md.p
 
 ({ (value\29\ !_.data _.data. } >chain !escaped_ref
-escaped_ref >print   ; Prints "value" - Cell persists!) (soma) >md.code
+escaped_ref >print   \29\ Prints "value" - Cell persists!) (soma) >md.code
 
 (Step) (Description)
 >md.table.header
@@ -1097,14 +1097,14 @@ myObj.counter           \29\ 1) (soma) >md.code
 ({
   1 !_.x
   2 !_.y
-  _.              ; Push CellRef to entire Register graph
-  !saved_context  ; Store it in the Store
+  _.              \29\ Push CellRef to entire Register graph
+  !saved_context  \29\ Store it in the Store
 }) (soma) >md.code
 
 (After the Block completes and the Register is destroyed, the Cells persist because the CellRef keeps them accessible:) >md.p
 
-(saved_context.x >print      ; prints 1
-saved_context.y >print      ; prints 2) (soma) >md.code
+(saved_context.x >print      \29\ prints 1
+saved_context.y >print      \29\ prints 2) (soma) >md.code
 
 (Key insight:) >md.b ( Even though the Register is destroyed, the ) (Cells) >md.b ( in the graph persist because the CellRef at ) (saved_context) >md.c ( provides access to them (see Section 4.4 on Cell Lifetime\29\.) >md.t >md.p
 
@@ -1178,7 +1178,7 @@ saved_context.y >print      ; prints 2) (soma) >md.code
 ((cat\29\ !a.b.c
 a.b.c. !ref
 ref { !_.ref. (dog\29\ !_.ref }
-a.b.c >print   ; prints "dog") (soma) >md.code
+a.b.c >print   \29\ prints "dog") (soma) >md.code
 
 (Step) (Description)
 >md.table.header
@@ -1216,8 +1216,8 @@ ref1 !ref3      \29\ ref3 gets same immutable value) (soma) >md.code
 
 (4.3 CellReference Syntax) >md.h3
 
-(a.b      ; Value at a.b (may be Nil or Void\29\
-a.b.     ; CellRef for Cell a.b (may be Void if Cell absent\29\) (soma) >md.code
+(a.b      \29\ Value at a.b (may be Nil or Void\29\
+a.b.     \29\ CellRef for Cell a.b (may be Void if Cell absent\29\) (soma) >md.code
 
 (The trailing dot is ) (syntactically significant) >md.b (.) >md.t >md.p
 
@@ -1359,9 +1359,9 @@ session.active.flag) Nil >md.code
 (>md.b) (Undefined paths don't exist) ( \5C\u2192 reading raises RuntimeError ✗)
 >md.ul
 
-(42 !a.b.c       ; Auto-vivifies a and a.b
-a.b             ; Returns Void (Cell exists\29\ ✓
-undefined.path  ; RuntimeError (path doesn't exist\29\ ✗) (soma) >md.code
+(42 !a.b.c       \29\ Auto-vivifies a and a.b
+a.b             \29\ Returns Void (Cell exists\29\ ✓
+undefined.path  \29\ RuntimeError (path doesn't exist\29\ ✗) (soma) >md.code
 
 (CellRef access) >md.b ( (trailing dot\29\:) >md.t >md.p
 
@@ -1450,8 +1450,8 @@ undefined.path  ; RuntimeError (path doesn't exist\29\ ✗) (soma) >md.code
 
 (Nil !parent
 42 !parent.child
-parent           ; Returns Nil (VALUE\29\
-parent.child     ; Returns 42 (traverses SUBPATHS\29\)
+parent           \29\ Returns Nil (VALUE\29\
+parent.child     \29\ Returns 42 (traverses SUBPATHS\29\)
 (soma) >md.code
 
 (Cell ) (parent) >md.c ( has:) >md.t >md.p
@@ -1462,9 +1462,9 @@ parent.child     ; Returns 42 (traverses SUBPATHS\29\)
 
 (Example: Void with children) >md.b >md.p
 
-(42 !a.b.c        ; Auto-vivifies 'a' and 'a.b' with Void values
-a.b              ; Returns Void (VALUE\29\
-a.b.c            ; Returns 42 (traverses SUBPATHS\29\)
+(42 !a.b.c        \29\ Auto-vivifies 'a' and 'a.b' with Void values
+a.b              \29\ Returns Void (VALUE\29\
+a.b.c            \29\ Returns 42 (traverses SUBPATHS\29\)
 (soma) >md.code
 
 (Cell ) (a.b) >md.c ( has:) >md.t >md.p
@@ -1520,31 +1520,31 @@ a.b.c            ; Returns 42 (traverses SUBPATHS\29\)
 
 (Examples:) >md.b >md.p
 
-(42 !a.b.c       ; Creates: a (Void\29\, a.b (Void\29\, a.b.c (42\29\
+(42 !a.b.c       \29\ Creates: a (Void\29\, a.b (Void\29\, a.b.c (42\29\
 
-a.b.c           ; Returns 42 (explicitly set\29\
-a.b             ; Returns Void (auto-vivified Cell exists\29\
-a               ; Returns Void (auto-vivified Cell exists\29\
+a.b.c           \29\ Returns 42 (explicitly set\29\
+a.b             \29\ Returns Void (auto-vivified Cell exists\29\
+a               \29\ Returns Void (auto-vivified Cell exists\29\
 
-undefined.path  ; RuntimeError - path doesn't exist )
+undefined.path  \29\ RuntimeError - path doesn't exist )
 (soma) >md.code
 
 (\29\ Writing Void as value is allowed
-Void !a.b       ; OK - stores Void as value
-a.b             ; Returns Void (Cell exists with Void value\29\ )
+Void !a.b       \29\ OK - stores Void as value
+a.b             \29\ Returns Void (Cell exists with Void value\29\ )
 (soma) >md.code
 
 (\29\ Reading auto-vivified Cells is legal
 42 !a.b.c
-a.b             ; Returns Void - Cell exists, was auto-vivified )
+a.b             \29\ Returns Void - Cell exists, was auto-vivified )
 (soma) >md.code
 
 (\29\ Void cells can have children
-42 !a.b.c       ; Auto-vivifies 'a' with Void value
-99 !a.x         ; Add sibling to 'a.b' in a's subpaths
-a               ; Returns Void (value never set, but Cell exists\29\
-a.b.c           ; Returns 42 (traverses subpaths\29\
-a.x             ; Returns 99 (traverses subpaths\29\ )
+42 !a.b.c       \29\ Auto-vivifies 'a' with Void value
+99 !a.x         \29\ Add sibling to 'a.b' in a's subpaths
+a               \29\ Returns Void (value never set, but Cell exists\29\
+a.b.c           \29\ Returns 42 (traverses subpaths\29\
+a.x             \29\ Returns 99 (traverses subpaths\29\ )
 (soma) >md.code
 
 (6.3 Nil — "Explicitly Set to Empty") >md.h3
@@ -1565,23 +1565,23 @@ a.x             ; Returns 99 (traverses subpaths\29\ )
 (Examples:) >md.b >md.p
 
 (Nil !status
-status >print   ; prints "Nil")
+status >print   \29\ prints "Nil")
 (soma) >md.code
 
-((default value\29\ !config.setting       ; Set explicitly
-Nil !optional.field                   ; Explicitly empty
+((default value\29\ !config.setting       \29\ Set explicitly
+Nil !optional.field                   \29\ Explicitly empty
 
-config.setting                         ; "default value"
-optional.field                         ; Nil (not Void\29\)
+config.setting                         \29\ "default value"
+optional.field                         \29\ Nil (not Void\29\)
 (soma) >md.code
 
 (\29\ Nil cells can have children
 Nil !node
 42 !node.left
 99 !node.right
-node             ; Returns Nil (value is explicitly empty\29\
-node.left        ; Returns 42 (traverses subpaths\29\
-node.right       ; Returns 99 (traverses subpaths\29\)
+node             \29\ Returns Nil (value is explicitly empty\29\
+node.left        \29\ Returns 42 (traverses subpaths\29\
+node.right       \29\ Returns 99 (traverses subpaths\29\)
 (soma) >md.code
 
 (6.4 The Void-Payload Invariant) >md.h3
@@ -1592,12 +1592,12 @@ node.right       ; Returns 99 (traverses subpaths\29\)
 
 (Fatal error:) >md.b >md.p
 
-(Void !a.b       ; FATAL ERROR - cannot write Void as value)
+(Void !a.b       \29\ FATAL ERROR - cannot write Void as value)
 (soma) >md.code
 
 (Legal (structural deletion\29\:) >md.b >md.p
 
-(Void !a.b.      ; Legal - delete the cell entirely)
+(Void !a.b.      \29\ Legal - delete the cell entirely)
 (soma) >md.code
 
 (Why this matters:) >md.b ( Void represents "never set" - you cannot intentionally set something to "never set". Only auto-vivification can create cells with Void value.) >md.t >md.p
@@ -1606,36 +1606,36 @@ node.right       ; Returns 99 (traverses subpaths\29\)
 
 (The Void-Payload Invariant restricts the ) (value) >md.b ( component only. A Cell's ) (subpaths) >md.b ( are independent and can exist regardless of whether the value is Void:) >md.t >md.p
 
-(42 !a.b.c       ; Auto-vivifies 'a' with Void value
-                ; 'a' has: value=Void, subpaths={"b": ...}
-                ; This is legal! )
+(42 !a.b.c       \29\ Auto-vivifies 'a' with Void value
+                \29\ 'a' has: value=Void, subpaths={"b": ...}
+                \29\ This is legal! )
 (soma) >md.code
 
 (6.5 Distinguishing Void from Nil) >md.h3
 
 (Hypothetical ) (>isVoid) >md.c ( operation:) >md.t >md.b >md.p
 
-(42 !a.b.c       ; Auto-vivifies a and a.b with Void
+(42 !a.b.c       \29\ Auto-vivifies a and a.b with Void
 
-a.b >isVoid     ; True - never explicitly set
-(Never set\29\ (Has been set\29\ >choose >print    ; Prints "Never set"
+a.b >isVoid     \29\ True - never explicitly set
+(Never set\29\ (Has been set\29\ >choose >print    \29\ Prints "Never set"
 
-Nil !a.b        ; Explicitly set to Nil
+Nil !a.b        \29\ Explicitly set to Nil
 
-a.b >isVoid     ; False - now has been set (to Nil\29\
-a.b             ; Returns Nil
-(Never set\29\ (Has been set\29\ >choose >print    ; Prints "Has been set")
+a.b >isVoid     \29\ False - now has been set (to Nil\29\
+a.b             \29\ Returns Nil
+(Never set\29\ (Has been set\29\ >choose >print    \29\ Prints "Has been set")
 (soma) >md.code
 
 (The distinction in practice:) >md.b >md.p
 
 (\29\ Void vs Nil in optional fields
 (John\29\ !person.name
-Nil !person.middle_name         ; Explicitly no middle name
+Nil !person.middle_name         \29\ Explicitly no middle name
 42 !person.age
 
-person.middle_name              ; Nil - explicitly empty
-person.spouse                   ; RuntimeError - path never created )
+person.middle_name              \29\ Nil - explicitly empty
+person.spouse                   \29\ RuntimeError - path never created )
 (soma) >md.code
 
 (6.6 Reading Void vs Nil) >md.h3
@@ -1643,15 +1643,15 @@ person.spouse                   ; RuntimeError - path never created )
 (Reading existing Cells with Void or Nil values:) >md.b >md.p
 
 (42 !intermediate.node.leaf
-intermediate.node           ; Returns Void (auto-vivified Cell exists\29\
+intermediate.node           \29\ Returns Void (auto-vivified Cell exists\29\
 
 Nil !empty.node
-empty.node                  ; Returns Nil (explicitly set\29\ )
+empty.node                  \29\ Returns Nil (explicitly set\29\ )
 (soma) >md.code
 
 (Reading undefined paths (STRICT semantics\29\:) >md.b >md.p
 
-(undefined.path              ; RuntimeError - path doesn't exist )
+(undefined.path              \29\ RuntimeError - path doesn't exist )
 (soma) >md.code
 
 (The difference:) >md.b >md.p
@@ -1665,17 +1665,17 @@ empty.node                  ; Returns Nil (explicitly set\29\ )
 
 (You CAN write Nil:) >md.b >md.p
 
-(Nil !path       ; Legal - set payload to Nil )
+(Nil !path       \29\ Legal - set payload to Nil )
 (soma) >md.code
 
 (You CAN write Void:) >md.b >md.p
 
-(Void !path      ; Legal - set payload to Void )
+(Void !path      \29\ Legal - set payload to Void )
 (soma) >md.code
 
 (You CAN use Void for structural deletion:) >md.b >md.p
 
-(Void !path.     ; Legal - delete the cell )
+(Void !path.     \29\ Legal - delete the cell )
 (soma) >md.code
 
 (6.8 Comparison Table) >md.h3
@@ -1744,38 +1744,38 @@ empty.node                  ; Returns Nil (explicitly set\29\ )
 1 !array.1000
 
 \29\ Auto-vivified intermediate indices can be read
-array.0         ; 1 - explicitly set ✓
-array.100       ; 1 - explicitly set ✓
-array.1000      ; 1 - explicitly set ✓
+array.0         \29\ 1 - explicitly set ✓
+array.100       \29\ 1 - explicitly set ✓
+array.1000      \29\ 1 - explicitly set ✓
 
 \29\ Undefined indices raise error
-array.50        ; RuntimeError - path never created ❌) (soma) >md.code
+array.50        \29\ RuntimeError - path never created ❌) (soma) >md.code
 
 (Optional fields:) >md.b >md.p
 
 ((John\29\ !person.name
-Nil !person.middle_name         ; Explicitly no middle name
+Nil !person.middle_name         \29\ Explicitly no middle name
 42 !person.age
 
-person.middle_name              ; Nil - explicitly empty ✓
-person.spouse                   ; RuntimeError - path never created ❌) (soma) >md.code
+person.middle_name              \29\ Nil - explicitly empty ✓
+person.spouse                   \29\ RuntimeError - path never created ❌) (soma) >md.code
 
 (Nested structures:) >md.b >md.p
 
 ((value\29\ !deep.nested.path.value
 
-deep                    ; Void - auto-vivified structural parent ✓
-deep.nested             ; Void - auto-vivified structural parent ✓
-deep.nested.path        ; Void - auto-vivified structural parent ✓
-deep.nested.path.value  ; "value" - explicitly set ✓
+deep                    \29\ Void - auto-vivified structural parent ✓
+deep.nested             \29\ Void - auto-vivified structural parent ✓
+deep.nested.path        \29\ Void - auto-vivified structural parent ✓
+deep.nested.path.value  \29\ "value" - explicitly set ✓
 
-deep.other.path         ; RuntimeError - path never created ❌) (soma) >md.code
+deep.other.path         \29\ RuntimeError - path never created ❌) (soma) >md.code
 
 (6.11 Writing Void vs Auto-vivification) >md.h3
 
 (Writing Void is now legal:) >md.b >md.p
 
-(Void !a.b       ; Legal - stores Void as value) (soma) >md.code
+(Void !a.b       \29\ Legal - stores Void as value) (soma) >md.code
 
 (Note:) >md.b ( You cannot distinguish between:) >md.t >md.p
 
@@ -1786,21 +1786,21 @@ deep.other.path         ; RuntimeError - path never created ❌) (soma) >md.code
 (Both are simply Void:) >md.p
 
 (\29\ Auto-vivified
-never.written   ; Returns Void
+never.written   \29\ Returns Void
 
 \29\ Explicitly written
 Void !explicit
-explicit        ; Returns Void
+explicit        \29\ Returns Void
 
 \29\ These are indistinguishable
-never.written explicit >==  ; Returns True) (soma) >md.code
+never.written explicit >==  \29\ Returns True) (soma) >md.code
 
 (This is an acceptable tradeoff for simpler language semantics.) >md.p
 
 (Not an error: Reading Void) >md.b >md.p
 
 (42 !a.b.c
-a.b             ; Returns Void - this is fine!) (soma) >md.code
+a.b             \29\ Returns Void - this is fine!) (soma) >md.code
 
 (Reading Void is not an error. It just means "this cell exists structurally but has never had its value set.") >md.p
 
@@ -1816,13 +1816,13 @@ a.b             ; Returns Void - this is fine!) (soma) >md.code
 
 (Reading semantics (STRICT\29\:) >md.b >md.p
 
-(42 !a.b.c       ; Auto-vivifies 'a' and 'a.b' with Void value
+(42 !a.b.c       \29\ Auto-vivifies 'a' and 'a.b' with Void value
 
-a.b.c           ; ✓ Returns 42 (Cell exists, was explicitly set\29\
-a.b             ; ✓ Returns Void (Cell exists, auto-vivified\29\
-a               ; ✓ Returns Void (Cell exists, auto-vivified\29\
+a.b.c           \29\ ✓ Returns 42 (Cell exists, was explicitly set\29\
+a.b             \29\ ✓ Returns Void (Cell exists, auto-vivified\29\
+a               \29\ ✓ Returns Void (Cell exists, auto-vivified\29\
 
-undefined.path  ; ❌ RuntimeError - path does not exist) (soma) >md.code
+undefined.path  \29\ ❌ RuntimeError - path does not exist) (soma) >md.code
 
 (The key distinction:) >md.b >md.p
 
@@ -1836,21 +1836,21 @@ undefined.path  ; ❌ RuntimeError - path does not exist) (soma) >md.code
 
 (Traversal through auto-vivified Cells works:) >md.b >md.p
 
-(42 !a.b.c       ; Auto-vivifies 'a' and 'a.b' with Void value
+(42 !a.b.c       \29\ Auto-vivifies 'a' and 'a.b' with Void value
 
-a.b.c           ; Traverses a's subpaths -> b's subpaths -> c
-                ; Returns c's VALUE (42\29\
-                ; Intermediate VALUES (Void\29\ are ignored during traversal ✓) (soma) >md.code
+a.b.c           \29\ Traverses a's subpaths -> b's subpaths -> c
+                \29\ Returns c's VALUE (42\29\
+                \29\ Intermediate VALUES (Void\29\ are ignored during traversal ✓) (soma) >md.code
 
 (This is crucial for sparse structures - once you've written a deep path, all intermediate nodes exist (with Void value\29\ and can be traversed through.) >md.p
 
 (Path traversal through Nil also works:) >md.b >md.p
 
-(Nil !a.b        ; Explicitly set a.b's VALUE to Nil
-42 !a.b.c       ; Create child 'c' in a.b's SUBPATHS
+(Nil !a.b        \29\ Explicitly set a.b's VALUE to Nil
+42 !a.b.c       \29\ Create child 'c' in a.b's SUBPATHS
 
-a.b             ; Returns Nil (reads VALUE\29\
-a.b.c           ; Returns 42 (traverses SUBPATHS, ignores a.b's VALUE\29\) (soma) >md.code
+a.b             \29\ Returns Nil (reads VALUE\29\
+a.b.c           \29\ Returns 42 (traverses SUBPATHS, ignores a.b's VALUE\29\) (soma) >md.code
 
 (Why this works:) >md.b ( Path resolution uses only the ) (subpaths) >md.b ( component. The ) (value) >md.b ( component (whether Void, Nil, or any other value\29\ is completely ignored during path traversal. Only the final Cell's value is returned.) >md.t >md.p
 
@@ -1858,11 +1858,11 @@ a.b.c           ; Returns 42 (traverses SUBPATHS, ignores a.b's VALUE\29\) (soma
 
 (If any component in the path doesn't exist in the subpaths dictionary, traversal fails:) >md.p
 
-(42 !a.b.c       ; Creates a, a.b, a.b.c
+(42 !a.b.c       \29\ Creates a, a.b, a.b.c
 
-a.b.c           ; ✓ Works - all components exist
-a.x.y           ; ❌ RuntimeError - 'x' doesn't exist in a's subpaths
-a.b.c.d         ; ❌ RuntimeError - 'c' has no subpath 'd') (soma) >md.code
+a.b.c           \29\ ✓ Works - all components exist
+a.x.y           \29\ ❌ RuntimeError - 'x' doesn't exist in a's subpaths
+a.b.c.d         \29\ ❌ RuntimeError - 'c' has no subpath 'd') (soma) >md.code
 
 (The mechanism:) >md.b >md.p
 
@@ -1930,14 +1930,14 @@ counter.n >print) (soma) >md.code
 (42 !a
 a !b
 99 !a
-b >print   ; prints 42) (soma) >md.code
+b >print   \29\ prints 42) (soma) >md.code
 
 (Example: Cell aliasing (shared identity\29\) >md.b >md.p
 
 (42 !a
 a. !b.
 99 !b
-a >print   ; prints 99) (soma) >md.code
+a >print   \29\ prints 99) (soma) >md.code
 
 (Description)
 >md.table.header
@@ -2037,44 +2037,44 @@ _.temp                \29\ RuntimeError: path doesn't exist (block's Register is
 (Example: Both Nil and Void are storable) >md.b >md.p
 
 (Nil !status
-status >print   ; prints "Nil") (soma) >md.code
+status >print   \29\ prints "Nil") (soma) >md.code
 
-(Void !x         ; Legal - stores Void as payload
-x >print        ; prints "Void") (soma) >md.code
+(Void !x         \29\ Legal - stores Void as payload
+x >print        \29\ prints "Void") (soma) >md.code
 
 (Example: Auto-vivification creates Void) >md.b >md.p
 
 (42 !a.b.c
-a.b.c >print   ; prints "42" (explicitly set\29\
-a.b >print     ; prints "Void" (auto-vivified Cell exists\29\
-a >print       ; prints "Void" (auto-vivified Cell exists\29\) (soma) >md.code
+a.b.c >print   \29\ prints "42" (explicitly set\29\
+a.b >print     \29\ prints "Void" (auto-vivified Cell exists\29\
+a >print       \29\ prints "Void" (auto-vivified Cell exists\29\) (soma) >md.code
 
 (Example: Void vs Nil distinction) >md.b >md.p
 
-(42 !data.x.y        ; Auto-vivifies data and data.x with Void
-Nil !config.opt     ; Explicitly set to Nil
+(42 !data.x.y        \29\ Auto-vivifies data and data.x with Void
+Nil !config.opt     \29\ Explicitly set to Nil
 
-data.x              ; Returns Void (auto-vivified Cell exists\29\
-config.opt          ; Returns Nil (explicitly set to empty\29\) (soma) >md.code
+data.x              \29\ Returns Void (auto-vivified Cell exists\29\
+config.opt          \29\ Returns Nil (explicitly set to empty\29\) (soma) >md.code
 
 (Example: Reading undefined paths (STRICT\29\) >md.b >md.p
 
 (42 !a.b.c
-a.b.c           ; ✓ Returns 42 (explicitly set\29\
-a.b             ; ✓ Returns Void (auto-vivified Cell exists\29\
+a.b.c           \29\ ✓ Returns 42 (explicitly set\29\
+a.b             \29\ ✓ Returns Void (auto-vivified Cell exists\29\
 
-undefined.path  ; ❌ RuntimeError - path never created) (soma) >md.code
+undefined.path  \29\ ❌ RuntimeError - path never created) (soma) >md.code
 
 (Example: Void allows path traversal) >md.b >md.p
 
-(42 !a.b.c       ; a and a.b have Void payload
-a.b.c           ; Traverses through Void cells, returns 42) (soma) >md.code
+(42 !a.b.c       \29\ a and a.b have Void payload
+a.b.c           \29\ Traverses through Void cells, returns 42) (soma) >md.code
 
 (Example: Void deletes Cells structurally) >md.b >md.p
 
 (42 !data.x
-Void !data.x.   ; Deletes Cell data.x
-data.x          ; RuntimeError - path no longer exists) (soma) >md.code
+Void !data.x.   \29\ Deletes Cell data.x
+data.x          \29\ RuntimeError - path no longer exists) (soma) >md.code
 
 (Example: Sparse array with strict semantics) >md.b >md.p
 
@@ -2082,9 +2082,9 @@ data.x          ; RuntimeError - path no longer exists) (soma) >md.code
 1 !array.100
 1 !array.1000
 
-array.0 >print      ; prints "1"
-array.50            ; RuntimeError - path never created
-array.100 >print    ; prints "1") (soma) >md.code
+array.0 >print      \29\ prints "1"
+array.50            \29\ RuntimeError - path never created
+array.100 >print    \29\ prints "1") (soma) >md.code
 
 (7.6 Combined Example: Linked List Node) >md.h3
 

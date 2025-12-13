@@ -37,9 +37,9 @@ Displays the current AL and Store state for debugging. Does not modify AL or Sto
 
 ```soma
 1 2 3
->debug.al.dump   ; Shows AL: [1, 2, 3] and Store contents
->+               ; Compute 2 + 3
->debug.al.dump   ; Shows AL: [1, 5] - verify operation
+>debug.al.dump   ) Shows AL: [1, 2, 3] and Store contents
+>+               ) Compute 2 + 3
+>debug.al.dump   ) Shows AL: [1, 5] - verify operation
 ```
 
 **Use cases:**
@@ -61,10 +61,10 @@ Pops a value and pushes a string representing its type. Essential for runtime ty
 **Example:**
 
 ```soma
-42 >debug.type        ; AL: ["Int"]
-(hello) >debug.type   ; AL: ["Str"]
-True >debug.type      ; AL: ["Bool"]
-{ >noop } >debug.type ; AL: ["Block"]
+42 >debug.type        ) AL: ["Int"]
+(hello) >debug.type   ) AL: ["Str"]
+True >debug.type      ) AL: ["Bool"]
+{ >noop } >debug.type ) AL: ["Block"]
 ```
 
 **Use cases:**
@@ -86,13 +86,13 @@ Pops any value and pushes an integer identity value. For CellRefs, returns the i
 **Example:**
 
 ```soma
-a.b. >debug.id        ; AL: [<identity integer>]
-thing. >debug.id      ; AL: [<identity integer>]
+a.b. >debug.id        ) AL: [<identity integer>]
+thing. >debug.id      ) AL: [<identity integer>]
 
-; Comparing identities
+) Comparing identities
 cell1. >debug.id
 cell2. >debug.id
->==             ; AL: [True] if same cell, [False] otherwise
+>==             ) AL: [True] if same cell, [False] otherwise
 ```
 
 **Use cases:**

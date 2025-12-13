@@ -89,17 +89,17 @@
 
 (Example \29\basic usage\29\:) >md.p
 
-(Nil !config.middle_name        ; Explicitly set to empty
-config.middle_name             ; AL = [Nil] — was set, but to nothing
-config.middle_name >isVoid     ; False — has been set) (soma) >md.code
+(Nil !config.middle_name        \29\ Explicitly set to empty
+config.middle_name             \29\ AL = [Nil] — was set, but to nothing
+config.middle_name >isVoid     \29\ False — has been set) (soma) >md.code
 
 (Example \29\Nil with children\29\:) >md.p
 
-(Nil !a.b          ; Set a.b's VALUE to Nil
-23 !a.b.c         ; Create child 'c' in a.b's SUBPATHS
+(Nil !a.b          \29\ Set a.b's VALUE to Nil
+23 !a.b.c         \29\ Create child 'c' in a.b's SUBPATHS
 
-a.b               ; Returns Nil \29\reads a.b's VALUE\29\
-a.b.c             ; Returns 23 \29\traverses a.b's SUBPATHS to c\29\) (soma) >md.code
+a.b               \29\ Returns Nil \29\reads a.b's VALUE\29\
+a.b.c             \29\ Returns 23 \29\traverses a.b's SUBPATHS to c\29\) (soma) >md.code
 
 (Nil represents "explicitly empty" — the Cell exists and has been set, but it carries the value )
 ("nothing." This is useful for representing optional fields that are intentionally left empty.)>concat
@@ -131,24 +131,24 @@ a.b.c             ; Returns 23 \29\traverses a.b's SUBPATHS to c\29\) (soma) >md
 
 (Example \29\reading never-set paths\29\:) >md.p
 
-(42 !a.b.c         ; Auto-vivifies a and a.b with Void payload
-a.b.c             ; Returns 42 \29\explicitly set\29\
-a.b               ; Returns Void \29\auto-vivified, never set\29\
-a                 ; Returns Void \29\auto-vivified, never set\29\
+(42 !a.b.c         \29\ Auto-vivifies a and a.b with Void payload
+a.b.c             \29\ Returns 42 \29\explicitly set\29\
+a.b               \29\ Returns Void \29\auto-vivified, never set\29\
+a                 \29\ Returns Void \29\auto-vivified, never set\29\
 
-a.b >isVoid       ; True — never explicitly set) (soma) >md.code
+a.b >isVoid       \29\ True — never explicitly set) (soma) >md.code
 
 (Example \29\Void with children\29\:) >md.p
 
-(42 !parent.child  ; Auto-vivifies parent with Void value
-parent            ; Returns Void \29\parent's VALUE\29\
-parent.child      ; Returns 42 \29\traverses parent's SUBPATHS\29\) (soma) >md.code
+(42 !parent.child  \29\ Auto-vivifies parent with Void value
+parent            \29\ Returns Void \29\parent's VALUE\29\
+parent.child      \29\ Returns 42 \29\traverses parent's SUBPATHS\29\) (soma) >md.code
 
 (Example \29\structural deletion\29\:) >md.p
 
-(42 !a.b.c         ; Create Cell a.b.c with payload 42
-Void !a.b.c.      ; Delete Cell a.b.c and its entire subtree
-a.b.c             ; AL = [Void] — the Cell no longer exists) (soma) >md.code
+(42 !a.b.c         \29\ Create Cell a.b.c with payload 42
+Void !a.b.c.      \29\ Delete Cell a.b.c and its entire subtree
+a.b.c             \29\ AL = [Void] — the Cell no longer exists) (soma) >md.code
 
 ) ============================================================================
 ) CONCLUSION - SUMMARY VERSION
