@@ -218,60 +218,6 @@ Pops the top value from the AL and displays it to standard output.
 
 ---
 
-### >dump
-
-**Signature: **`() -> ()`
-
-Displays the current AL and Store state for debugging. Does not modify AL or Store.
-
-**Example:**
-
-```soma
-1 2 3 >dump   ; Displays machine state
-```
-
-**Errors:** None.
-
----
-
-## Type and Identity Operations
-
-These operations provide runtime introspection of values and cells.
-
-### >type
-
-**Signature: **`(Value) -> Str`
-
-Pops a value and pushes a string representing its type.
-
-**Example:**
-
-```soma
-42 >type      ; AL: ["Int"]
-"hello" >type ; AL: ["Str"]
-True >type    ; AL: ["Bool"]
-```
-
-**Errors:** Fatal if AL is empty.
-
----
-
-### >id
-
-**Signature: **`(CellRef | Thing) -> Int`
-
-Pops a CellRef or Thing and pushes an integer identity value.
-
-**Example:**
-
-```soma
-a.b. >id      ; AL: [<unique identity integer>]
-```
-
-**Errors:** Fatal if AL is empty or top value is neither a CellRef nor a Thing.
-
----
-
 ## Control Flow Operations
 
 Control flow in SOMA is explicit and built from minimal primitives. These operations enable conditionals and loops.
@@ -444,9 +390,6 @@ The following table summarizes all core built-in operations:
 | `>chain`  | 1    | 0      | Execute blocks repeatedly until non-Block         |
 | `>block`  | 0    | 1      | Push current executing block                      |
 | `>print`  | 1    | 0      | Print value to stdout                             |
-| `>dump`   | 0    | 0      | Dump machine state                                |
-| `>type`   | 1    | 1      | Get type name as string                           |
-| `>id`     | 1    | 1      | Get identity of CellRef/Thing                     |
 | `>noop`   | 0    | 0      | No operation                                      |
 
 ---

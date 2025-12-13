@@ -11,7 +11,7 @@
 
 (A claim without a potential falsifier is not useful.) >md.b ( This principle underlies all debugging in SOMA. An assertion that cannot fail provides no information; a test that cannot detect a bug catches no bugs.) >md.t >md.p
 
-(Debugging is not merely finding errors—it is constructing a falsifiable model of program behaviour. Each assertion, each ) (>dump) >md.c (, each ) (>print) >md.c ( is a probe that tests a hypothesis about state. If the hypothesis cannot be falsified, the probe is worthless.) >md.t >md.p
+(Debugging is not merely finding errors—it is constructing a falsifiable model of program behaviour. Each assertion, each ) (>debug.al.dump) >md.c (, each ) (>print) >md.c ( is a probe that tests a hypothesis about state. If the hypothesis cannot be falsified, the probe is worthless.) >md.t >md.p
 
 (Assertions and tests "colour in" the state manifold where invariants hold.) >md.b ( This is not proof in the general case, but it builds confidence that further invariants can be layered on top. Rigour compounds; so does sloppiness.) >md.t >md.p
 
@@ -27,34 +27,11 @@
 
 >md.hr
 
-(## Builtin Debug Tools) >md.h2
+(## Implementation-Specific Debug Tools) >md.h2
 
-(SOMA provides four builtin operations for debugging and introspection. These are documented fully in ) (builtins.soma) >md.c (; a summary follows.) >md.t >md.p
+(WARNING:) >md.b ( The ) (debug.*) >md.c ( namespace is ) (implementation-specific) >md.b (, not part of SOMA's core semantics. These tools exist solely for debugging and instrumentation. They must ) (NEVER) >md.b ( be used for normal program control flow or logic. Different SOMA implementations may provide different debug facilities or none at all.) >md.t >md.p
 
-(### >print) >md.h3
-
-(Signature:) >md.b ( ) ((Value\29\ -> (\29\) >md.c >md.t >md.p
-
-(Pops the top value from the AL and displays it to standard output. This is the primary tool for observing values during execution.) >md.p
-
-(Example:) >md.b >md.p
-
-("Checkpoint reached" >print
-x >print                    ; Observe variable value
-"Result: " x >toString >cat >print) (soma) >md.code
-
-(Use cases:) >md.b >md.p
-
-(Tracing execution flow through code paths) >md.uli
-(Inspecting intermediate values in computation) >md.uli
-(Confirming that expected branches are taken) >md.uli
->md.ul
-
-(Errors:) >md.b ( Fatal if AL is empty.) >md.t >md.p
-
->md.hr
-
-(### >dump) >md.h3
+(### >debug.al.dump) >md.h3
 
 (Signature:) >md.b ( ) ((\29\ -> (\29\) >md.c >md.t >md.p
 
@@ -63,9 +40,9 @@ x >print                    ; Observe variable value
 (Example:) >md.b >md.p
 
 (1 2 3
->dump          ; Shows AL: [1, 2, 3] and Store contents
->+             ; Compute 2 + 3
->dump          ; Shows AL: [1, 5] - verify operation) (soma) >md.code
+>debug.al.dump   ; Shows AL: [1, 2, 3] and Store contents
+>+               ; Compute 2 + 3
+>debug.al.dump   ; Shows AL: [1, 5] - verify operation) (soma) >md.code
 
 (Use cases:) >md.b >md.p
 
@@ -78,7 +55,7 @@ x >print                    ; Observe variable value
 
 >md.hr
 
-(### >type) >md.h3
+(### >debug.type) >md.h3
 
 (Signature:) >md.b ( ) ((Value\29\ -> Str) >md.c >md.t >md.p
 
@@ -86,10 +63,10 @@ x >print                    ; Observe variable value
 
 (Example:) >md.b >md.p
 
-(42 >type        ; AL: ["Int"]
-"hello" >type   ; AL: ["Str"]
-True >type      ; AL: ["Bool"]
-{ >noop } >type ; AL: ["Block"]) (soma) >md.code
+(42 >debug.type        ; AL: ["Int"]
+"hello" >debug.type   ; AL: ["Str"]
+True >debug.type      ; AL: ["Bool"]
+{ >noop } >debug.type ; AL: ["Block"]) (soma) >md.code
 
 (Use cases:) >md.b >md.p
 
@@ -102,7 +79,7 @@ True >type      ; AL: ["Bool"]
 
 >md.hr
 
-(### >id) >md.h3
+(### >debug.id) >md.h3
 
 (Signature:) >md.b ( ) ((CellRef | Thing\29\ -> Int) >md.c >md.t >md.p
 
@@ -110,12 +87,12 @@ True >type      ; AL: ["Bool"]
 
 (Example:) >md.b >md.p
 
-(a.b. >id        ; AL: [<identity integer>]
-thing. >id      ; AL: [<identity integer>]
+(a.b. >debug.id        ; AL: [<identity integer>]
+thing. >debug.id      ; AL: [<identity integer>]
 
 ; Comparing identities
-cell1. >id
-cell2. >id
+cell1. >debug.id
+cell2. >debug.id
 >==             ; AL: [True] if same cell, [False] otherwise) (soma) >md.code
 
 (Use cases:) >md.b >md.p
@@ -145,7 +122,7 @@ cell2. >id
 
 ({ x 0 >> } (x must be positive\29\ >debug.assert
 { count limit >< } (count must not exceed limit\29\ >debug.assert
-{ name >type "Str" >== } (name must be a string\29\ >debug.assert) (soma) >md.code
+{ name >debug.type "Str" >== } (name must be a string\29\ >debug.assert) (soma) >md.code
 
 (Definition:) >md.b >md.p
 
@@ -180,18 +157,18 @@ cell2. >id
 
 (### AL Inspection Techniques) >md.h3
 
-(Strategic use of ) (>dump) >md.c ( reveals AL state at key points:) >md.t >md.p
+(Strategic use of ) (>debug.al.dump) >md.c ( reveals AL state at key points:) >md.t >md.p
 
 (\29\ Pattern: Bracketed inspection
 \29\ Wrap complex operations to see before/after state
-(Before operation:\29\ >print >dump
+(Before operation:\29\ >print >debug.al.dump
 \29\ ... complex AL manipulation ...
-(After operation:\29\ >print >dump
+(After operation:\29\ >print >debug.al.dump
 
 \29\ Pattern: Tagged checkpoints
-(Checkpoint A\29\ >print >dump
+(Checkpoint A\29\ >print >debug.al.dump
 \29\ ... code section A ...
-(Checkpoint B\29\ >print >dump
+(Checkpoint B\29\ >print >debug.al.dump
 \29\ ... code section B ...
 
 \29\ Pattern: Value tagging
@@ -203,7 +180,7 @@ cell2. >id
 (Build confidence through layered assertions:) >md.p
 
 (\29\ Level 1: Input validation
-{ input >type "Int" >== } (input must be integer\29\ >debug.assert
+{ input >debug.type "Int" >== } (input must be integer\29\ >debug.assert
 { input 0 >> } (input must be positive\29\ >debug.assert
 
 \29\ Level 2: Intermediate state
@@ -212,7 +189,7 @@ cell2. >id
 
 \29\ Level 3: Output validation
 \29\ ... more computation ...
-{ result expected-type >type >== } (result type correct\29\ >debug.assert
+{ result expected-type >debug.type >== } (result type correct\29\ >debug.assert
 { result minimum >> } (result above minimum\29\ >debug.assert) (soma) >md.code
 
 (This layered approach:) >md.p
@@ -241,11 +218,11 @@ cell2. >id
 >md.table.header
 (>print) >md.c (Builtin) ((Value\29\ -> (\29\) >md.c (Output value to stdout)
 >md.table.row
-(>dump) >md.c (Builtin) ((\29\ -> (\29\) >md.c (Display machine state)
+(>debug.al.dump) >md.c (Builtin) ((\29\ -> (\29\) >md.c (Display machine state)
 >md.table.row
-(>type) >md.c (Builtin) ((Value\29\ -> Str) >md.c (Get type name as string)
+(>debug.type) >md.c (Builtin) ((Value\29\ -> Str) >md.c (Get type name as string)
 >md.table.row
-(>id) >md.c (Builtin) ((CellRef|Thing\29\ -> Int) >md.c (Get identity of reference)
+(>debug.id) >md.c (Builtin) ((CellRef|Thing\29\ -> Int) >md.c (Get identity of reference)
 >md.table.row
 (>debug.assert) >md.c (Stdlib) ((Block, Str\29\ -> (\29\|HALT) >md.c (Assert condition or halt)
 >md.table.row
@@ -257,7 +234,7 @@ cell2. >id
 
 (## Summary) >md.h2
 
-(Debugging in SOMA is an exercise in constructing falsifiable hypotheses about program state. The tools provided—) (>print) >md.c (, ) (>dump) >md.c (, ) (>type) >md.c (, ) (>id) >md.c (, ) (>debug.assert) >md.c (, and ) (>debug.error) >md.c (—are probes for testing these hypotheses.) >md.t >md.p
+(Debugging in SOMA is an exercise in constructing falsifiable hypotheses about program state. The tools provided—) (>print) >md.c (, ) (>debug.al.dump) >md.c (, ) (>debug.type) >md.c (, ) (>debug.id) >md.c (, ) (>debug.assert) >md.c (, and ) (>debug.error) >md.c (—are probes for testing these hypotheses.) >md.t >md.p
 
 (Make invariants explicit through assertions) >md.uli
 (Observe AL and Store state at critical points) >md.uli

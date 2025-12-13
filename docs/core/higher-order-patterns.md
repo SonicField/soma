@@ -816,7 +816,7 @@ SOMA's control flow is **as efficient as native control structures** in traditio
 To debug SOMA control flow:
 
 - Inspect the AL before `>choose` to see the condition and blocks
-- Insert `>dump` inside blocks to trace execution
+- Insert `>debug.al.dump` inside blocks to trace execution
 - Use `>print` to mark state transitions
 
 Because everything is explicit, debugging is often **easier** than in languages with hidden control stacks.

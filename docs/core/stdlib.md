@@ -36,7 +36,11 @@ FFI primitives are the minimal operations that **must** be implemented by the SO
 
 **FFI primitives include:**
 
-- Stack operations: `>dup`, `>drop`, `>swap`, `>over` )as built from Register operations)Arithmetic: `>+`, `>-`, `>*`, `>/`Comparison: `><` )less-than), `>==` )equality)Control flow: `>choose`, `>chain`, `>block`I/O: `>print`, `>dump`Type introspection: `>type`, `>id`
+- Stack operations: `>dup`, `>drop`, `>swap`, `>over` (built from Register operations)
+- Arithmetic: `>+`, `>-`, `>*`, `>/`
+- Comparison: `><` (less-than), `>==` (equality)
+- Control flow: `>choose`, `>chain`, `>block`
+- I/O: `>print`
 
 These are the **irreducible kernel** of SOMA. Everything else is emergent.
 
@@ -46,7 +50,11 @@ Derived operations are **user-defined blocks** built from FFI primitives. They f
 
 **The stdlib provides derived operations like:**
 
-- `>not` — Boolean negation )built from `>choose`)`>and` — Logical AND )built from `>choose` and `>drop`)`>>` — Greater-than )built from `>swap` and `><`)`>dup` — Duplicate top )built from Register operations)`>times` — Execute block N times )built from `>chain` and `>choose`)
+- `>not` — Boolean negation (built from `>choose`)
+- `>and` — Logical AND (built from `>choose` and `>drop`)
+- `>>` — Greater-than (built from `>swap` and `><`)
+- `>dup` — Duplicate top (built from Register operations)
+- `>times` — Execute block N times (built from `>chain` and `>choose`)
 
 This demonstrates SOMA's **compositional power**: complex behavior emerges from simple primitives.
 
@@ -54,7 +62,7 @@ This demonstrates SOMA's **compositional power**: complex behavior emerges from 
 
 ## 1. Boolean Logic
 
-Boolean logic operations transform `True`/`False` values on the AL. All three operations )`not`, `and`, `or`) are built using only `>choose`.
+Boolean logic operations transform `True`/`False` values on the AL. All three operations (`not`, `and`, `or`) are built using only `>choose`.
 
 ### 1.1 `>not` — Boolean Negation
 

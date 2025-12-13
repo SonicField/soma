@@ -8,7 +8,7 @@ Debugging tools and assertion mechanisms for verifying program invariants.
 
 **A claim without a potential falsifier is not useful.** This principle underlies all debugging in SOMA. An assertion that cannot fail provides no information; a test that cannot detect a bug catches no bugs.
 
-Debugging is not merely finding errors—it is constructing a falsifiable model of program behaviour. Each assertion, each `>dump`, each `>print` is a probe that tests a hypothesis about state. If the hypothesis cannot be falsified, the probe is worthless.
+Debugging is not merely finding errors—it is constructing a falsifiable model of program behaviour. Each assertion, each `>debug.al.dump`, each `>print` is a probe that tests a hypothesis about state. If the hypothesis cannot be falsified, the probe is worthless.
 
 **Assertions and tests "colour in" the state manifold where invariants hold.** This is not proof in the general case, but it builds confidence that further invariants can be layered on top. Rigour compounds; so does sloppiness.
 
@@ -23,35 +23,11 @@ A test which is not falsifiable is not useful. This principle extends beyond cod
 
 ---
 
-## ## Builtin Debug Tools
+## ## Implementation-Specific Debug Tools
 
-SOMA provides four builtin operations for debugging and introspection. These are documented fully in `builtins.soma`; a summary follows.
+**WARNING:** The `debug.*` namespace is **implementation-specific**, not part of SOMA's core semantics. These tools exist solely for debugging and instrumentation. They must **NEVER** be used for normal program control flow or logic. Different SOMA implementations may provide different debug facilities or none at all.
 
-### ### >print
-
-**Signature:** `(Value) -> ()`
-
-Pops the top value from the AL and displays it to standard output. This is the primary tool for observing values during execution.
-
-**Example:**
-
-```soma
-"Checkpoint reached" >print
-x >print                    ; Observe variable value
-"Result: " x >toString >cat >print
-```
-
-**Use cases:**
-
-- Tracing execution flow through code paths
-- Inspecting intermediate values in computation
-- Confirming that expected branches are taken
-
-**Errors:** Fatal if AL is empty.
-
----
-
-### ### >dump
+### ### >debug.al.dump
 
 **Signature:** `() -> ()`
 
@@ -61,9 +37,9 @@ Displays the current AL and Store state for debugging. Does not modify AL or Sto
 
 ```soma
 1 2 3
->dump          ; Shows AL: [1, 2, 3] and Store contents
->+             ; Compute 2 + 3
->dump          ; Shows AL: [1, 5] - verify operation
+>debug.al.dump   ; Shows AL: [1, 2, 3] and Store contents
+>+               ; Compute 2 + 3
+>debug.al.dump   ; Shows AL: [1, 5] - verify operation
 ```
 
 **Use cases:**
@@ -76,7 +52,7 @@ Displays the current AL and Store state for debugging. Does not modify AL or Sto
 
 ---
 
-### ### >type
+### ### >debug.type
 
 **Signature:** `(Value) -> Str`
 
@@ -85,10 +61,10 @@ Pops a value and pushes a string representing its type. Essential for runtime ty
 **Example:**
 
 ```soma
-42 >type        ; AL: ["Int"]
-"hello" >type   ; AL: ["Str"]
-True >type      ; AL: ["Bool"]
-{ >noop } >type ; AL: ["Block"]
+42 >debug.type        ; AL: ["Int"]
+"hello" >debug.type   ; AL: ["Str"]
+True >debug.type      ; AL: ["Bool"]
+{ >noop } >debug.type ; AL: ["Block"]
 ```
 
 **Use cases:**
@@ -101,7 +77,7 @@ True >type      ; AL: ["Bool"]
 
 ---
 
-### ### >id
+### ### >debug.id
 
 **Signature:** `(CellRef | Thing) -> Int`
 
@@ -110,12 +86,12 @@ Pops a CellRef or Thing and pushes an integer identity value. Useful for disting
 **Example:**
 
 ```soma
-a.b. >id        ; AL: [<identity integer>]
-thing. >id      ; AL: [<identity integer>]
+a.b. >debug.id        ; AL: [<identity integer>]
+thing. >debug.id      ; AL: [<identity integer>]
 
 ; Comparing identities
-cell1. >id
-cell2. >id
+cell1. >debug.id
+cell2. >debug.id
 >==             ; AL: [True] if same cell, [False] otherwise
 ```
 
@@ -146,7 +122,7 @@ This is the primary invariant-testing mechanism in SOMA. Use it to assert condit
 ```soma
 { x 0 >> } (x must be positive) >debug.assert
 { count limit >< } (count must not exceed limit) >debug.assert
-{ name >type "Str" >== } (name must be a string) >debug.assert
+{ name >debug.type "Str" >== } (name must be a string) >debug.assert
 ```
 
 **Definition:**
@@ -183,19 +159,19 @@ Effective debugging in SOMA requires understanding the stack-based model. The fo
 
 ### ### AL Inspection Techniques
 
-Strategic use of `>dump` reveals AL state at key points:
+Strategic use of `>debug.al.dump` reveals AL state at key points:
 
 ```soma
 ) Pattern: Bracketed inspection
 ) Wrap complex operations to see before/after state
-(Before operation:) >print >dump
+(Before operation:) >print >debug.al.dump
 ) ... complex AL manipulation ...
-(After operation:) >print >dump
+(After operation:) >print >debug.al.dump
 
 ) Pattern: Tagged checkpoints
-(Checkpoint A) >print >dump
+(Checkpoint A) >print >debug.al.dump
 ) ... code section A ...
-(Checkpoint B) >print >dump
+(Checkpoint B) >print >debug.al.dump
 ) ... code section B ...
 
 ) Pattern: Value tagging
@@ -209,7 +185,7 @@ Build confidence through layered assertions:
 
 ```soma
 ) Level 1: Input validation
-{ input >type "Int" >== } (input must be integer) >debug.assert
+{ input >debug.type "Int" >== } (input must be integer) >debug.assert
 { input 0 >> } (input must be positive) >debug.assert
 
 ) Level 2: Intermediate state
@@ -218,7 +194,7 @@ Build confidence through layered assertions:
 
 ) Level 3: Output validation
 ) ... more computation ...
-{ result expected-type >type >== } (result type correct) >debug.assert
+{ result expected-type >debug.type >== } (result type correct) >debug.assert
 { result minimum >> } (result above minimum) >debug.assert
 ```
 
@@ -242,20 +218,20 @@ Design for testability:
 
 ## ## Reference Table
 
-| Debug operation | Location | AL transformation         | Purpose                   |
-|-----------------|----------|---------------------------|---------------------------|
-| `>print`        | Builtin  | `(Value) -> ()`           | Output value to stdout    |
-| `>dump`         | Builtin  | `() -> ()`                | Display machine state     |
-| `>type`         | Builtin  | `(Value) -> Str`          | Get type name as string   |
-| `>id`           | Builtin  | `(CellRef|Thing) -> Int`  | Get identity of reference |
-| `>debug.assert` | Stdlib   | `(Block, Str) -> ()|HALT` | Assert condition or halt  |
-| `>debug.error`  | Builtin  | `(Str) -> HALT`           | Halt with error message   |
+| Debug operation  | Location | AL transformation         | Purpose                   |
+|------------------|----------|---------------------------|---------------------------|
+| `>print`         | Builtin  | `(Value) -> ()`           | Output value to stdout    |
+| `>debug.al.dump` | Builtin  | `() -> ()`                | Display machine state     |
+| `>debug.type`    | Builtin  | `(Value) -> Str`          | Get type name as string   |
+| `>debug.id`      | Builtin  | `(CellRef|Thing) -> Int`  | Get identity of reference |
+| `>debug.assert`  | Stdlib   | `(Block, Str) -> ()|HALT` | Assert condition or halt  |
+| `>debug.error`   | Builtin  | `(Str) -> HALT`           | Halt with error message   |
 
 ---
 
 ## ## Summary
 
-Debugging in SOMA is an exercise in constructing falsifiable hypotheses about program state. The tools provided—`>print`, `>dump`, `>type`, `>id`, `>debug.assert`, and `>debug.error`—are probes for testing these hypotheses.
+Debugging in SOMA is an exercise in constructing falsifiable hypotheses about program state. The tools provided—`>print`, `>debug.al.dump`, `>debug.type`, `>debug.id`, `>debug.assert`, and `>debug.error`—are probes for testing these hypotheses.
 
 - Make invariants explicit through assertions
 - Observe AL and Store state at critical points

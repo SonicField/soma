@@ -197,54 +197,6 @@
 
 >md.hr
 
-(>dump) >md.h3
-
-(Signature: ) >md.b (\28\\29\ \2D\\3E\ \28\\29\) >md.c >md.t >md.p
-
-(Displays the current AL and Store state for debugging. Does not modify AL or Store.) >md.p
-
-(Example:) >md.b >md.p
-
-(1 2 3 >dump   ; Displays machine state) (soma) >md.code
-
-(Errors:) >md.b ( None.) >md.t >md.p
-
->md.hr
-
-(Type and Identity Operations) >md.h2
-
-(These operations provide runtime introspection of values and cells.) >md.p
-
-(>type) >md.h3
-
-(Signature: ) >md.b ((Value\29\ \2D\\3E\ Str) >md.c >md.t >md.p
-
-(Pops a value and pushes a string representing its type.) >md.p
-
-(Example:) >md.b >md.p
-
-(42 >type      ; AL: ["Int"]
-"hello" >type ; AL: ["Str"]
-True >type    ; AL: ["Bool"]) (soma) >md.code
-
-(Errors:) >md.b ( Fatal if AL is empty.) >md.t >md.p
-
->md.hr
-
-(>id) >md.h3
-
-(Signature: ) >md.b ((CellRef | Thing\29\ \2D\\3E\ Int) >md.c >md.t >md.p
-
-(Pops a CellRef or Thing and pushes an integer identity value.) >md.p
-
-(Example:) >md.b >md.p
-
-(a.b. >id      ; AL: [<unique identity integer>]) (soma) >md.code
-
-(Errors:) >md.b ( Fatal if AL is empty or top value is neither a CellRef nor a Thing.) >md.t >md.p
-
->md.hr
-
 (Control Flow Operations) >md.h2
 
 (Control flow in SOMA is explicit and built from minimal primitives. These operations enable conditionals and loops.) >md.p
@@ -424,12 +376,6 @@ block !ブロック          ; Japanese
 (>block) >md.c (0) (1) (Push current executing block)
 >md.table.row
 (>print) >md.c (1) (0) (Print value to stdout)
->md.table.row
-(>dump) >md.c (0) (0) (Dump machine state)
->md.table.row
-(>type) >md.c (1) (1) (Get type name as string)
->md.table.row
-(>id) >md.c (1) (1) (Get identity of CellRef/Thing)
 >md.table.row
 (>noop) >md.c (0) (0) (No operation)
 >md.table.row

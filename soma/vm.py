@@ -305,6 +305,10 @@ class Store:
         self.root["debug"].children["choose"] = Cell(value=BuiltinBlock("debug.choose", builtin_debug_choose))
         self.root["debug"].children["error"] = Cell(value=BuiltinBlock("debug.error", builtin_debug_error))
 
+        # Debug introspection utilities
+        self.root["debug"].children["type"] = Cell(value=BuiltinBlock("debug.type", builtin_debug_type))
+        self.root["debug"].children["id"] = Cell(value=BuiltinBlock("debug.id", builtin_debug_id))
+
         # Debug graph utilities
         if "graph" not in self.root["debug"].children:
             self.root["debug"].children["graph"] = Cell(value=Void)
@@ -1975,6 +1979,93 @@ def builtin_is_nil(vm: VM):
     value = vm.al.pop()
     result = True_ if isinstance(value, NilSingleton) else False_
     vm.al.append(result)
+
+
+def builtin_debug_type(vm: VM):
+    """
+    debug.type: Get the type name of a value as a string.
+
+    WARNING: This is an implementation-specific debug utility, NOT part of
+    SOMA's semantics. It must NEVER be used for normal control flow or program
+    logic. The debug.* namespace exists solely for instrumentation and
+    debugging purposes. Different SOMA implementations may behave differently.
+
+    AL before: [value, ...]
+    AL after: [type_string, ...]
+
+    Returns the type name as a string:
+    - "Int" for integers
+    - "Str" for strings
+    - "Bool" for booleans
+    - "Block" for blocks
+    - "BuiltinBlock" for builtin blocks
+    - "Void" for Void
+    - "Nil" for Nil
+    - "CellRef" for cell references
+    - "Dict" for dictionaries
+    - "List" for lists
+
+    Raises:
+        RuntimeError: If AL underflow
+    """
+    if len(vm.al) < 1:
+        raise RuntimeError("AL underflow: debug.type requires 1 value")
+
+    value = vm.al.pop()
+
+    if isinstance(value, int):
+        type_name = "Int"
+    elif isinstance(value, str):
+        type_name = "Str"
+    elif isinstance(value, (TrueSingleton, FalseSingleton)):
+        type_name = "Bool"
+    elif isinstance(value, Block):
+        type_name = "Block"
+    elif isinstance(value, BuiltinBlock):
+        type_name = "BuiltinBlock"
+    elif isinstance(value, VoidSingleton):
+        type_name = "Void"
+    elif isinstance(value, NilSingleton):
+        type_name = "Nil"
+    elif isinstance(value, CellRef):
+        type_name = "CellRef"
+    elif isinstance(value, dict):
+        type_name = "Dict"
+    elif isinstance(value, list):
+        type_name = "List"
+    else:
+        type_name = type(value).__name__
+
+    vm.al.append(type_name)
+
+
+def builtin_debug_id(vm: VM):
+    """
+    debug.id: Get a unique identifier for a value (Python's id()).
+
+    WARNING: This is an implementation-specific debug utility, NOT part of
+    SOMA's semantics. It must NEVER be used for normal control flow or program
+    logic. The debug.* namespace exists solely for instrumentation and
+    debugging purposes. Different SOMA implementations may behave differently.
+
+    AL before: [value, ...]
+    AL after: [id_integer, ...]
+
+    Returns a unique integer identifier for the value. Useful for debugging
+    to determine if two values are the same object in memory.
+
+    Note: This exposes Python implementation details and has no semantic
+    meaning in SOMA. Two values that are "equal" may have different ids,
+    and ids may be reused after values are garbage collected.
+
+    Raises:
+        RuntimeError: If AL underflow
+    """
+    if len(vm.al) < 1:
+        raise RuntimeError("AL underflow: debug.id requires 1 value")
+
+    value = vm.al.pop()
+    vm.al.append(id(value))
 
 
 def builtin_use(vm: VM):

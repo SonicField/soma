@@ -735,7 +735,7 @@ hello) Nil >md.code
 (To debug SOMA control flow:) >md.p
 
 (Inspect the AL before ) (>choose) >md.c ( to see the condition and blocks) >md.uli
-(Insert ) (>dump) >md.c ( inside blocks to trace execution) >md.uli
+(Insert ) (>debug.al.dump) >md.c ( inside blocks to trace execution) >md.uli
 (Use ) (>print) >md.c ( to mark state transitions) >md.uli
 >md.ul
 
