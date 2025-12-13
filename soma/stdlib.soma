@@ -639,7 +639,7 @@
 } !dict.get_or
 
 ) dict.put: Insert or update key-value pair (red-black tree insert)
-) AL: [dict, value, key, ...] -> [new_dict, ...]
+) AL: [key, value, dict, ...] -> [new_dict, ...]
 {
   !_.dict !_.value !_.key
 

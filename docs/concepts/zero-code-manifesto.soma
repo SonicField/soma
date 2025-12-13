@@ -23,6 +23,10 @@
 
 (Epistemic Drift) >md.b (: All intelligence-based systems lose coherence over time. Context degrades. Assumptions compound. Without periodic re-grounding against falsifiable criteria, the AI's model of "what we're building" drifts from the human's intent. Both parties end up confident about the wrong thing.) >md.t >md.p
 
+(One compounding factor:) >md.p
+
+(Throughput Asymmetry) >md.b (: The AI writes code thousands of times faster than the human can review it. Even if the human ) >md.t (could) >md.i ( articulate rejection criteria, they cannot keep up. Asking the human to review all output makes the human the bottleneck — and bottlenecks get bypassed. "Looks good" becomes the path of least resistance.) >md.t >md.p
+
 >md.hr
 
 (The Roles) >md.h2
@@ -36,6 +40,43 @@
 >md.table
 
 (The contract) >md.b (: Neither party trusts assertions. Both parties trust evidence.) >md.t >md.p
+
+>md.hr
+
+(Why Falsifiability Solves the Throughput Problem) >md.h2
+
+(The Engineer cannot review all the code. Nor should they try.) >md.p
+
+(With proper falsification criteria, the review burden ) (shifts) >md.b (:) >md.t >md.p
+
+(Less code reviewed) (The Engineer spot-checks implementation, not line-by-line audit) >md.dli
+(Fewer tests reviewed) (Tests are verified by execution, not inspection) >md.dli
+(Criteria reviewed thoroughly) (This is what the Engineer can actually do well) >md.dli
+>md.dul
+
+(The question changes from "is this code correct?" to "are these the right criteria?" The first is intractable at scale. The second is tractable — and it's where human judgement matters most. The Engineer ) (can) >md.b ( review criteria effectively; they ) (cannot) >md.b ( review all code effectively.) >md.t >md.p
+
+>md.hr
+
+(Cooperative Oversight) >md.h2
+
+(Zero-Code is not one-way command. Both parties watch for the other's blind spots.) >md.p
+
+(Engineer spot-checks:) >md.b >md.p
+
+(Code duplication and unnecessary complexity)
+(Poor coding patterns or architectural drift)
+("Does this smell right?")
+>md.ul
+
+(Machinist flags:) >md.b >md.p
+
+(Unrealistic or contradictory requirements)
+(Specification gaps and ambiguities)
+("This doesn't make sense — clarify?")
+>md.ul
+
+(The Machinist's duty to flag is not insubordination; it is honesty. The Engineer's duty to listen is not weakness; it is wisdom. Both parties are fallible. Evidence protects them from each other's mistakes.) >md.p
 
 >md.hr
 

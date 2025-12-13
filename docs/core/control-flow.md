@@ -571,12 +571,12 @@ fact-step >chain                ) AL: [120]
 
 1. Initialize `fact.n = 5`, `fact.acc = 1`
 2. Block checks: is `n <= 0`?
-3. If no )5 > 0): update `n = 4`, `acc = 1 * 5 = 5`, push `fact-step` block
-4. `>choose` selects the recursive block )which contains `fact-step`)
+3. If no (5 > 0): update `n = 4`, `acc = 1 * 5 = 5`, push `fact-step` block
+4. `>choose` selects the recursive block (which contains `fact-step`)
 5. Block execution completes, leaving `fact-step` on AL
 6. `>chain` sees a block and executes it again
-7. Repeat until `n <= 0`, then push `acc` )120) to AL
-8. `>chain` sees a number )not a block) and stops
+7. Repeat until `n <= 0`, then push `acc` (120) to AL
+8. `>chain` sees a number (not a block) and stops
 
 **Key differences from traditional recursion:**
 
@@ -595,7 +595,7 @@ fact-step >chain                ) AL: [120]
   fib.a >toString >print
 
   fib.count 1 >=<
-    Nil                         ) Base: stop )chain terminates)
+    Nil                         ) Base: stop (chain terminates)
     {                           ) Recursive: compute next
       fib.count 1 >- !fib.count
       fib.a fib.b >+ !fib.next
@@ -623,10 +623,10 @@ fib-step >chain
 
 **How it works:**
 
-1. Print current Fibonacci number )`fib.a`)
+1. Print current Fibonacci number (`fib.a`)
 2. Check if count has reached 1
 3. If no: compute next Fibonacci number, update state, push `fib-step`
-4. `>choose` selects the block )which ends with `fib-step`)
+4. `>choose` selects the block (which ends with `fib-step`)
 5. Block completes, leaving `fib-step` on AL
 6. `>chain` executes it again
 7. When count reaches 1, `>choose` selects `Nil`
@@ -642,7 +642,7 @@ fib-step >chain
   count 1 >- !count
 
   count 0 >=<
-    { )Liftoff) >print }
+    { (Liftoff) >print }
     countdown
   >choose >^
 } !countdown
@@ -666,9 +666,9 @@ Note the
 ** usage:**
 
 - When count reaches 0, `>choose` selects the liftoff block
-- `>^` **executes** it )prints "Liftoff")
+- `>^` **executes** it (prints "Liftoff")
 - Result is nothing on AL, so `>chain` stops
-- When count > 0, `>choose` selects `countdown` )the block value)
+- When count > 0, `>choose` selects `countdown` (the block value)
 - `>^` **executes** it, which runs the whole countdown block again
 - The recursive call is a tail-call because it's the last thing executed
 
@@ -699,13 +699,13 @@ self_block_name >chain
 
 - Recursion that would normally build deep call stacks
 - Loops with complex state transitions
-- State machines )see next section)
+- State machines (see next section)
 - Any algorithm that can be expressed as "do work, then decide whether to continue"
 
 **Benefits:**
 
-- Constant stack space )no stack overflow)
-- Clear state evolution )all state in Store)
+- Constant stack space (no stack overflow)
+- Clear state evolution (all state in Store)
 - Natural expression of recursive algorithms
 - Same performance as iterative loops
 
@@ -769,7 +769,7 @@ bedingung
 
 This demonstrates that SOMA has **no English-centric special cases**. All built-ins, including block self-reference, can be renamed to match the programmer's language and coding style.
 
-**Important:** Note the `>^` at the end — this is needed because `>Wählen` )choose) only **selects** a block, it doesn't execute it. The `>^` executes the selected block.
+**Important:** Note the `>^` at the end — this is needed because `>Wählen` (choose) only **selects** a block, it doesn't execute it. The `>^` executes the selected block.
 
 ---
 
@@ -780,9 +780,9 @@ This demonstrates that SOMA has **no English-centric special cases**. All built-
 In Lisp, you can define new control structures using `defmacro`:
 
 ```lisp
-)defmacro while )condition &body body)
-  `)loop
-     )unless ,condition )return))
+(defmacro while (condition &body body)
+  `(loop
+     (unless ,condition (return))
      ,@body))
 ```
 
@@ -802,7 +802,7 @@ Now you can use `while` like this:
 
 To the user, `while` behaves like a built-in control structure. But it's not. It's just a **stored block**.
 
-**Note:** The condition and body blocks would access shared state via the Store )e.g., `loop_counter`), not via Register paths, due to Register isolation between blocks.
+**Note:** The condition and body blocks would access shared state via the Store (e.g., `loop_counter`), not via Register paths, due to Register isolation between blocks.
 
 ### 4.2 Why This Matters
 
@@ -814,7 +814,7 @@ To the user, `while` behaves like a built-in control structure. But it's not. It
 
 **In SOMA:**
 
-- Control structures are **values** )blocks)
+- Control structures are **values** (blocks)
 - You can define new ones using only `>choose` and `>chain`
 - The boundary between "language" and "library" disappears
 
@@ -826,10 +826,10 @@ This is **emergent abstraction**. SOMA doesn't provide `if` or `while` because i
 |-------------------------|-----------------------------|------------------------|
 | Define new control flow | ✓                           | ✓                      |
 | No runtime overhead     | ✓                           | ✓                      |
-| First-class             | ✗ )macros are compile-time) | ✓ )blocks are values)  |
-| Requires special syntax | ✓ )defmacro, backtick)      | ✗ )just blocks)        |
+| First-class             | ✗ (macros are compile-time) | ✓ (blocks are values)  |
+| Requires special syntax | ✓ (defmacro, backtick)      | ✗ (just blocks)        |
 | Can pass as values      | ✗                           | ✓                      |
-| Hygiene issues          | ✓ )gensym, etc.)            | ✗ )Register isolation) |
+| Hygiene issues          | ✓ (gensym, etc.)            | ✗ (Register isolation) |
 
 SOMA's approach is **simpler** and **more uniform**. There is no distinction between "code" and "data" because blocks are both.
 
@@ -837,76 +837,87 @@ SOMA's approach is **simpler** and **more uniform**. There is no distinction bet
 
 ---
 
-## 5. Dispatch Tables Using >path
+## 5. Dispatch Tables Using Dictionaries
 
 ### 5.1 The Pattern
 
-One of the most powerful patterns in SOMA is **dispatch tables** — storing operations at paths and executing them dynamically.
+One of the most powerful patterns in SOMA is **dispatch tables** — storing operations and executing them dynamically. SOMA achieves this using **dictionaries** and **first-class blocks**.
 
 **Basic example:**
 
 ```soma
-{ )add) >print } !handlers.add
-{ )sub) >print } !handlers.sub
-{ )mul) >print } !handlers.mul
+) Build dispatch table: key, then value, then dict
+(add) { (add called) >print } >dict.new >dict.put
+(sub) { (sub called) >print } >dict.put
+(mul) { (mul called) >print } >dict.put
+!handlers
 
-) Dispatch based on operation name
-)add) !_.op
-)handlers.) _.op >concat >Store.get >^
+) Dispatch: key, then dict → value
+(add) handlers >dict.get >^
 ```
 
 **What happens:**
 
-1. (add(handlers.`>Store.get` retrieves the block at that path
-2. `>^` executes it
-3. Output: `add`
+1. `(add) { ... } >dict.new >dict.put` creates a new dict with key `(add)` mapped to the block
+2. Subsequent `>dict.put` calls add more key-block pairs (dict is immutable — each returns a new dict)
+3. `!handlers` stores the final dict at Store path `handlers`
+4. `(add) handlers >dict.get` retrieves the block mapped to `(add)`
+5. `>^` executes the retrieved block
 
-### 5.2 More Elegant Dispatch
+### 5.2 Dict Semantics
 
-A cleaner approach uses direct execution:
+SOMA's **dict** provides:
 
-```soma
-{ )Addition) >print } !commands.add
-{ )Subtraction) >print } !commands.sub
+- ****Immutable** — each `dict.put` returns a **new** dict; the original is unchanged**:  
+- ****O(log n) lookup****:  — efficient even for large dispatch tables 
+- ****First-class****:  — dicts can be passed, returned, and stored like any value 
 
-) Execute command directly
->commands.add           ) Prints: Addition
-```
+**Argument order:**
 
-But for **dynamic dispatch**, you need to compute the path:
+- **`dict.put`: AL: [key, value, dict, ...] → [new_dict, ...]**:  
+- **`dict.get`: AL: [key, dict, ...] → [value, ...]**:  
 
-```soma
-) Build path from user input
-user_input !_.cmd
-)commands.) _.cmd >concat !_.path
-
-) Execute dynamically
-_.path >Store.get >^
-```
+The dict is always on **top** of the AL. This enables chaining: each `>dict.put` leaves a new dict on top, ready for the next operation.
 
 ### 5.3 Complete Dispatch Example: Calculator
 
 ```soma
-) Define operations
-{ !_.b !_.a _.a _.b >+ } !ops.add
-{ !_.b !_.a _.a _.b >- } !ops.sub
-{ !_.b !_.a _.a _.b >* } !ops.mul
+) Define operations as blocks
+{ !_.b !_.a _.a _.b >+ } !op.add
+{ !_.b !_.a _.a _.b >- } !op.sub
+{ !_.b !_.a _.a _.b >* } !op.mul
+
+) Build dispatch table
+(add) op.add >dict.new >dict.put
+(sub) op.sub >dict.put
+(mul) op.mul >dict.put
+!ops
 
 ) Dispatcher block
 {
   !_.op !_.b !_.a           ) Store inputs
-  )ops.) _.op >concat       ) Build path: "ops.add"
-  >Store.get                ) Get the block
+  _.op ops >dict.get        ) Look up operation by key
   _.a _.b                   ) Push arguments
   >^                        ) Execute!
 } !dispatch
 
 ) Usage
-10 5 )add) >dispatch        ) AL = [15]
-10 5 )mul) >dispatch        ) AL = [50]
+10 5 (add) >dispatch        ) AL = [15]
+10 5 (mul) >dispatch        ) AL = [50]
 ```
 
-**This looks like a language feature** )dynamic dispatch), but it's just user-defined blocks using `>path` and `^`.
+**This looks like a language feature** (dynamic dispatch), but it's just user-defined blocks using `dict` and `^`. No special language support required.
+
+### 5.4 Why Dictionaries Over Store Paths?
+
+An alternative approach might store handlers at Store paths (e.g., `handlers.add`, `handlers.sub`) and dynamically construct the path. Dictionaries are preferred because:
+
+- ****Explicit data structure****:  — the dispatch table is a first-class value, not implicit in the Store namespace
+- ****Portable****:  — can be passed between blocks, returned from functions, stored anywhere
+- ****Immutable****:  — modifications create new dicts, preserving the original for safe concurrent use
+- ****No namespace pollution****:  — keys don't become global Store paths
+
+Combined with **blocks as first-class values**, dictionaries provide full dynamic dispatch without any special language features.
 
 ---
 
@@ -916,7 +927,7 @@ _.path >Store.get >^
 
 ```soma
 { !_.f >_.f >_.f } !twice
-{ )Hello) >print } >twice
+{ (Hello) >print } >twice
 ```
 
 **Output:**
@@ -928,15 +939,15 @@ Hello
 
 **How it works:**
 
-1. `{ )Hello) >print }` pushed onto AL
+1. `{ (Hello) >print }` pushed onto AL
 2. `>twice` executes the `twice` block
 3. The `twice` block executes:
   1. `!_.f` stores the print block in `twice`'s Register
-  2. `>_.f` executes it )prints "Hello")
-  3. `>_.f` executes it again )prints "Hello")
+  2. `>_.f` executes it (prints "Hello")
+  3. `>_.f` executes it again (prints "Hello")
 4. Each execution of the print block gets its own fresh Register
 
-**Note:** The print block `{ )Hello) >print }` executes twice, and each execution has its own isolated Register )though this simple block doesn't use Register paths).
+**Note:** The print block `{ (Hello) >print }` executes twice, and each execution has its own isolated Register (though this simple block doesn't use Register paths).
 
 ### 6.2 Execute If Condition Is True
 
@@ -945,20 +956,20 @@ Hello
   if_exec_cond { if_exec_block >^ } { } >choose >^
 } !if_exec
 
-True { )Condition met) >print } >if_exec     ) Prints: Condition met
-False { )Won't print) >print } >if_exec      ) Prints nothing
+True { (Condition met) >print } >if_exec     ) Prints: Condition met
+False { (Won't print) >print } >if_exec      ) Prints nothing
 ```
 
 **This is conditional execution of AL-passed blocks** — a higher-order control structure.
 
 **How it works:**
 
-1. Arguments on AL: `False`, `{ )Won't print) >print }`
+1. Arguments on AL: `False`, `{ (Won't print) >print }`
 2. `>if_exec` executes the `if_exec` block
 3. Block stores condition in `if_exec_cond`, block in `if_exec_block`
-4. Reads `if_exec_cond` )False), pushes two blocks
+4. Reads `if_exec_cond` (False), pushes two blocks
 5. `>choose` selects empty block `{}`
-6. `>^` executes the empty block )does nothing)
+6. `>^` executes the empty block (does nothing)
 
 **Note on Register isolation and why we use Store:**
 
@@ -972,20 +983,20 @@ False { )Won't print) >print } >if_exec      ) Prints nothing
 ```soma
 { !_.arg !_.func _.arg >_.func } !call_with
 
-42 { !_.x _.x _.x >* } >call_with    ) AL = [1764]  )42 squared)
+42 { !_.x _.x _.x >* } >call_with    ) AL = [1764]  (42 squared)
 ```
 
 **How it works:**
 
 1. `42` pushed onto AL
-2. `{ !_.x _.x _.x >* }` )squaring block) pushed onto AL
+2. `{ !_.x _.x _.x >* }` (squaring block) pushed onto AL
 3. `>call_with` executes the `call_with` block:
   1. `!_.func` stores squaring block in `call_with`'s Register
   2. `!_.arg` stores `42` in `call_with`'s Register
   3. `_.arg` pushes `42` onto AL
   4. `>_.func` executes the squaring block with `42` on AL
 4. The squaring block executes with its **own fresh Register**:
-  1. `!_.x` stores `42` in the squaring block's Register )isolated from `call_with`'s Register)
+  1. `!_.x` stores `42` in the squaring block's Register (isolated from `call_with`'s Register)
   2. `_.x _.x >*` reads from its own Register and computes `42 * 42 = 1764`
   3. Leaves `1764` on AL
 5. Result: `42 * 42 = 1764`
@@ -1018,7 +1029,7 @@ The above example **violates Register isolation** — the inner blocks try to ac
 
 ```soma
 {
-  !map_f !map_count         ) Store in Store )global), not Register
+  !map_f !map_count         ) Store in Store (global), not Register
   {
     map_count 0 >>          ) Read from Store
     {
@@ -1040,16 +1051,16 @@ The above example **violates Register isolation** — the inner blocks try to ac
 
 **How it works with Register isolation:**
 
-1. The outer `map` block stores `{ 10 >+ }` at Store path `map_f` )not `_.f`)
-2. The outer block stores `3` at Store path `map_count` )not `_.count`)
+1. The outer `map` block stores `{ 10 >+ }` at Store path `map_f` (not `_.f`)
+2. The outer block stores `3` at Store path `map_count` (not `_.count`)
 3. The outer block then executes the inner loop block
-4. **The inner loop block has its own fresh Register** )isolated from outer)
-5. The inner blocks read from **Store** )`map_f`, `map_count`), which is globally accessible
-6. Each iteration executes `>map_f` )pops value, adds 10, pushes result)
+4. **The inner loop block has its own fresh Register** (isolated from outer)
+5. The inner blocks read from **Store** (`map_f`, `map_count`), which is globally accessible
+6. Each iteration executes `>map_f` (pops value, adds 10, pushes result)
 7. Decrements the Store counter until it reaches 0
 8. The loop uses `>block` to reference itself for recursion
 
-**Key insight:** Nested blocks must share data via **Store** )global state) or **AL** )explicit passing), not via Register paths.
+**Key insight:** Nested blocks must share data via **Store** (global state) or **AL** (explicit passing), not via Register paths.
 
 ---
 

@@ -20,6 +20,10 @@ Two root causes:
 
 **Epistemic Drift**: All intelligence-based systems lose coherence over time. Context degrades. Assumptions compound. Without periodic re-grounding against falsifiable criteria, the AI's model of "what we're building" drifts from the human's intent. Both parties end up confident about the wrong thing.
 
+One compounding factor:
+
+**Throughput Asymmetry**: The AI writes code thousands of times faster than the human can review it. Even if the human _could_ articulate rejection criteria, they cannot keep up. Asking the human to review all output makes the human the bottleneck — and bottlenecks get bypassed. "Looks good" becomes the path of least resistance.
+
 ---
 
 ## The Roles
@@ -30,6 +34,40 @@ Two root causes:
 | **Machinist (AI)**   | Clarifies requirements, proposes falsifiers, implements, reports honestly, flags concerns | Decide what to build, declare "done" unilaterally, hide problems |
 
 **The contract**: Neither party trusts assertions. Both parties trust evidence.
+
+---
+
+## Why Falsifiability Solves the Throughput Problem
+
+The Engineer cannot review all the code. Nor should they try.
+
+With proper falsification criteria, the review burden **shifts**:
+
+- **Less code reviewed**: The Engineer spot-checks implementation, not line-by-line audit
+- **Fewer tests reviewed**: Tests are verified by execution, not inspection
+- **Criteria reviewed thoroughly**: This is what the Engineer can actually do well
+
+The question changes from "is this code correct?" to "are these the right criteria?" The first is intractable at scale. The second is tractable — and it's where human judgement matters most. The Engineer **can** review criteria effectively; they **cannot** review all code effectively.
+
+---
+
+## Cooperative Oversight
+
+Zero-Code is not one-way command. Both parties watch for the other's blind spots.
+
+**Engineer spot-checks:**
+
+- Code duplication and unnecessary complexity
+- Poor coding patterns or architectural drift
+- "Does this smell right?"
+
+**Machinist flags:**
+
+- Unrealistic or contradictory requirements
+- Specification gaps and ambiguities
+- "This doesn't make sense — clarify?"
+
+The Machinist's duty to flag is not insubordination; it is honesty. The Engineer's duty to listen is not weakness; it is wisdom. Both parties are fallible. Evidence protects them from each other's mistakes.
 
 ---
 
