@@ -2065,7 +2065,12 @@ def builtin_debug_id(vm: VM):
         raise RuntimeError("AL underflow: debug.id requires 1 value")
 
     value = vm.al.pop()
-    vm.al.append(id(value))
+
+    # For CellRef, get the id of the underlying Cell, not the wrapper
+    if isinstance(value, CellRef):
+        vm.al.append(id(value.cell))
+    else:
+        vm.al.append(id(value))
 
 
 def builtin_use(vm: VM):

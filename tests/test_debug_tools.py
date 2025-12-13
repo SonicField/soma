@@ -14,7 +14,7 @@ import unittest
 import re
 import io
 import sys
-from soma.vm import run_soma_program, VM, compile_program, Nil
+from soma.vm import run_soma_program, VM, compile_program, Nil, True_, False_
 from soma.lexer import lex
 from soma.parser import Parser
 
@@ -468,6 +468,165 @@ class TestDebugToolsIntegration(unittest.TestCase):
             return output, vm.al
         finally:
             sys.stdout = old_stdout
+
+
+class TestDebugType(unittest.TestCase):
+    """Tests for debug.type introspection builtin.
+
+    WARNING: debug.type is implementation-specific, not part of SOMA's
+    core semantics. It must NEVER be used for normal program control flow.
+    """
+
+    def run_soma(self, code):
+        """Run SOMA code and return AL."""
+        tokens = lex(code)
+        parser = Parser(tokens)
+        ast = parser.parse()
+        compiled = compile_program(ast)
+        vm = VM()
+        vm.execute(compiled)
+        return vm.al
+
+    def test_debug_type_integer(self):
+        """Test debug.type returns 'Int' for integers."""
+        al = self.run_soma('42 >debug.type')
+        self.assertEqual(al, ["Int"])
+
+    def test_debug_type_string(self):
+        """Test debug.type returns 'Str' for strings."""
+        al = self.run_soma('(hello) >debug.type')
+        self.assertEqual(al, ["Str"])
+
+    def test_debug_type_true(self):
+        """Test debug.type returns 'Bool' for True."""
+        al = self.run_soma('True >debug.type')
+        self.assertEqual(al, ["Bool"])
+
+    def test_debug_type_false(self):
+        """Test debug.type returns 'Bool' for False."""
+        al = self.run_soma('False >debug.type')
+        self.assertEqual(al, ["Bool"])
+
+    def test_debug_type_nil(self):
+        """Test debug.type returns 'Nil' for Nil."""
+        al = self.run_soma('Nil >debug.type')
+        self.assertEqual(al, ["Nil"])
+
+    def test_debug_type_block(self):
+        """Test debug.type returns 'Block' for blocks."""
+        al = self.run_soma('{ >noop } >debug.type')
+        self.assertEqual(al, ["Block"])
+
+    def test_debug_type_cellref(self):
+        """Test debug.type returns 'CellRef' for cell references."""
+        al = self.run_soma('42 !x x. >debug.type')
+        self.assertEqual(al, ["CellRef"])
+
+    def test_debug_type_thing(self):
+        """Test debug.type returns 'CellRef' for thing references.
+
+        Note: thing. creates a new empty cell and returns a CellRef to it.
+        The 'thing' in SOMA is not a distinct type - it's just an empty cell.
+        """
+        al = self.run_soma('thing. >debug.type')
+        self.assertEqual(al, ["CellRef"])
+
+    def test_debug_type_void(self):
+        """Test debug.type returns 'Void' for Void."""
+        al = self.run_soma('Void >debug.type')
+        self.assertEqual(al, ["Void"])
+
+    def test_debug_type_consumes_value(self):
+        """Test debug.type consumes the value and pushes only the type string."""
+        al = self.run_soma('1 2 3 >debug.type')
+        self.assertEqual(al, [1, 2, "Int"])
+
+
+class TestDebugId(unittest.TestCase):
+    """Tests for debug.id identity introspection builtin.
+
+    WARNING: debug.id is implementation-specific, not part of SOMA's
+    core semantics. It must NEVER be used for normal program control flow.
+    """
+
+    def run_soma(self, code):
+        """Run SOMA code and return AL."""
+        tokens = lex(code)
+        parser = Parser(tokens)
+        ast = parser.parse()
+        compiled = compile_program(ast)
+        vm = VM()
+        vm.execute(compiled)
+        return vm.al
+
+    def test_debug_id_cellref_returns_int(self):
+        """Test debug.id returns an integer for cell references."""
+        al = self.run_soma('42 !x x. >debug.id')
+        self.assertEqual(len(al), 1)
+        self.assertIsInstance(al[0], int)
+
+    def test_debug_id_thing_returns_int(self):
+        """Test debug.id returns an integer for things."""
+        al = self.run_soma('thing. >debug.id')
+        self.assertEqual(len(al), 1)
+        self.assertIsInstance(al[0], int)
+
+    def test_debug_id_same_cell_same_id(self):
+        """Test debug.id returns same ID for same cell reference."""
+        al = self.run_soma('''
+        42 !x
+        x. >debug.id
+        x. >debug.id
+        >==
+        ''')
+        self.assertEqual(len(al), 1)
+        # Should be SOMA True (same cell = same ID)
+        self.assertEqual(al[0], True_)
+
+    def test_debug_id_different_cells_different_ids(self):
+        """Test debug.id returns different IDs for different cells."""
+        al = self.run_soma('''
+        42 !x
+        99 !y
+        x. >debug.id
+        y. >debug.id
+        >==
+        ''')
+        self.assertEqual(len(al), 1)
+        # Should be SOMA False (different cells = different IDs)
+        self.assertEqual(al[0], False_)
+
+    def test_debug_id_different_things_different_ids(self):
+        """Test debug.id returns different IDs for different thing. calls.
+
+        Note: Each thing. creates a new anonymous cell. However, due to
+        Python memory reuse, consecutive thing. calls may get the same
+        memory address if the first CellRef is garbage collected before
+        the second is created. This test compares IDs directly instead
+        of using >==.
+        """
+        al = self.run_soma('''
+        thing. !t1
+        thing. !t2
+        t1. >debug.id
+        t2. >debug.id
+        >==
+        ''')
+        self.assertEqual(len(al), 1)
+        # Should be SOMA False (different things = different IDs)
+        self.assertEqual(al[0], False_)
+
+    def test_debug_id_consumes_value(self):
+        """Test debug.id consumes the value and pushes only the ID."""
+        al = self.run_soma('1 2 thing. >debug.id')
+        self.assertEqual(len(al), 3)
+        self.assertEqual(al[0], 1)
+        self.assertEqual(al[1], 2)
+        self.assertIsInstance(al[2], int)
+
+
+class TestDebugToolsIntegrationOriginal(TestDebugToolsIntegration):
+    """Original integration tests for debug tools used together."""
 
     def test_debug_chain_and_choose_together(self):
         """Test using both debug.chain and debug.choose in the same program."""
