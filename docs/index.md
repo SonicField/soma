@@ -64,6 +64,8 @@ Run SOMA:
 
 - [Control Flow](core/control-flow.md) - `>choose`, `>chain`, and algebraic flow control
 
+- [Higher-Order Patterns](core/higher-order-patterns.md) - Dispatch tables, state machines, and advanced control flow
+
 - [Built-ins](core/builtins.md) - Core operations and their AL contracts
 
 - [Standard Library](core/stdlib.md) - Derived operations built from FFI primitives

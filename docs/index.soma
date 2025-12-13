@@ -58,53 +58,55 @@
 
 (Core Language) >md.h3
 
-(- [Philosophy](core/philosophy.md\29\ - SOMA's design principles and relationship to other computational models) >md.p
+(- ) (Philosophy) (core/philosophy.md) >md.l ( - SOMA's design principles and relationship to other computational models) >md.t >md.p
 
-(- [Lexical Analysis and Parsing](core/lexer.md\29\ - Tokens, AST nodes, path parsing, and validation) >md.p
+(- ) (Lexical Analysis and Parsing) (core/lexer.md) >md.l ( - Tokens, AST nodes, path parsing, and validation) >md.t >md.p
 
-(- [Machine Model](core/machine-model.md\29\ - The Accumulator List, Store, Registers, and Values) >md.p
+(- ) (Machine Model) (core/machine-model.md) >md.l ( - The Accumulator List, Store, Registers, and Values) >md.t >md.p
 
-(- [Blocks and Execution](core/blocks-execution.md\29\ - First-class blocks and the execution model) >md.p
+(- ) (Blocks and Execution) (core/blocks-execution.md) >md.l ( - First-class blocks and the execution model) >md.t >md.p
 
-(- [Control Flow](core/control-flow.md\29\ - `>choose`, `>chain`, and algebraic flow control) >md.p
+(- ) (Control Flow) (core/control-flow.md) >md.l ( - `>choose`, `>chain`, and algebraic flow control) >md.t >md.p
 
-(- [Built-ins](core/builtins.md\29\ - Core operations and their AL contracts) >md.p
+(- ) (Higher-Order Patterns) (core/higher-order-patterns.md) >md.l ( - Dispatch tables, state machines, and advanced control flow) >md.t >md.p
 
-(- [Standard Library](core/stdlib.md\29\ - Derived operations built from FFI primitives) >md.p
+(- ) (Built-ins) (core/builtins.md) >md.l ( - Core operations and their AL contracts) >md.t >md.p
+
+(- ) (Standard Library) (core/stdlib.md) >md.l ( - Derived operations built from FFI primitives) >md.t >md.p
 
 (Programming) >md.h3
 
-(- [Comparisons](programming/comparisons.md\29\ - SOMA vs Forth, Haskell, Lambda Calculus, and others) >md.p
+(- ) (Comparisons) (programming/comparisons.md) >md.l ( - SOMA vs Forth, Haskell, Lambda Calculus, and others) >md.t >md.p
 
-(- [Examples](programming/examples.md\29\ - Working SOMA programs demonstrating key concepts) >md.p
+(- ) (Examples) (programming/examples.md) >md.l ( - Working SOMA programs demonstrating key concepts) >md.t >md.p
 
-(- [Programming Idioms](programming/idioms.md\29\ - Idiomatic patterns, best practices, and common anti-patterns) >md.p
+(- ) (Programming Idioms) (programming/idioms.md) >md.l ( - Idiomatic patterns, best practices, and common anti-patterns) >md.t >md.p
 
-(- [Errors and Semantics](programming/errors-semantics.md\29\ - Fatal errors, abstract machine, and formal grammar) >md.p
+(- ) (Errors and Semantics) (programming/errors-semantics.md) >md.l ( - Fatal errors, abstract machine, and formal grammar) >md.t >md.p
 
 (Extensions) >md.h3
 
-(- [Extensions Overview](extensions/extensions.md\29\ - Extension system and `>use` builtin) >md.p
+(- ) (Extensions Overview) (extensions/extensions.md) >md.l ( - Extension system and `>use` builtin) >md.t >md.p
 
-(- [Python Interface](extensions/python-interface.md\29\ - Python FFI integration) >md.p
+(- ) (Python Interface) (extensions/python-interface.md) >md.l ( - Python FFI integration) >md.t >md.p
 
-(- [Load Extension](extensions/load.md\29\ - File loading capabilities) >md.p
+(- ) (Load Extension) (extensions/load.md) >md.l ( - File loading capabilities) >md.t >md.p
 
 (Debugging) >md.h3
 
-(- [Debugging](debugging/debugging.md\29\ - Debug tools, philosophy, and troubleshooting techniques) >md.p
+(- ) (Debugging) (debugging/debugging.md) >md.l ( - Debug tools, philosophy, and troubleshooting techniques) >md.t >md.p
 
-(- [Debug Ideas](debugging/debug-ideas.md\29\ - Proposals for future debug features) >md.p
+(- ) (Debug Ideas) (debugging/debug-ideas.md) >md.l ( - Proposals for future debug features) >md.t >md.p
 
 (Markdown Extension) >md.h3
 
-(- [Markdown Overview](markdown/index.md\29\ - SOMA markdown generation system) >md.p
+(- ) (Markdown Overview) (markdown/index.md) >md.l ( - SOMA markdown generation system) >md.t >md.p
 
-(- [Markdown Skill](markdown/SKILL.md\29\ - AI assistant reference for markdown extension) >md.p
+(- ) (Markdown Skill) (markdown/SKILL.md) >md.l ( - AI assistant reference for markdown extension) >md.t >md.p
 
 (Concepts) >md.h3
 
-(- [Engineering Standards](concepts/engineering-standards.md\29\ - Verification-first development methodology) >md.p
+(- ) (Engineering Standards) (concepts/engineering-standards.md) >md.l ( - Verification-first development methodology) >md.t >md.p
 
 (---) >md.p
 
