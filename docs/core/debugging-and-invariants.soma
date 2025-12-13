@@ -64,7 +64,7 @@
 (Example:) >md.b >md.p
 
 (42 >debug.type        ; AL: ["Int"]
-"hello" >debug.type   ; AL: ["Str"]
+(hello\29\ >debug.type   ; AL: ["Str"]
 True >debug.type      ; AL: ["Bool"]
 { >noop } >debug.type ; AL: ["Block"]) (soma) >md.code
 
@@ -81,9 +81,9 @@ True >debug.type      ; AL: ["Bool"]
 
 (### >debug.id) >md.h3
 
-(Signature:) >md.b ( ) ((CellRef | Thing\29\ -> Int) >md.c >md.t >md.p
+(Signature:) >md.b ( ) ((Value\29\ -> Int) >md.c >md.t >md.p
 
-(Pops a CellRef or Thing and pushes an integer identity value. Useful for distinguishing between different instances of mutable structures.) >md.p
+(Pops any value and pushes an integer identity value. For CellRefs, returns the identity of the underlying Cell. Useful for distinguishing between different instances of mutable structures.) >md.p
 
 (Example:) >md.b >md.p
 
@@ -102,7 +102,7 @@ cell2. >debug.id
 (Tracking object identity through transformations) >md.uli
 >md.ul
 
-(Errors:) >md.b ( Fatal if AL is empty or top value is neither a CellRef nor a Thing.) >md.t >md.p
+(Errors:) >md.b ( Fatal if AL is empty.) >md.t >md.p
 
 >md.hr
 
@@ -222,7 +222,7 @@ cell2. >debug.id
 >md.table.row
 (>debug.type) >md.c (Builtin) ((Value\29\ -> Str) >md.c (Get type name as string)
 >md.table.row
-(>debug.id) >md.c (Builtin) ((CellRef|Thing\29\ -> Int) >md.c (Get identity of reference)
+(>debug.id) >md.c (Builtin) ((Value\29\ -> Int) >md.c (Get identity of value)
 >md.table.row
 (>debug.assert) >md.c (Stdlib) ((Block, Str\29\ -> (\29\|HALT) >md.c (Assert condition or halt)
 >md.table.row

@@ -62,7 +62,7 @@ Pops a value and pushes a string representing its type. Essential for runtime ty
 
 ```soma
 42 >debug.type        ; AL: ["Int"]
-"hello" >debug.type   ; AL: ["Str"]
+(hello) >debug.type   ; AL: ["Str"]
 True >debug.type      ; AL: ["Bool"]
 { >noop } >debug.type ; AL: ["Block"]
 ```
@@ -79,9 +79,9 @@ True >debug.type      ; AL: ["Bool"]
 
 ### ### >debug.id
 
-**Signature:** `(CellRef | Thing) -> Int`
+**Signature:** `(Value) -> Int`
 
-Pops a CellRef or Thing and pushes an integer identity value. Useful for distinguishing between different instances of mutable structures.
+Pops any value and pushes an integer identity value. For CellRefs, returns the identity of the underlying Cell. Useful for distinguishing between different instances of mutable structures.
 
 **Example:**
 
@@ -101,7 +101,7 @@ cell2. >debug.id
 - Debugging aliasing issues
 - Tracking object identity through transformations
 
-**Errors:** Fatal if AL is empty or top value is neither a CellRef nor a Thing.
+**Errors:** Fatal if AL is empty.
 
 ---
 
@@ -218,14 +218,14 @@ Design for testability:
 
 ## ## Reference Table
 
-| Debug operation  | Location | AL transformation         | Purpose                   |
-|------------------|----------|---------------------------|---------------------------|
-| `>print`         | Builtin  | `(Value) -> ()`           | Output value to stdout    |
-| `>debug.al.dump` | Builtin  | `() -> ()`                | Display machine state     |
-| `>debug.type`    | Builtin  | `(Value) -> Str`          | Get type name as string   |
-| `>debug.id`      | Builtin  | `(CellRef|Thing) -> Int`  | Get identity of reference |
-| `>debug.assert`  | Stdlib   | `(Block, Str) -> ()|HALT` | Assert condition or halt  |
-| `>debug.error`   | Builtin  | `(Str) -> HALT`           | Halt with error message   |
+| Debug operation  | Location | AL transformation         | Purpose                  |
+|------------------|----------|---------------------------|--------------------------|
+| `>print`         | Builtin  | `(Value) -> ()`           | Output value to stdout   |
+| `>debug.al.dump` | Builtin  | `() -> ()`                | Display machine state    |
+| `>debug.type`    | Builtin  | `(Value) -> Str`          | Get type name as string  |
+| `>debug.id`      | Builtin  | `(Value) -> Int`          | Get identity of value    |
+| `>debug.assert`  | Stdlib   | `(Block, Str) -> ()|HALT` | Assert condition or halt |
+| `>debug.error`   | Builtin  | `(Str) -> HALT`           | Halt with error message  |
 
 ---
 
